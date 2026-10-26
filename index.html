@@ -24,8 +24,12 @@ select{font:inherit;padding:8px;border-radius:8px;border:0;background:#222a3d;co
 #set{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:460px}
 #set label{font-size:13px;display:flex;flex-direction:column;gap:2px}
 .cb button{padding:8px 12px;font-size:14px;margin:2px}
+#cd{white-space:pre-line;max-width:440px}
+.ab{display:none;position:fixed;right:10px;top:42%;flex-direction:column;gap:10px}
+.ab button{width:64px;height:64px;border-radius:50%;padding:0;font-size:15px}
 </style></head><body>
 <canvas id="c"></canvas><div id="hud"></div>
+<div class="ab" id="ab"><button id="b1">Q</button><button id="b2" class="s">E</button></div>
 
 <div class="pn" id="menu">
 <h1>STORM ARENA</h1>
@@ -34,14 +38,14 @@ select{font:inherit;padding:8px;border-radius:8px;border:0;background:#222a3d;co
 <div class="cb" id="cs"></div><small id="cd"></small>
 <button id="bh">Host a room</button>
 <div><input id="rc" maxlength="4" placeholder="Room code" style="width:130px;text-transform:uppercase"> <button id="bj" class="s">Join</button></div>
-<small id="mg">Last one standing wins. Move: WASD / left stick. Aim + shoot: mouse / right stick. Grab green packs to heal, stay inside the storm circle.</small>
+<small id="mg">Last one standing wins. Move: WASD / left stick. Aim + shoot: mouse / right stick. Hide in bushes, use your ability (Q) and ultimate (E), and stay inside the storm circle. You heal slowly when not being hit.</small>
 </div>
 
 <div class="pn h" id="lobby">
 <small>Room code</small><div id="code">----</div>
 <small id="lk"></small>
 <div id="ls"></div>
-<div id="set"><label>Players<select id="s1"><option>6<option>8<option selected>10<option>12</select></label><label>Storm<select id="s2"><option value="5">Slow<option value="9" selected>Normal<option value="14">Fast</select></label><label>Health packs<select id="s3"><option value="0">None<option value="20">Few<option value="40" selected>Normal<option value="80">Lots</select></label><label>Bot skill<select id="s4"><option value="0">Easy<option value="1" selected>Mixed<option value="2">Genius</select></label></div>
+<div id="set"><label>Players<select id="s1"><option>6<option>8<option selected>10<option>12</select></label><label>Storm<select id="s2"><option value="5">Slow<option value="9" selected>Normal<option value="14">Fast</select></label><label>Healing<select id="s3"><option value="0">Off<option value="1" selected>Normal<option value="2">Fast</select></label><label>Bot skill<select id="s4"><option value="0">Easy<option value="1" selected>Mixed<option value="2">Genius</select></label></div>
 <button id="bs">Start (bots fill the rest)</button>
 <button id="bl1" class="s">Leave</button>
 </div>
@@ -56,24 +60,44 @@ select{font:inherit;padding:8px;border-radius:8px;border:0;background:#222a3d;co
 <script>
 const $=id=>document.getElementById(id),cv=$('c'),g=cv.getContext('2d');
 const W=3000,C=1500,COLS=['#ff4d4d','#4dc3ff','#6bff6b','#ffd23f','#c77dff','#ff9f43','#2ee6c5','#ff7ac6'];
-let cls=0,S={n:10,st:9,pk:40,iq:1},col=0,peer,host=false,hc=null,me=-1,P=[],B=[],R=[],K=[],zr=C,zt=0,st='menu',lobby=[],keys={},mouse={x:0,y:0,d:0},netT=0,inT=0,code='';
+let cls=0,S={n:10,st:9,rg:1,iq:1},col=0,peer,host=false,hc=null,me=-1,P=[],B=[],R=[],Bu=[],Gp=[],pq=0,pu=0,zr=C,zt=0,st='menu',lobby=[],keys={},mouse={x:0,y:0,d:0},netT=0,inT=0,code='';
 const tch={m:null,a:null,mx:0,my:0,ax:0,ay:0,on:0};
-// classes: hp, speed, dmg, reload, pellets, spread, bullet speed, bullet life, preferred range, flee threshold
+// characters: every one has a Main attack, an Ability (Q), an Ultimate (E, charges from fighting) and a Passive
 const CL=[
-{n:'Gunner',i:'🔫',ds:'Balanced',hp:100,sp:230,d:20,cd:.45,pl:1,sa:0,bs:750,bt:.8,r:350,fl:.3},
-{n:'Shotgun',i:'💥',ds:'Close-range burst',hp:130,sp:215,d:9,cd:.8,pl:4,sa:.5,bs:700,bt:.4,r:150,fl:.25},
-{n:'Sniper',i:'🎯',ds:'Long range, fragile',hp:70,sp:215,d:45,cd:1.2,pl:1,sa:0,bs:1200,bt:.9,r:550,fl:.45},
-{n:'SMG',i:'⚡',ds:'Fast, rapid-fire',hp:85,sp:285,d:9,cd:.2,pl:1,sa:.15,bs:800,bt:.55,r:230,fl:.3},
-{n:'Tank',i:'🛡',ds:'Slow and tough',hp:200,sp:165,d:16,cd:.5,pl:1,sa:0,bs:700,bt:.7,r:250,fl:.2}];
+{n:'Jack',t:'Outlaw',i:'🤠',hp:100,sp:230,d:20,cd:.45,pl:1,sa:0,bs:750,bt:.8,r:350,fl:.3,
+ mn:['Six-Shooter','steady revolver shots'],
+ ab:{n:'Dodge Roll',x:'dash where you move',k:'dash',cd:5},
+ ul:{n:'Showdown',x:'5s of faster, harder fire',k:'rage',t:5},
+ ps:{n:'Bounty Hunter',x:'+30% damage to wounded enemies',k:'exec'}},
+{n:'Rosa',t:'Botanist',i:'🌹',hp:130,sp:215,d:9,cd:.8,pl:4,sa:.5,bs:700,bt:.4,r:150,fl:.25,
+ mn:['Thorn Blast','4-thorn close-range spread'],
+ ab:{n:'Bark Skin',x:'take 60% less damage for 2.5s',k:'shield',t:2.5,cd:8},
+ ul:{n:'Bloom',x:'thorns burst in all directions',k:'burst',n2:14,arc:6.28,d:12},
+ ps:{n:'Deep Roots',x:'heals twice as fast',k:'root'}},
+{n:'Nina',t:'Huntress',i:'🏹',hp:70,sp:215,d:45,cd:1.2,pl:1,sa:0,bs:1200,bt:.9,r:550,fl:.45,
+ mn:['Longbow','slow, hard-hitting arrow'],
+ ab:{n:'Smoke Veil',x:'vanish from sight for 3s',k:'veil',t:3,cd:9},
+ ul:{n:'Deadeye',x:'next 2 shots deal triple damage',k:'crit'},
+ ps:{n:'Ambusher',x:'+40% damage when shooting from a bush',k:'amb'}},
+{n:'Leo',t:'Courier',i:'⚡',hp:85,sp:285,d:9,cd:.2,pl:1,sa:.15,bs:800,bt:.55,r:230,fl:.3,
+ mn:['Pocket SMG','fast spray'],
+ ab:{n:'Sprint',x:'+60% speed for 2.5s',k:'haste',t:2.5,cd:7},
+ ul:{n:'Bullet Rush',x:'unload a cone of bullets',k:'burst',n2:16,arc:.9,d:10},
+ ps:{n:'Adrenaline',x:'+30% speed below half health',k:'adr'}},
+{n:'Bruno',t:'Bouncer',i:'🐻',hp:200,sp:165,d:16,cd:.5,pl:1,sa:0,bs:700,bt:.7,r:250,fl:.2,
+ mn:['Heavy Pistol','reliable mid-range shots'],
+ ab:{n:'Ground Pound',x:'slam nearby enemies: damage + slow',k:'aoe',cd:8},
+ ul:{n:'Fortress',x:'60% less damage for 5s, heal 35',k:'shield',t:5,heal:35},
+ ps:{n:'Iron Will',x:'always take 15% less damage',k:'thick'}}];
 // bot names by intelligence: dumb, average, genius
 const NM=[['Goofball','Noodle','Potato','Derp','Bonkers','Muffin','Doofus','Clumsy'],['Sam','Max','Rex','Dave','Pete','Lou','Gus','Bob'],['Socrates','Einstein','Newton','Tesla','Plato','Curie','Darwin','Hawking']];
 
 // ---------- UI ----------
-const show=id=>['menu','lobby','end'].forEach(x=>$(x).classList.toggle('h',x!=id));
+const show=id=>{['menu','lobby','end'].forEach(x=>$(x).classList.toggle('h',x!=id));$('ab').style.display=id?'none':'flex'};
 const msg=t=>{$('mg').textContent=t;show('menu')};
 COLS.forEach((c,i)=>{const e=document.createElement('i');e.style.background=c;if(!i)e.className='s';e.onclick=()=>{col=i;[...$('cl').children].forEach((x,j)=>x.classList.toggle('s',j==i))};$('cl').appendChild(e)});
 $('rc').value=(new URLSearchParams(location.search).get('room')||'').toUpperCase();
-const cdesc=c=>c.ds+' · HP '+c.hp+' · '+(c.pl>1?c.pl+'×':'')+c.d+' dmg · '+c.cd+'s reload';
+const cdesc=c=>c.n+', '+c.t+' · HP '+c.hp+'\nMain · '+c.mn[0]+': '+c.mn[1]+'\nAbility (Q) · '+c.ab.n+': '+c.ab.x+'\nUltimate (E) · '+c.ul.n+': '+c.ul.x+'\nPassive · '+c.ps.n+': '+c.ps.x;
 CL.forEach((c,i)=>{const b=document.createElement('button');b.textContent=c.i+' '+c.n;b.className=i?'s':'';b.onclick=()=>{cls=i;[...$('cs').children].forEach((x,j)=>x.className=j==i?'':'s');$('cd').textContent=cdesc(c)};$('cs').appendChild(b)});
 $('cd').textContent=cdesc(CL[0]);
 const nm=()=>($('nm').value.trim()||'Player'+(Math.random()*90+10|0)).slice(0,12);
@@ -94,7 +118,7 @@ function mk(){
     peer.on('connection',c=>{
       c.on('data',m=>{
         if(m.t=='j'&&st=='lobby'&&lobby.length<+$('s1').value){lobby.push({n:String(m.n).slice(0,12),c:m.c&7,k:m.k>=0&&m.k<CL.length?m.k|0:0,conn:c});sendLobby()}
-        else if(m.t=='i'&&c.pi!=null&&P[c.pi]){const p=P[c.pi];p.mx=+m.mx||0;p.my=+m.my||0;p.a=+m.a||0;p.f=m.f?1:0}
+        else if(m.t=='i'&&c.pi!=null&&P[c.pi]){const p=P[c.pi];p.mx=+m.mx||0;p.my=+m.my||0;p.a=+m.a||0;p.f=m.f?1:0;if(m.q)p.aq=1;if(m.u)p.au=1}
       });
       c.on('close',()=>{lobby=lobby.filter(l=>l.conn!=c);if(st=='lobby')sendLobby();else if(c.pi!=null&&P[c.pi])P[c.pi].hp=0});
     });
@@ -113,10 +137,10 @@ $('bj').onclick=()=>{
 };
 function onData(m){
   if(m.t=='l'){lobby=m.l.map(n=>({n}));if(st!='lobby'){st='lobby';show('lobby')}drawLobby()}
-  else if(m.t=='s'){world(m.seed,m.pk);P=m.ps.map(p=>({...p,x:0,y:0,tx:0,ty:0,a:0,hp:CL[p.cl].hp,k:0,first:1}));me=m.you;B=[];zr=C;st='play';show(null)}
+  else if(m.t=='s'){world(m.seed);P=m.ps.map(p=>({...p,x:0,y:0,tx:0,ty:0,a:0,hp:CL[p.cl].hp,k:0,fl:0,ac:0,ch:0,first:1}));me=m.you;B=[];zr=C;st='play';show(null)}
   else if(m.t=='u'&&st=='play'){
-    m.p.forEach((a,i)=>{const p=P[i];p.tx=a[0];p.ty=a[1];if(p.first){p.x=p.tx;p.y=p.ty;p.first=0}p.a=a[2];p.hp=a[3];p.k=a[4]});
-    B=m.b.map(a=>({x:a[0],y:a[1]}));zr=m.z;K.forEach((k,i)=>k.on=m.k[i]=='1');
+    m.p.forEach((a,i)=>{const p=P[i];p.tx=a[0];p.ty=a[1];if(p.first){p.x=p.tx;p.y=p.ty;p.first=0}p.a=a[2];p.hp=a[3];p.k=a[4];p.fl=a[5];p.ac=a[6];p.ch=a[7]});
+    B=m.b.map(a=>({x:a[0],y:a[1]}));zr=m.z;
   }
   else if(m.t=='e')finish(m.w);
 }
@@ -124,50 +148,68 @@ $('bl1').onclick=$('bl2').onclick=leave;
 
 // ---------- world ----------
 function rng(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
-function world(seed,pk){
-  const r=rng(seed);R=[];K=[];
-  for(let i=0;i<70;i++){const a=r()*6.283,d=Math.sqrt(r())*1200;R.push({x:C+Math.cos(a)*d,y:C+Math.sin(a)*d,r:30+r()*40})}
-  for(let i=0;i<pk;i++){const a=r()*6.283,d=Math.sqrt(r())*1350;K.push({x:C+Math.cos(a)*d,y:C+Math.sin(a)*d,on:1})}
+const inBush=q=>Bu.some(b=>Math.hypot(b.x-q.x,b.y-q.y)<b.r);
+const hid=q=>!(q.fl&16)&&((q.fl&2)||inBush(q)); // hidden in a bush / smoke unless it just shot
+function world(seed){
+  const r=rng(seed),pt=d=>{const a=r()*6.283,q=Math.sqrt(r())*d;return[C+Math.cos(a)*q,C+Math.sin(a)*q]};
+  R=[];Bu=[];Gp=[];
+  for(let i=0;i<5;i++){const a=r()*6.283,q=300+r()*700;R.push({x:C+Math.cos(a)*q,y:C+Math.sin(a)*q,r:90+r()*80,w:1})} // ponds: block walking, not bullets
+  for(let i=0;i<14;i++){const[x,y]=pt(1150),n=4+(r()*3|0);for(let j=0;j<n;j++){const a=j/n*6.283+r()*.4;R.push({x:x+Math.cos(a)*62,y:y+Math.sin(a)*62,r:22+r()*16})}} // ruined rings of stone
+  for(let i=0;i<10;i++){const[x,y]=pt(1150);for(let j=0;j<4;j++)Bu.push({x:x+(r()-.5)*150,y:y+(r()-.5)*150,r:48+r()*25})} // bush clumps
+  for(let i=0;i<8;i++){const[x,y]=pt(1200);Gp.push({x,y,r:120+r()*160})}
 }
 
 // ---------- host simulation ----------
 $('bs').onclick=()=>{
   if(!host||st!='lobby')return;
-  S={n:+$('s1').value,st:+$('s2').value,pk:+$('s3').value,iq:+$('s4').value};
+  S={n:+$('s1').value,st:+$('s2').value,rg:+$('s3').value,iq:+$('s4').value};
   const list=[...lobby],pool=NM.map(l=>[...l]);let b=0;
   while(list.length<S.n){const iq=S.iq==0?Math.random()*.4:S.iq==2?.6+Math.random()*.4:Math.random(),L=pool[iq>.66?2:iq>.33?1:0];list.push({n:L.splice(Math.random()*L.length|0,1)[0]||'Bot'+ ++b,c:Math.random()*8|0,k:Math.random()*CL.length|0,bot:1,iq})}
   list.sort(()=>Math.random()-.5);
-  const seed=Math.random()*1e9|0,n=list.length;world(seed,S.pk);
-  P=list.map((l,i)=>{const a=i/n*6.283;return{n:l.n,c:l.c,cl:l.k,iq:l.iq,bot:l.bot,conn:l.conn,x:C+Math.cos(a)*1380,y:C+Math.sin(a)*1380,a:a+3.14,hp:CL[l.k].hp,k:0,cd:0,mx:0,my:0,f:0,s:'search',rt:0,sd:1,aj:0,tg:-1,dest:{x:C,y:C}}});
-  P.forEach((p,i)=>{if(p.conn){p.conn.pi=i;p.conn.send({t:'s',seed,ps:P.map(q=>({n:q.n,c:q.c,cl:q.cl})),pk:S.pk,you:i})}else if(!p.bot)me=i});
+  const seed=Math.random()*1e9|0,n=list.length;world(seed);
+  P=list.map((l,i)=>{const a=i/n*6.283;return{n:l.n,c:l.c,cl:l.k,iq:l.iq,bot:l.bot,conn:l.conn,x:C+Math.cos(a)*1380,y:C+Math.sin(a)*1380,a:a+3.14,hp:CL[l.k].hp,k:0,cd:0,mx:0,my:0,f:0,s:'search',rt:0,sd:1,aj:0,tg:-1,dest:{x:C,y:C},sh:0,hs:0,vl:0,rg:0,dh:0,sl:0,ac:0,rv:0,rl:0,cr:0,ch:0,aq:0,au:0,fl:0}});
+  P.forEach((p,i)=>{if(p.conn){p.conn.pi=i;p.conn.send({t:'s',seed,ps:P.map(q=>({n:q.n,c:q.c,cl:q.cl})),you:i})}else if(!p.bot)me=i});
   B=[];zt=0;zr=C;st='play';show(null);
 };
-function hit(p,d,by){if(p.hp<=0)return;p.hp-=d;if(p.hp<=0&&by!=null&&P[by])P[by].k++}
+function hit(p,d,by){
+  if(p.hp<=0)return;
+  if(by!=null){if(p.sh>0)d*=.4;if(CL[p.cl].ps.k=='thick')d*=.85;p.ch=Math.min(100,p.ch+d*.4);if(P[by]&&P[by]!==p)P[by].ch=Math.min(100,P[by].ch+d*.8)}
+  p.hp-=d;p.rl=4;
+  if(p.hp<=0&&by!=null&&P[by])P[by].k++;
+}
+function cast(p,i,u){
+  const k=u.k;
+  if(k=='dash')p.dh=.2;else if(k=='haste')p.hs=u.t;
+  else if(k=='shield'){p.sh=u.t;if(u.heal)p.hp=Math.min(CL[p.cl].hp,p.hp+u.heal)}
+  else if(k=='veil')p.vl=u.t;else if(k=='rage')p.rg=u.t;else if(k=='crit')p.cr=2;
+  else if(k=='burst')for(let n=0;n<u.n2;n++){const a=p.a+(u.arc>6?n/u.n2*6.283:(n/(u.n2-1)-.5)*u.arc);B.push({x:p.x,y:p.y,vx:Math.cos(a)*600,vy:Math.sin(a)*600,o:i,t:.7,d:u.d})}
+  else if(k=='aoe')for(const q of P)if(q!==p&&q.hp>0&&Math.hypot(q.x-p.x,q.y-p.y)<130){hit(q,25,i);q.sl=2}
+}
 function ai(p,i,dt){
-  const c=CL[p.cl],dist=q=>Math.hypot(q.x-p.x,q.y-p.y),dc=Math.hypot(p.x-C,p.y-C);
+  const c=CL[p.cl],dist=q=>Math.hypot(q.x-p.x,q.y-p.y),dc=Math.hypot(p.x-C,p.y-C),vis=q=>q&&q.hp>0&&!(hid(q)&&dist(q)>200);
   p.rt-=dt;
   if(p.rt<=0){ // think: slower for dumb bots; target + state only change here, so no per-frame flip-flopping
     p.rt=.15+(1-p.iq)*.5;p.aj=(Math.random()-.5)*(1-p.iq)*.6;if(Math.random()<.3)p.sd=-p.sd;
-    const cur=P[p.tg],cdi=cur&&cur.hp>0?dist(cur):1e9;let best=null,bd=1e9;
-    for(const q of P)if(q!==p&&q.hp>0){const d=dist(q);if(d<bd){bd=d;best=q}}
+    const cur=P[p.tg],cdi=vis(cur)?dist(cur):1e9;let best=null,bd=1e9;
+    for(const q of P)if(q!==p&&vis(q)){const d=dist(q);if(d<bd){bd=d;best=q}}
     if(best&&(cdi>900||bd<cdi*.7))p.tg=P.indexOf(best); // sticky target: only switch if the new one is much closer
-    const t=P[p.tg],td=t&&t.hp>0?dist(t):1e9,see=450+p.iq*450,hf=p.hp/c.hp;
+    const t=P[p.tg],td=vis(t)?dist(t):1e9,see=450+p.iq*450,hf=p.hp/c.hp;
     if(td<see)p.lk={x:t.x,y:t.y};
-    let pk=null,pd=300+p.iq*500;for(const k of K)if(k.on){const d=dist(k);if(d<pd){pd=d;pk=k}}
+    let pk=null,pd=300+p.iq*500;for(const k of Bu){const d=dist(k);if(d<pd){pd=d;pk=k}}
     let s='search';
     if(dc>zr-40-p.iq*220)s='storm';
     else if(td<see&&hf<c.fl*(.5+p.iq))s='flee';
-    else if(pk&&hf<.75&&td>350&&p.iq>.25)s='heal';
+    else if(pk&&hf<.6&&td>350&&p.iq>.25)s='hide'; // hurt: sneak into a bush and heal
     else if(td<see)s='chase';
     if(s=='storm'&&p.s!='storm')p.dest={x:C+(Math.random()-.5)*150,y:C+(Math.random()-.5)*150};
-    if(s=='heal')p.dest={x:pk.x,y:pk.y};
+    if(s=='hide')p.dest={x:pk.x,y:pk.y};
     if(s=='search'&&(p.s!='search'||dist(p.dest)<60)){
       if(p.lk&&p.iq>.4){p.dest=p.lk;p.lk=null}
       else{const a=Math.random()*6.28,r=Math.sqrt(Math.random())*zr*.7;p.dest={x:C+Math.cos(a)*r,y:C+Math.sin(a)*r}}
     }
     p.s=s;
   }
-  const t=P[p.tg],ok=t&&t.hp>0,td=ok?dist(t):1e9,rg=c.bs*c.bt,b=ok?Math.atan2(t.y-p.y,t.x-p.x):0;
+  const t=P[p.tg],ok=vis(t),td=ok?dist(t):1e9,rg=c.bs*c.bt,b=ok?Math.atan2(t.y-p.y,t.x-p.x):0;
   let mx=0,my=0,a=p.a;p.f=0;
   const aim=()=>{const v=CL[t.cl].sp*p.iq*td/c.bs;a=Math.atan2(t.y+t.my*v-p.y,t.x+t.mx*v-p.x)+p.aj;p.f=td<rg*.95?1:0}; // smart bots lead their shots
   if(p.s=='chase'&&ok){
@@ -179,35 +221,47 @@ function ai(p,i,dt){
   }else{
     const d=Math.hypot(p.dest.x-p.x,p.dest.y-p.y);
     if(d>5){mx=(p.dest.x-p.x)/d;my=(p.dest.y-p.y)/d;a=Math.atan2(my,mx)}
-    if(p.s=='heal'&&ok&&p.iq>.5)aim();
+    if(p.s=='hide'&&ok&&p.iq>.5)aim();
   }
+  const ak=c.ab.k;let w=0; // bots use abilities when it makes sense; smarter bots react faster
+  if(ak=='dash')w=p.s=='flee';else if(ak=='haste')w=p.s=='flee'||p.s=='storm'||(p.s=='chase'&&td>c.r*1.4);
+  else if(ak=='shield')w=ok&&td<400&&p.rl>3.2;else if(ak=='veil')w=p.s=='flee'||p.s=='hide';else if(ak=='aoe')w=ok&&td<115;
+  if(w&&p.ac<=0&&Math.random()<dt*(.3+p.iq*3))p.aq=1;
+  if(p.ch>=100&&ok&&td<rg*.8&&Math.random()<dt*(.2+p.iq*2))p.au=1;
   p.mx=mx;p.my=my;p.a=a;
 }
 function step(dt){
   zt+=dt;zr=Math.max(120,C-Math.max(0,zt-15)*S.st);
   P.forEach((p,i)=>{
     if(p.hp<=0)return;
-    if(p.bot)ai(p,i,dt);
+    if(p.bot)ai(p,i,dt);const c=CL[p.cl];
     const l=Math.hypot(p.mx,p.my);if(l>1){p.mx/=l;p.my/=l}
-    const sp=CL[p.cl].sp;p.x+=p.mx*sp*dt;p.y+=p.my*sp*dt;
+    const sp=c.sp*(p.hs>0?1.6:1)*(p.sl>0?.5:1)*(c.ps.k=='adr'&&p.hp<c.hp/2?1.3:1);
+    if(p.dh>0){const da=Math.hypot(p.mx,p.my)>.1?Math.atan2(p.my,p.mx):p.a;p.x+=Math.cos(da)*650*dt;p.y+=Math.sin(da)*650*dt}
+    else{p.x+=p.mx*sp*dt;p.y+=p.my*sp*dt}
     for(const r of R){const dx=p.x-r.x,dy=p.y-r.y,d=Math.hypot(dx,dy),m=r.r+18;if(d<m&&d>0){p.x=r.x+dx/d*m;p.y=r.y+dy/d*m}}
     const dx=p.x-C,dy=p.y-C,d=Math.hypot(dx,dy);
     if(d>1490){p.x=C+dx/d*1490;p.y=C+dy/d*1490}
     if(d>zr)hit(p,8*dt);
     p.cd-=dt;
-    if(p.f&&p.cd<=0){const c=CL[p.cl];p.cd=c.cd;for(let n=0;n<c.pl;n++){const a=p.a+(c.pl>1?(n/(c.pl-1)-.5)*c.sa:(Math.random()-.5)*c.sa);B.push({x:p.x,y:p.y,vx:Math.cos(a)*c.bs,vy:Math.sin(a)*c.bs,o:i,t:c.bt,d:c.d})}}
-    const mh=CL[p.cl].hp;if(p.hp>0&&p.hp<mh)for(const k of K)if(k.on&&Math.hypot(k.x-p.x,k.y-p.y)<32){k.on=0;p.hp=Math.min(mh,p.hp+35)}
+    if(p.f&&p.cd<=0){const dm=c.d*(p.rg>0?1.5:1)*(p.cr>0?3:1)*(c.ps.k=='amb'&&inBush(p)?1.4:1);p.cd=c.cd*(p.rg>0?.6:1);if(p.cr>0)p.cr--;p.rv=.8;for(let n=0;n<c.pl;n++){const a=p.a+(c.pl>1?(n/(c.pl-1)-.5)*c.sa:(Math.random()-.5)*c.sa);B.push({x:p.x,y:p.y,vx:Math.cos(a)*c.bs,vy:Math.sin(a)*c.bs,o:i,t:c.bt,d:dm})}}
+    if(p.aq){p.aq=0;if(p.ac<=0){cast(p,i,c.ab);p.ac=c.ab.cd}}
+    if(p.au){p.au=0;if(p.ch>=100){cast(p,i,c.ul);p.ch=0}}
+    for(const k of['sh','hs','vl','rg','dh','sl','ac','rv','rl'])p[k]=Math.max(0,p[k]-dt);
+    p.ch=Math.min(100,p.ch+1.2*dt);
+    if(!p.rl&&S.rg)p.hp=Math.min(c.hp,p.hp+6*S.rg*(c.ps.k=='root'?2:1)*dt); // natural healing after 4s without damage
+    p.fl=(p.sh>0)+(p.vl>0)*2+(p.rg>0)*4+(p.hs>0)*8+(p.rv>0)*16;
   });
   B=B.filter(b=>{
     b.x+=b.vx*dt;b.y+=b.vy*dt;b.t-=dt;if(b.t<=0)return false;
-    for(const r of R)if(Math.hypot(b.x-r.x,b.y-r.y)<r.r)return false;
-    for(let j=0;j<P.length;j++){const q=P[j];if(j!=b.o&&q.hp>0&&Math.hypot(b.x-q.x,b.y-q.y)<22){hit(q,b.d,b.o);return false}}
+    for(const r of R)if(!r.w&&Math.hypot(b.x-r.x,b.y-r.y)<r.r)return false;
+    for(let j=0;j<P.length;j++){const q=P[j];if(j!=b.o&&q.hp>0&&Math.hypot(b.x-q.x,b.y-q.y)<22){hit(q,b.d*(CL[P[b.o].cl].ps.k=='exec'&&q.hp<CL[q.cl].hp*.4?1.3:1),b.o);return false}}
     return true;
   });
   const al=P.filter(p=>p.hp>0);
   if(al.length<=1){const w=P.indexOf(al[0]);bc({t:'e',w});finish(w)}
   netT+=dt;
-  if(netT>.05){netT=0;bc2({t:'u',p:P.map(p=>[p.x|0,p.y|0,+p.a.toFixed(2),Math.ceil(Math.max(0,p.hp)),p.k]),b:B.map(b=>[b.x|0,b.y|0]),z:zr|0,k:K.map(k=>+k.on).join('')})}
+  if(netT>.05){netT=0;bc2({t:'u',p:P.map(p=>[p.x|0,p.y|0,+p.a.toFixed(2),Math.ceil(Math.max(0,p.hp)),p.k,p.fl|0,Math.ceil(p.ac),p.ch|0]),b:B.map(b=>[b.x|0,b.y|0]),z:zr|0})}
 }
 function bc2(m){P.forEach(p=>p.conn&&p.conn.open&&p.conn.send(m))}
 function finish(w){
@@ -220,14 +274,15 @@ function finish(w){
 $('ba').onclick=()=>{st='lobby';show('lobby');sendLobby()};
 
 // ---------- input ----------
-addEventListener('keydown',e=>keys[e.key.toLowerCase()]=1);
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();keys[k]=1;if(k=='q'||k==' ')pq=1;if(k=='e')pu=1});
+$('b1').onpointerdown=()=>pq=1;$('b2').onpointerdown=()=>pu=1;
 addEventListener('keyup',e=>keys[e.key.toLowerCase()]=0);
 addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY});
-addEventListener('mousedown',e=>{if(!tch.on)mouse.d=1});
+addEventListener('mousedown',e=>{if(!tch.on&&e.target.tagName!='BUTTON')mouse.d=1});
 addEventListener('mouseup',()=>mouse.d=0);
 addEventListener('touchstart',e=>{
   tch.on=1;if(st!='play')return;
-  for(const t of e.changedTouches){const k=t.clientX<innerWidth/2?'m':'a';if(!tch[k])tch[k]={id:t.identifier,x:t.clientX,y:t.clientY}}
+  for(const t of e.changedTouches){if(t.target.tagName=='BUTTON')continue;const k=t.clientX<innerWidth/2?'m':'a';if(!tch[k])tch[k]={id:t.identifier,x:t.clientX,y:t.clientY}}
 });
 addEventListener('touchmove',e=>{
   for(const t of e.changedTouches)for(const k of['m','a']){
@@ -252,20 +307,27 @@ function draw(){
   g.fillStyle='#10131c';g.fillRect(0,0,w,h);
   let m=P[me]||{x:C,y:C,hp:1};if(m.hp<=0)m=P.find(p=>p.hp>0)||m;
   g.save();g.translate(w/2,h/2);g.scale(s,s);g.translate(-m.x,-m.y);
-  g.fillStyle='#3c5a3c';g.beginPath();g.arc(C,C,1500,0,7);g.fill();
+  g.fillStyle='#cdb877';g.beginPath();g.arc(C,C,1500,0,7);g.fill();g.fillStyle='#3c5a3c';g.beginPath();g.arc(C,C,1440,0,7);g.fill();
+  g.fillStyle='#4a6e4866';for(const q of Gp){g.beginPath();g.arc(q.x,q.y,q.r,0,7);g.fill()}
+  g.beginPath();g.arc(C,C,1500,0,7);
   g.save();g.clip();g.strokeStyle='#ffffff14';g.lineWidth=2;g.beginPath();
   for(let x=0;x<=W;x+=100){g.moveTo(x,0);g.lineTo(x,W);g.moveTo(0,x);g.lineTo(W,x)}g.stroke();g.restore();
-  g.font='bold 22px sans-serif';g.textAlign='center';g.fillStyle='#4cff7a';
-  for(const k of K)if(k.on)g.fillText('✚',k.x,k.y+8);
-  for(const r of R){g.fillStyle='#6b7280';g.strokeStyle='#4b5563';g.lineWidth=6;g.beginPath();g.arc(r.x,r.y,r.r,0,7);g.fill();g.stroke()}
+  g.textAlign='center';
+  
+  for(const r of R){g.fillStyle=r.w?'#2f6fb3':'#6b7280';g.strokeStyle=r.w?'#7cc4ff':'#4b5563';g.lineWidth=6;g.beginPath();g.arc(r.x,r.y,r.r,0,7);g.fill();g.stroke()}
   g.fillStyle='#ffe066';for(const b of B){g.beginPath();g.arc(b.x,b.y,5,0,7);g.fill()}
   P.forEach((p,i)=>{
     if(p.hp<=0)return;
+    if(i!=me&&hid(p)&&Math.hypot(p.x-m.x,p.y-m.y)>130)return;if(p.fl&2)g.globalAlpha=.4;
     g.save();g.translate(p.x,p.y);g.rotate(p.a);g.fillStyle='#333';g.fillRect(8,-5,24,10);g.restore();
     g.fillStyle=COLS[p.c];g.strokeStyle=i==me?'#fff':'#000';g.lineWidth=3;g.beginPath();g.arc(p.x,p.y,18,0,7);g.fill();g.stroke();
     g.fillStyle='#000a';g.fillRect(p.x-22,p.y-34,44,7);g.fillStyle=p.hp>CL[p.cl].hp*.35?'#4cff7a':'#ff4d4d';g.fillRect(p.x-22,p.y-34,44*p.hp/CL[p.cl].hp,7);
     g.fillStyle='#fff';g.font='bold 14px sans-serif';g.fillText(p.n,p.x,p.y-40);g.font='16px sans-serif';g.fillText(CL[p.cl].i,p.x,p.y+6);
+    if(p.fl&1){g.strokeStyle='#7cf';g.lineWidth=4;g.beginPath();g.arc(p.x,p.y,25,0,7);g.stroke()}
+    if(p.fl&4){g.strokeStyle='#f55';g.lineWidth=3;g.beginPath();g.arc(p.x,p.y,22,0,7);g.stroke()}
+    g.globalAlpha=1;
   });
+  g.fillStyle='#2f7d3a99';for(const q of Bu){g.beginPath();g.arc(q.x,q.y,q.r,0,7);g.fill()}
   g.fillStyle='#ff1e1e55';g.beginPath();g.rect(-600,-600,W+1200,W+1200);g.moveTo(C+zr,C);g.arc(C,C,zr,0,7);g.fill('evenodd');
   g.strokeStyle='#ff4d4d';g.lineWidth=4;g.beginPath();g.arc(C,C,zr,0,7);g.stroke();
   g.restore();
@@ -274,6 +336,7 @@ function draw(){
 }
 function hud(){
   const p=P[me],al=P.filter(q=>q.hp>0).length;
+  $('b1').textContent=p&&p.ac>0?Math.ceil(p.ac):'Q';$('b2').textContent=p?(p.ch>=100?'E!':(p.ch|0)+'%'):'E';
   $('hud').textContent='Alive '+al+'  ·  Kills '+(p?p.k:0)+'  ·  '+(p&&p.hp>0?'HP '+Math.ceil(p.hp):'Spectating')+(zt<15&&host?'  ·  Storm in '+Math.ceil(15-zt)+'s':'');
 }
 
@@ -283,10 +346,10 @@ function loop(t){
   const dt=Math.min(.05,(t-last)/1000||0);last=t;
   if(st=='play'){
     const I=input();
-    if(host){const p=P[me];if(p&&p.hp>0){p.mx=I.mx;p.my=I.my;p.a=I.a;p.f=I.f}step(dt)}
+    if(host){const p=P[me];if(p&&p.hp>0){p.mx=I.mx;p.my=I.my;p.a=I.a;p.f=I.f;p.aq|=pq;p.au|=pu}pq=pu=0;step(dt)}
     else{
       const k=Math.min(1,dt*14);for(const p of P){p.x+=(p.tx-p.x)*k;p.y+=(p.ty-p.y)*k}
-      inT+=dt;if(inT>.033&&hc&&hc.open){inT=0;hc.send({t:'i',...I})}
+      inT+=dt;if(inT>.033&&hc&&hc.open){inT=0;hc.send({t:'i',...I,q:pq,u:pu});pq=pu=0}
     }
     draw();hud();
   }else if(st=='over'){draw()}
