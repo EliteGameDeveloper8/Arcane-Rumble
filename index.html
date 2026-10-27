@@ -858,10 +858,15 @@ finish=w=>{
 })();
 
 </script>
- <!-- STORM ARENA v3 ADD-ON: paste this whole <script> block right before </body>, AFTER the v2 script block. -->
 <script>
+/* STORM ARENA v3 - paste this whole block right before </body>, after the v2 script block */
 (()=>{
 const ptch=(f,r)=>{let s=f.toString();for(const[a,b]of r){if(!s.includes(a))console.warn('v3: patch missed',a);else s=s.replace(a,()=>b)}return(0,eval)('('+s+')')};
+// v2 keeps its ray-caster private, so v3 gets its own copy (used by the aim indicator)
+const rayR=(ox,oy,dx,dy,L)=>{let b=L;for(const w of Wl){let t0=0,t1=b;
+  if(dx){let u=(w.x-ox)/dx,v=(w.x+w.w-ox)/dx;if(u>v){const s=u;u=v;v=s}if(u>t0)t0=u;if(v<t1)t1=v}else if(ox<w.x||ox>w.x+w.w)continue;
+  if(dy){let u=(w.y-oy)/dy,v=(w.y+w.h-oy)/dy;if(u>v){const s=u;u=v;v=s}if(u>t0)t0=u;if(v<t1)t1=v}else if(oy<w.y||oy>w.y+w.h)continue;
+  if(t0<=t1)b=t0}return b};
 
 // ---------- Enter key joins when the room code is valid (4 chars) ----------
 for(const id of['rc','nm'])$(id).addEventListener('keydown',e=>{if(e.key=='Enter'&&st=='menu'&&$('rc').value.trim().length==4)$('bj').click()});
