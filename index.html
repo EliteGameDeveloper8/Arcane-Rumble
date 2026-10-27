@@ -63,7 +63,7 @@ select{font:inherit;padding:8px;border-radius:8px;border:0;background:#222a3d;co
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
 const $=id=>document.getElementById(id),cv=$('c'),g=cv.getContext('2d');
-const A=2000,W=A*2,C=A,COLS=['#ff4d4d','#4dc3ff','#6bff6b','#ffd23f','#c77dff','#ff9f43','#2ee6c5','#ff7ac6'];
+const A=2000,W=A*2,C=A,STP=520,HC=170,COLS=['#ff4d4d','#4dc3ff','#6bff6b','#ffd23f','#c77dff','#ff9f43','#2ee6c5','#ff7ac6']; // STP = distance between town blocks, HC = half size of a block (streets are STP-2*HC = 180 wide)
 let cls=0,S={n:10,m:0,iq:1},col=0,peer,host=false,hc=null,me=-1,P=[],B=[],R=[],Bu=[],Gp=[],Bd=[],Wl=[],hz=null,md=0,pq=0,pu=0,zr=C,zt=0,st='menu',lobby=[],keys={},mouse={x:0,y:0,d:0},netT=0,inT=0,code='';
 const tch={m:null,a:null,mx:0,my:0,ax:0,ay:0,on:0};
 // characters: every one has a Main attack, an Ability (Q), an Ultimate (E, charges from fighting) and a Passive
@@ -155,6 +155,7 @@ function rng(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t
 const inBush=q=>Bu.some(b=>Math.hypot(b.x-q.x,b.y-q.y)<b.r);
 const hid=q=>!(q.fl&16)&&((q.fl&2)||inBush(q)); // hidden in a bush / smoke unless it just shot
 const inB=q=>Bd.some(b=>q.x>b.x&&q.x<b.x+b.w&&q.y>b.y&&q.y<b.y+b.h);
+const bi=q=>Bd.findIndex(b=>q.x>b.x&&q.x<b.x+b.w&&q.y>b.y&&q.y<b.y+b.h); // which building a point is inside (-1 = outside)
 function bld(x,y,w,h,ew){ // building: walls with a door gap in two opposite walls
   const t=22,dg=96;Bd.push({x,y,w,h});
   const hw=(yy,gap)=>{if(!gap)Wl.push({x,y:yy,w,h:t});else{const m=(w-dg)/2;Wl.push({x,y:yy,w:m,h:t},{x:x+m+dg,y:yy,w:m,h:t})}};
@@ -164,11 +165,26 @@ function bld(x,y,w,h,ew){ // building: walls with a door gap in two opposite wal
 function world(seed){
   const r=rng(seed),pt=(d,m)=>{let x,y,t=0;do{const a=r()*6.283,q=Math.sqrt(r())*d;x=C+Math.cos(a)*q;y=C+Math.sin(a)*q}while(m&&Bd.some(b=>Math.hypot(b.x+b.w/2-x,b.y+b.h/2-y)<m)&&++t<30);return[x,y]};
   R=[];Bu=[];Gp=[];Bd=[];Wl=[];
-  for(let i=0;i<10;i++){const[x,y]=pt(A-450),w=300+(r()*100|0),h=230+(r()*70|0),ew=r()<.5;if(!Bd.some(b=>Math.hypot(b.x+b.w/2-x,b.y+b.h/2-y)<520))bld(x-w/2,y-h/2,w,h,ew)} // buildings
-  for(let i=0;i<9;i++){const[x,y]=pt(A-600,430),q=90+r()*80;if(Math.hypot(x-C,y-C)>300)R.push({x,y,r:q,w:1})} // ponds: block walking, not bullets
-  for(let i=0;i<20;i++){const[x,y]=pt(A-250,330),n=4+(r()*3|0);for(let j=0;j<n;j++){const a=j/n*6.283+r()*.4;R.push({x:x+Math.cos(a)*62,y:y+Math.sin(a)*62,r:22+r()*16})}} // ruined stone rings
-  for(let i=0;i<16;i++){const[x,y]=pt(A-250,300);for(let j=0;j<4;j++)Bu.push({x:x+(r()-.5)*150,y:y+(r()-.5)*150,r:48+r()*25})} // bush clumps
+  const bush=(x,y,n,s)=>{for(let j=0;j<n;j++)Bu.push({x:x+(r()-.5)*(s||130),y:y+(r()-.5)*(s||130),r:48+r()*25})};
+  // the arena is a walled town: blocks on a street grid, with dirt roads between them and a ring road around the edge
+  for(let i=-3;i<=3;i++)for(let j=-3;j<=3;j++){
+    const cx=C+i*STP,cy=C+j*STP;if(Math.hypot(Math.abs(i)*STP+HC,Math.abs(j)*STP+HC)>1780)continue;
+    const k=r(),sx=r()<.5?-1:1,sy=r()<.5?-1:1,sw=r()<.5;
+    if(r()<.6)bush(cx+STP/2,cy+STP/2,2,50); // bushes at street crossings
+    if(!i&&!j){for(let n=0;n<4;n++){const a=n*1.571+.785;R.push({x:C+Math.cos(a)*95,y:C+Math.sin(a)*95,r:22})}continue} // central plaza: 4 pillars for the final fight
+    if(k<.32){const w=250+(r()*90|0),h=210+(r()*110|0);bld(cx-w/2+(r()-.5)*16,cy-h/2+(r()-.5)*16,w,h,r()<.5)} // house
+    else if(k<.52){const H=(ox,oy,w,h)=>{if(sw){[ox,oy]=[oy,ox];[w,h]=[h,w]}Wl.push({x:cx+ox-w/2,y:cy+oy-h/2,w,h,hd:1})};H(-70,-75,200,34);H(70,75,200,34);bush(cx,cy,2)} // hedge zig-zag
+    else if(k<.66){const hx=sx>0?cx-120:cx-80,vx=sx>0?cx-120:cx+90,hy=sy>0?cy-100:cy+70,vy=sy>0?cy-100:cy-80;Wl.push({x:hx,y:hy,w:200,h:30,st:1},{x:vx,y:vy,w:30,h:180,st:1});R.push({x:cx-sx*20,y:cy-sy*10,r:26});bush(cx+sx*90,cy+sy*90,2)} // ruined corner wall
+    else if(k<.8){const gt=r()*6|0;for(let q=0;q<6;q++)if(q!=gt){const a=q/6*6.283+.3;R.push({x:cx+Math.cos(a)*105,y:cy+Math.sin(a)*105,r:22+r()*8})}bush(cx,cy,1)} // stone fort with one entrance
+    else if(k<.9)R.push({x:cx,y:cy,r:105+r()*45,w:1}); // pond
+    else{bush(cx-70,cy-70,2);bush(cx+70,cy+70,2);R.push({x:cx+60,y:cy-60,r:30})} // grove
+  }
   for(let i=0;i<12;i++){const[x,y]=pt(A-100,0);Gp.push({x,y,r:120+r()*160})}
+}
+function streets(){ // dirt roads along the gaps between blocks, the ring road and the plaza (drawn under everything else)
+  g.save();g.beginPath();g.arc(C,C,A-60,0,7);g.clip();g.strokeStyle=g.fillStyle='#b39a68';g.globalAlpha=.6;g.lineWidth=STP-2*HC;
+  g.beginPath();for(let k=-4;k<4;k++){const v=C+(k+.5)*STP;g.moveTo(v,0);g.lineTo(v,W);g.moveTo(0,v);g.lineTo(W,v)}g.stroke();
+  g.beginPath();g.arc(C,C,1870,0,7);g.stroke();g.beginPath();g.arc(C,C,230,0,7);g.fill();g.restore();
 }
 
 // ---------- host simulation ----------
@@ -352,6 +368,7 @@ function draw(){
   g.beginPath();g.arc(C,C,A,0,7);
   g.save();g.clip();g.strokeStyle='#ffffff14';g.lineWidth=2;g.beginPath();
   for(let x=0;x<=W;x+=100){g.moveTo(x,0);g.lineTo(x,W);g.moveTo(0,x);g.lineTo(W,x)}g.stroke();g.restore();
+  streets();
   g.fillStyle='#9c8461';for(const q of Bd)g.fillRect(q.x,q.y,q.w,q.h);
   g.fillStyle='#4a3b2c';for(const q of Wl)g.fillRect(q.x,q.y,q.w,q.h);
   if(md==2&&hz){g.fillStyle='#ffd23f33';g.strokeStyle='#ffd23f';g.lineWidth=6;g.beginPath();g.arc(hz.x,hz.y,170,0,7);g.fill();g.stroke()}
@@ -452,7 +469,7 @@ function los(ax,ay,bx,by,rk){ // line of sight; rk=1 also blocks on rocks (what 
   if(rk)for(const r of R)if(!r.w){const t=Math.max(0,Math.min(L,((r.x-ax)*dx+(r.y-ay)*dy)/L));if(Math.hypot(ax+dx/L*t-r.x,ay+dy/L*t-r.y)<r.r)return 0}
   return 1
 }
-const seen=(p,m)=>{if(p===m)return 1;const d=Math.hypot(p.x-m.x,p.y-m.y);return d<V&&!(hid(p)&&d>130)&&!(inB(p)&&!inB(m))&&los(m.x,m.y,p.x,p.y)};
+const seen=(p,m)=>{if(p===m)return 1;const d=Math.hypot(p.x-m.x,p.y-m.y);return d<V&&!(hid(p)&&d>130)&&!(inB(p)&&bi(p)!=bi(m))&&los(m.x,m.y,p.x,p.y)}; // people inside a building are only visible from inside that same building
 const cm=()=>{const m=P[me]||{x:C,y:C,hp:1};return m.hp<=0?P.find(p=>p.hp>0)||m:m};
 
 // ---------- sfx ----------
@@ -486,14 +503,16 @@ function fx(dt){ // derives all effects from state changes, so host and clients 
   FX=FX.filter(f=>f.t>0);for(const f of KF)f.t-=dt;KF=KF.filter(f=>f.t>0);
   const kr=P.find(q=>q._h!=null&&q.k>q._k);
   P.forEach((p,i)=>{
-    if(p._h==null){p._h=p.hp;p._k=p.k;p._s=p.sc|0;p._f=p.fl|0;p._a=p.ac;p._c=p.ch;p.hf=0;p.da=0}
+    if(p._h==null){p._h=p.hp;p._k=p.k;p._s=p.sc|0;p._f=p.fl|0;p._a=p.ac;p._c=p.ch;p.hf=0;p.da=0;p.sq=0}
     const sn=i==me||seen(p,m),d=p._h-p.hp,c=CL[p.cl],F=p.fl|0,dc=i==me?'#ff6b6b':'#ffe066';
-    p.hf=Math.max(0,p.hf-dt);
-    if(d>0&&sn){p.hf=.12;
+    p.hf=Math.max(0,p.hf-dt);p.sq=Math.max(0,p.sq-dt);
+    const dot=d<2.5; // tiny per-frame damage (fire, storm, pools) must not play a hit sound every frame
+    if(d>0&&sn){p.hf=dot?.02:.12;
       if(d>=2.5){ft(p.x,p.y-38,Math.round(d),dc,d>=30?24:17);p.da=0}
       else if((p.da+=d)>=4){ft(p.x,p.y-38,Math.round(p.da),dc,15);p.da=0}
-      pf(p.x,p.y,Math.min(9,3+d/5|0),i==me?'#ff4d4d':'#fff',220,.3,4);sfx(i==me?'hurt':'hit',p.x,p.y);
-      if(i==me){shk=Math.min(16,shk+2+d*.3);vg=Math.min(.55,vg+.3)}}
+      if(!dot){pf(p.x,p.y,Math.min(9,3+d/5|0),i==me?'#ff4d4d':'#fff',220,.3,4);sfx(i==me?'hurt':'hit',p.x,p.y);
+        if(i==me){shk=Math.min(16,shk+2+d*.3);vg=Math.min(.55,vg+.3)}}
+      else if(p.sq<=0){p.sq=.6;pf(p.x,p.y,2,'#ff9d3a',90,.25,3);if(i==me){sfx('tick');vg=Math.min(.3,vg+.1)}}}
     if(p._h>0&&p.hp<=0){
       if(sn){pf(p.x,p.y,26,COLS[p.c&7],340,.7,7);ri(p.x,p.y,'#fff',90,.5)}
       sfx('die',p.x,p.y);if(i==me)shk=18;
@@ -622,13 +641,14 @@ CL.splice(0,CL.length,
  ab:{n:'Thunder Dash',x:'dash forward and zap everyone you pass through',k:'zap',cd:6},
  ul:{n:'Storm Call',x:'for 3s lightning strikes the nearest enemy over and over',k:'storm'},
  ps:{n:'Static',x:'every 3rd shot deals +60% damage',k:'stat'}});
+CL.forEach(c=>c.hp=Math.round(c.hp*1.3/5)*5); // +30% health for everyone so fights last a bit longer
 $('cs').textContent='';CL.forEach((c,i)=>{const d=document.createElement('div');d.className='cc';d.innerHTML='<b>'+c.i+'</b>'+c.n;d.onclick=()=>pick(i);$('cs').appendChild(d)});pick(0);
 
 // ---------- UI: bots on/off, no bot-skill option, spectate controls ----------
 $('s4').parentElement.remove();
 $('set').insertAdjacentHTML('beforeend','<label>Bots<select id="s5"><option value="1">On (fill the room)<option value="0">Off (real players only)</select></label>');
 $('bs').textContent='Start game';
-$('mg').textContent='Pick a wizard! Move: WASD / left stick. Aim + shoot: mouse / right stick. Q = ability, E = ultimate. Bushes hide people (you can\'t tell who is inside!). 💧 Springs heal, 🔮 wells charge your ultimate. Healing speeds up the longer you stay unhurt.';
+$('mg').textContent='Pick a wizard! Move: WASD / left stick. Aim + shoot: mouse / right stick. Q = ability, E = ultimate. Bushes hide people (you can\'t tell who is inside!). Houses are dark from outside - step through a door to see inside. 💧 Springs heal, 🔮 wells charge your ultimate. Healing speeds up the longer you stay unhurt.';
 const spb=document.createElement('div');spb.style.cssText='position:fixed;bottom:14px;left:50%;transform:translateX(-50%);display:none;align-items:center;gap:10px;z-index:5';
 spb.innerHTML='<button class="s" id="spL">◀</button><span id="spN" style="text-shadow:0 2px 3px #000;min-width:130px;text-align:center"></span><button class="s" id="spR">▶</button>';document.body.appendChild(spb);
 function cyc(d){const al=P.map((p,i)=>i).filter(i=>P[i].hp>0&&i!=me);if(!al.length)return;const k=al.indexOf(spec);spec=al[(k<0?(d>0?0:al.length-1):k+d+al.length)%al.length]}
@@ -710,7 +730,7 @@ respawn=ptch(respawn,[['p.vl=0;p.ch=0}','p.vl=0;p.ch=0;p.bn=p.fz=p.bl=p.sk=0}']]
 onData=ptch(onData,[['hz=null;B=[];','hz=null;B=[];Zn=[];spec=-1;'],['B=m.b.map(a=>({x:a[0],y:a[1]}));',"B=m.b.map(a=>({x:a[0],y:a[1],c:a[2]}));Zn=(m.zn||[]).map(a=>({x:a[0],y:a[1],r:a[2],f:a[3],k:ZK[a[4]]}));(m.ev||[]).forEach(e=>evFx(...e));"]]);
 
 // ---------- map: springs, mana wells, biomes, decor (non-blocking, so bot navigation stays valid) ----------
-const w1=world;world=s=>{w1(s);const r=rng(s^0x5bd1),pt=d=>{let x,y,t=0;do{const a=r()*6.283,q=Math.sqrt(r())*d;x=C+Math.cos(a)*q;y=C+Math.sin(a)*q}while((Bd.some(b=>x>b.x-40&&x<b.x+b.w+40&&y>b.y-40&&y<b.y+b.h+40)||R.some(o=>Math.hypot(o.x-x,o.y-y)<o.r+60))&&++t<40);return[x,y]};
+const w1=world;world=s=>{w1(s);const r=rng(s^0x5bd1),pt=d=>{let x,y,t=0;do{const a=r()*6.283,q=Math.sqrt(r())*d;x=C+Math.cos(a)*q;y=C+Math.sin(a)*q}while((Bd.some(b=>x>b.x-40&&x<b.x+b.w+40&&y>b.y-40&&y<b.y+b.h+40)||Wl.some(b=>x>b.x-40&&x<b.x+b.w+40&&y>b.y-40&&y<b.y+b.h+40)||R.some(o=>Math.hypot(o.x-x,o.y-y)<o.r+60))&&++t<40);return[x,y]};
   Sz=[];for(let i=0;i<7;i++){const[x,y]=pt(A-400);Sz.push({x,y,r:70,k:i<4?'spring':'mana'})}
   Dc=[];for(let i=0;i<260;i++){const[x,y]=pt(A-80);Dc.push({x,y,k:r()*3|0})}Gp.forEach(q=>q.c=r()*3|0)};
 
@@ -787,6 +807,7 @@ function decor(){
   for(const z of Zn){const fr=z.T?z.t/z.T:z.f;
     if(z.k=='met'){const p=1-fr;g.strokeStyle='#ff3b3b';g.lineWidth=5;g.beginPath();g.arc(z.x,z.y,z.r,0,7);g.stroke();g.fillStyle='rgba(255,70,40,'+(.12+.28*p)+')';g.beginPath();g.arc(z.x,z.y,z.r*p,0,7);g.fill();g.font='bold 44px sans-serif';g.fillText('☄️',z.x,z.y-90*fr+14)}
     else{const c={fire:'255,140,40',frost:'140,220,255',heal:'90,255,140'}[z.k]||'255,255,255';g.fillStyle='rgba('+c+','+(.18+.1*Math.sin(T*9))+')';g.strokeStyle='rgba('+c+',.9)';g.lineWidth=4;g.setLineDash([14,10]);g.beginPath();g.arc(z.x,z.y,z.r*Math.min(1,fr/.15),0,7);g.fill();g.stroke();g.setLineDash([])}}
+  for(const w of Wl)if(w.hd||w.st){g.fillStyle=w.hd?'#2f7d3a':'#6b7280';g.fillRect(w.x,w.y,w.w,w.h);g.fillStyle=w.hd?'#44b04f':'#8b93a3';g.fillRect(w.x+5,w.y+5,w.w-10,w.h-10)} // hedges (green) and ruined stone walls (grey)
   g.strokeStyle=OL;g.lineWidth=5;for(const w of Wl)g.strokeRect(w.x,w.y,w.w,w.h);
   for(const r of R){g.lineWidth=4;g.beginPath();g.arc(r.x,r.y,r.r+3,0,7);g.stroke();if(!r.w){g.fillStyle='rgba(255,255,255,.2)';g.beginPath();g.arc(r.x-r.r*.3,r.y-r.r*.3,r.r*.35,0,7);g.fill()}}
 }
@@ -816,9 +837,11 @@ person=function(p,me){
 // ---------- bushes (opaque from outside), roofs, smooth lighting ----------
 const lbl=p=>{g.fillStyle='#000a';g.fillRect(p.x-22,p.y-34,44,7);g.fillStyle=p.hp>CL[p.cl].hp*.35?'#4cff7a':'#ff4d4d';g.fillRect(p.x-22,p.y-34,44*p.hp/CL[p.cl].hp,7);g.fillStyle='#fff';g.font='bold 14px sans-serif';g.textAlign='center';g.fillText(p.n,p.x,p.y-40)};
 const post0=window.post;let nf=0;const CP=CanvasRenderingContext2D.prototype,f0=CP.fill,r0=CP.fillRect; // the old hard fog is muted; floating numbers still use post()
-CP.fill=function(...a){return nf&&this===g?0:f0.apply(this,a)};CP.fillRect=function(...a){return nf&&this===g?0:r0.apply(this,a)};
+CP.fill=function(...a){return nf&&this===g?0:f0.apply(this,a)};
+CP.fillRect=function(...a){return nf&&this===g?0:r0.apply(this,a)};
 window.post=m=>{
-  if(!inB(m))for(const q of Bd){g.strokeStyle=OL;g.lineWidth=6;g.strokeRect(q.x,q.y,q.w,q.h);g.strokeStyle='rgba(0,0,0,.18)';g.lineWidth=3;g.beginPath();for(let y=q.y+30;y<q.y+q.h-10;y+=28){g.moveTo(q.x+10,y);g.lineTo(q.x+q.w-10,y)}g.stroke()}
+  const mb=bi(m); // dark roofs: every house you are not standing in is pitch dark inside (the doorways stay open so you can see where to enter)
+  Bd.forEach((q,k)=>{if(k==mb)return;g.fillStyle='#100c18';g.fillRect(q.x+22,q.y+22,q.w-44,q.h-44);g.strokeStyle='rgba(255,255,255,.05)';g.lineWidth=3;g.beginPath();for(let y=q.y+48;y<q.y+q.h-30;y+=28){g.moveTo(q.x+34,y);g.lineTo(q.x+q.w-34,y)}g.stroke();g.strokeStyle=OL;g.lineWidth=6;g.strokeRect(q.x,q.y,q.w,q.h)});
   const ins=q=>Math.hypot(m.x-q.x,m.y-q.y)<q.r;
   for(const [col,dr,ox,oy] of [[OL,4,0,0],['#3da048',0,0,0],['#56c25f',-.5,-.25,-.3]])for(const q of Bu){g.globalAlpha=ins(q)?.5:1;g.fillStyle=col;g.beginPath();g.arc(q.x+ox*q.r,q.y+oy*q.r,dr==-.5?q.r*.5:q.r+dr,0,7);g.fill()}
   g.globalAlpha=1;
