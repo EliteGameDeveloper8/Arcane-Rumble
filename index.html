@@ -181,8 +181,8 @@ function world(seed){
   }
   for(let i=0;i<12;i++){const[x,y]=pt(A-100,0);Gp.push({x,y,r:120+r()*160})}
 }
-function streets(){ // dirt roads along the gaps between blocks, the ring road and the plaza (drawn under everything else)
-  g.save();g.beginPath();g.arc(C,C,A-60,0,7);g.clip();g.strokeStyle=g.fillStyle='#b39a68';g.globalAlpha=.6;g.lineWidth=STP-2*HC;
+function streets(){ // dirt roads along the gaps between blocks, the ring road and the plaza (one solid colour, so overlaps never leave seams)
+  g.save();g.beginPath();g.arc(C,C,A-60,0,7);g.clip();g.strokeStyle=g.fillStyle='#a8935f';g.lineWidth=STP-2*HC;
   g.beginPath();for(let k=-4;k<4;k++){const v=C+(k+.5)*STP;g.moveTo(v,0);g.lineTo(v,W);g.moveTo(0,v);g.lineTo(W,v)}g.stroke();
   g.beginPath();g.arc(C,C,1870,0,7);g.stroke();g.beginPath();g.arc(C,C,230,0,7);g.fill();g.restore();
 }
@@ -358,40 +358,36 @@ function person(p,me){ // top-down human: arms, shoulders, weapon, hands, head, 
   else{g.fillStyle=c.hr;g.beginPath();g.arc(2,0,9.5,1.5,4.8);g.fill();if(c.hs==3){g.strokeStyle='#ff5252';g.lineWidth=3;g.beginPath();g.arc(2,0,9,-.9,.9);g.stroke()}}
   g.restore();
 }
+// Draw order, bottom to top: ground > patches > roads > ground details (water, springs, spell zones) > floors > bushes > walls & rocks > roofs > players > effects > storm > numbers.
+// Everything that is "taller" than something else is drawn after it, so bushes now sit UNDER walls and hedges.
 function draw(){
   const w=cv.width=innerWidth,h=cv.height=innerHeight,s=Math.min(w,h)/650;
   g.fillStyle='#10131c';g.fillRect(0,0,w,h);
   let m=P[me]||{x:C,y:C,hp:1};if(m.hp<=0)m=P.find(p=>p.hp>0)||m;
-  g.save();g.translate(w/2,h/2);g.scale(s,s);g.translate(-m.x,-m.y);
+  g.save();g.translate(w/2+SH(),h/2+SH());g.scale(s,s);g.translate(-m.x,-m.y);
   g.fillStyle='#cdb877';g.beginPath();g.arc(C,C,A,0,7);g.fill();g.fillStyle='#3c5a3c';g.beginPath();g.arc(C,C,A-60,0,7);g.fill();
-  g.fillStyle='#4a6e4866';for(const q of Gp){g.beginPath();g.arc(q.x,q.y,q.r,0,7);g.fill()}
-  g.beginPath();g.arc(C,C,A,0,7);
-  g.save();g.clip();g.strokeStyle='#ffffff14';g.lineWidth=2;g.beginPath();
-  for(let x=0;x<=W;x+=100){g.moveTo(x,0);g.lineTo(x,W);g.moveTo(0,x);g.lineTo(W,x)}g.stroke();g.restore();
-  streets();
-  g.fillStyle='#9c8461';for(const q of Bd)g.fillRect(q.x,q.y,q.w,q.h);
-  g.fillStyle='#4a3b2c';for(const q of Wl)g.fillRect(q.x,q.y,q.w,q.h);
+  patches();streets();ground();
   if(md==2&&hz){g.fillStyle='#ffd23f33';g.strokeStyle='#ffd23f';g.lineWidth=6;g.beginPath();g.arc(hz.x,hz.y,170,0,7);g.fill();g.stroke()}
+  g.fillStyle='#9c8461';for(const q of Bd)g.fillRect(q.x,q.y,q.w,q.h);
+  bushes();walls();roofs(m);
   g.textAlign='center';
-  
-  for(const r of R){g.fillStyle=r.w?'#2f6fb3':'#6b7280';g.strokeStyle=r.w?'#7cc4ff':'#4b5563';g.lineWidth=6;g.beginPath();g.arc(r.x,r.y,r.r,0,7);g.fill();g.stroke()}
-  g.fillStyle='#ffe066';for(const b of B){g.beginPath();g.arc(b.x,b.y,5,0,7);g.fill()}
   P.forEach((p,i)=>{
-    if(p.hp<=0)return;
-    if(i!=me&&(hid(p)&&Math.hypot(p.x-m.x,p.y-m.y)>130||inB(p)&&!inB(m)))return;if(p.fl&2)g.globalAlpha=.4;
+    if(p.hp<=0||i!=me&&!seen(p,m))return;
+    if(p.fl&2)g.globalAlpha=.4;
     person(p,i==me);
-    
+    if(p.hf>0){g.globalAlpha=Math.min(.7,p.hf*6);cir(p.x,p.y,21,'#fff');g.globalAlpha=p.fl&2?.4:1}
     g.fillStyle='#000a';g.fillRect(p.x-22,p.y-34,44,7);g.fillStyle=p.hp>CL[p.cl].hp*.35?'#4cff7a':'#ff4d4d';g.fillRect(p.x-22,p.y-34,44*p.hp/CL[p.cl].hp,7);
     g.fillStyle='#fff';g.font='bold 14px sans-serif';g.fillText(p.n,p.x,p.y-40);
     if(p.fl&1){g.strokeStyle='#7cf';g.lineWidth=4;g.beginPath();g.arc(p.x,p.y,25,0,7);g.stroke()}
-    if(p.fl&4){g.strokeStyle='#f55';g.lineWidth=3;g.beginPath();g.arc(p.x,p.y,22,0,7);g.stroke()}
     g.globalAlpha=1;
   });
-  if(!inB(m)){g.fillStyle='#a5483af5';for(const q of Bd)g.fillRect(q.x+22,q.y+22,q.w-44,q.h-44)}
-  g.fillStyle='#2f7d3a99';for(const q of Bu){g.beginPath();g.arc(q.x,q.y,q.r,0,7);g.fill()}
+  if(m===P[me]&&m.hp>0&&inBush(m)&&!(m.fl&16)){g.font='bold 13px sans-serif';g.lineWidth=3;g.strokeStyle='#000';g.fillStyle='#b8ffb8';g.strokeText('hidden',m.x,m.y+46);g.fillText('hidden',m.x,m.y+46)} // you are hidden in a bush
+  drawFx();
   if(md==0){g.fillStyle='#ff1e1e55';g.beginPath();g.rect(-600,-600,W+1200,W+1200);g.moveTo(C+zr,C);g.arc(C,C,zr,0,7);g.fill('evenodd');
   g.strokeStyle='#ff4d4d';g.lineWidth=4;g.beginPath();g.arc(C,C,zr,0,7);g.stroke()}
+  post(m);
   g.restore();
+  ov(m,w,h);
   g.lineWidth=3;
   for(const k of['m','a']){const j=tch[k];if(!j)continue;g.strokeStyle='#fff6';g.beginPath();g.arc(j.x,j.y,50,0,7);g.stroke();g.fillStyle='#fff6';g.beginPath();g.arc(j.x+tch[k+'x']*50,j.y+tch[k+'y']*50,22,0,7);g.fill()}
 }
@@ -504,46 +500,41 @@ function fx(dt){ // derives all effects from state changes, so host and clients 
   const kr=P.find(q=>q._h!=null&&q.k>q._k);
   P.forEach((p,i)=>{
     if(p._h==null){p._h=p.hp;p._k=p.k;p._s=p.sc|0;p._f=p.fl|0;p._a=p.ac;p._c=p.ch;p.hf=0;p.da=0;p.sq=0}
-    const sn=i==me||seen(p,m),d=p._h-p.hp,c=CL[p.cl],F=p.fl|0,dc=i==me?'#ff6b6b':'#ffe066';
+    const sn=i==me||seen(p,m),d=p._h-p.hp,c=CL[p.cl],F=p.fl|0,dc=i==me?'#ff6b6b':'#ffe066',nr=i==me||Math.hypot(p.x-m.x,p.y-m.y)<320; // nr: damage numbers only for you and fights close to you, so big brawls stay readable
     p.hf=Math.max(0,p.hf-dt);p.sq=Math.max(0,p.sq-dt);
     const dot=d<2.5; // tiny per-frame damage (fire, storm, pools) must not play a hit sound every frame
     if(d>0&&sn){p.hf=dot?.02:.12;
-      if(d>=2.5){ft(p.x,p.y-38,Math.round(d),dc,d>=30?24:17);p.da=0}
-      else if((p.da+=d)>=4){ft(p.x,p.y-38,Math.round(p.da),dc,15);p.da=0}
-      if(!dot){pf(p.x,p.y,Math.min(9,3+d/5|0),i==me?'#ff4d4d':'#fff',220,.3,4);sfx(i==me?'hurt':'hit',p.x,p.y);
-        if(i==me){shk=Math.min(16,shk+2+d*.3);vg=Math.min(.55,vg+.3)}}
+      if(d>=2.5){if(nr)ft(p.x,p.y-38,Math.round(d),dc,d>=30?24:17);p.da=0}
+      else if(nr&&(p.da+=d)>=4){ft(p.x,p.y-38,Math.round(p.da),dc,15);p.da=0}
+      if(!dot){pf(p.x,p.y,Math.min(5,3+d/5|0),i==me?'#ff4d4d':'#fff',220,.3,4);sfx(i==me?'hurt':'hit',p.x,p.y);
+        if(i==me){shk=Math.min(8,shk+1+d*.15);vg=Math.min(.55,vg+.3)}}
       else if(p.sq<=0){p.sq=.6;pf(p.x,p.y,2,'#ff9d3a',90,.25,3);if(i==me){sfx('tick');vg=Math.min(.3,vg+.1)}}}
     if(p._h>0&&p.hp<=0){
-      if(sn){pf(p.x,p.y,26,COLS[p.c&7],340,.7,7);ri(p.x,p.y,'#fff',90,.5)}
-      sfx('die',p.x,p.y);if(i==me)shk=18;
+      if(sn){pf(p.x,p.y,14,COLS[p.c&7],340,.7,7);ri(p.x,p.y,'#fff',90,.5)}
+      sfx('die',p.x,p.y);if(i==me)shk=10;
       KF.unshift({s:kr&&kr!==p?kr.n+'  \u279c  '+p.n:p.n+' was eliminated',t:5});KF.length=Math.min(KF.length,5)}
     if(p._h<=0&&p.hp>0&&sn)ri(p.x,p.y,'#fff',70,.5);
     if(p.sc>p._s){const z=c.z||1,tx=p.x+Math.cos(p.a)*(8+c.gl)*z,ty=p.y+Math.sin(p.a)*(8+c.gl)*z;
       if(sn){pf(tx,ty,3,'#ffd23f',260,.12,5);FX.push({x:tx,y:ty,t:.06,l:.06,c:'#fff',r:9})}sfx('shot',p.x,p.y,p.cl)}
     if(p.ac>0&&!p._a){if(sn)ri(p.x,p.y,'#6ee7ff',c.ab.k=='aoe'?130:55,.45);sfx('ab',p.x,p.y)}
-    if(p.hp>0&&p._h>0&&p._c-p.ch>50){if(sn){ri(p.x,p.y,'#ff7ac6',170,.6);pf(p.x,p.y,18,'#ff7ac6',320,.6,6);shk=Math.max(shk,8)}sfx('ult',p.x,p.y)}
+    if(p.hp>0&&p._h>0&&p._c-p.ch>50){if(sn){ri(p.x,p.y,'#ff7ac6',170,.6);pf(p.x,p.y,18,'#ff7ac6',320,.6,6);shk=Math.max(shk,4)}sfx('ult',p.x,p.y)}
     if(i==me&&p.ch>=100&&p._c<100){sfx('ready');ft(p.x,p.y-50,'ULTIMATE READY!','#ff7ac6',18)}
     if(F&2&&!(p._f&2)&&sn)pf(p.x,p.y,14,'#9aa5b5',120,.8,12);
     p._h=p.hp;p._k=p.k;p._s=p.sc|0;p._f=F;p._a=p.ac;p._c=p.ch});
   const q=P[me];if(md==0&&q&&q.hp>0&&Math.hypot(q.x-C,q.y-C)>zr){stt-=dt;if(stt<=0){stt=.7;sfx('tick');vg=Math.max(vg,.2)}}
 }
 
-// ---------- rendering (called from the patched draw) ----------
+// ---------- rendering (called from draw) ----------
 function drawFx(){
   const q=P[me];
-  if(q&&q.hp>0){const c=CL[q.cl],dx=Math.cos(q.a),dy=Math.sin(q.a),M=c.bs*c.bt,L=Math.min(M,rayR(q.x,q.y,dx,dy,M));
-    g.strokeStyle='#ffffff40';g.lineWidth=2;g.setLineDash([10,10]);g.beginPath();g.moveTo(q.x+dx*30,q.y+dy*30);g.lineTo(q.x+dx*L,q.y+dy*L);g.stroke();g.setLineDash([])}
+  if(q&&q.hp>0){const dx=Math.cos(q.a),dy=Math.sin(q.a),L=Math.max(34,Math.min(110,rayR(q.x,q.y,dx,dy,110))); // short aim pointer instead of a long dashed line
+    g.strokeStyle='#ffffff55';g.lineWidth=3;g.lineCap='round';g.beginPath();g.moveTo(q.x+dx*34,q.y+dy*34);g.lineTo(q.x+dx*L,q.y+dy*L);g.stroke()}
   for(const f of FX)if(!f.q){const k=f.t/f.l;g.globalAlpha=Math.min(1,k*1.6);
     if(f.R){g.strokeStyle=f.c;g.lineWidth=2+5*k;g.beginPath();g.arc(f.x,f.y,f.R*(1-k)+10,0,7);g.stroke()}
     else{g.fillStyle=f.c;g.beginPath();g.arc(f.x,f.y,f.r*k+1,0,7);g.fill()}}
   g.globalAlpha=1
 }
-function post(m){ // fog of war: shadow behind walls (visibility polygon) + distance falloff, then floating numbers
-  g.fillStyle='rgba(6,8,14,.66)';g.beginPath();g.rect(m.x-1700,m.y-1700,3400,3400);
-  for(let i=0;i<=160;i++){const a=i/160*6.2832,dx=Math.cos(a),dy=Math.sin(a),l=rayR(m.x,m.y,dx,dy,V);if(i)g.lineTo(m.x+dx*l,m.y+dy*l);else g.moveTo(m.x+dx*l,m.y+dy*l)}
-  g.fill('evenodd');
-  const q=g.createRadialGradient(m.x,m.y,V*.6,m.x,m.y,V);q.addColorStop(0,'rgba(6,8,14,0)');q.addColorStop(1,'rgba(6,8,14,.5)');
-  g.fillStyle=q;g.fillRect(m.x-1700,m.y-1700,3400,3400);
+function post(m){ // floating damage / heal numbers, drawn above the world and below the screen overlay
   g.textAlign='center';g.lineWidth=3;g.strokeStyle='#000';
   for(const f of FX)if(f.q){g.globalAlpha=Math.min(1,f.t/f.l*2);g.font='bold '+f.s+'px sans-serif';g.strokeText(f.q,f.x,f.y);g.fillStyle=f.c;g.fillText(f.q,f.x,f.y)}
   g.globalAlpha=1
@@ -588,13 +579,6 @@ ai=ptch(ai,[
  ['if(d>5){mx=(p.dest.x-p.x)/d;my=(p.dest.y-p.y)/d;a=Math.atan2(my,mx)}','if(d>5){[mx,my]=nav(p,dd.x,dd.y);a=Math.atan2(my,mx)}']]);
 step=ptch(step,[['p.rv=.8;','p.rv=.8;p.sc=(p.sc|0)+1;'],['p.ch|0,p.pt|0]','p.ch|0,p.pt|0,p.sc|0]']]);
 onData=ptch(onData,[['p.pt=a[8]','p.pt=a[8];p.sc=a[9]']]);
-draw=ptch(draw,[
- ['g.translate(w/2,h/2);g.scale(s,s);','g.translate(w/2+SH(),h/2+SH());g.scale(s,s);'],
- ['if(i!=me&&(hid(p)&&Math.hypot(p.x-m.x,p.y-m.y)>130||inB(p)&&!inB(m)))return;','if(i!=me&&!seen(p,m))return;'],
- ['person(p,i==me);','person(p,i==me);if(p.hf>0){g.globalAlpha=Math.min(.7,p.hf*6);cir(p.x,p.y,21,\'#fff\');g.globalAlpha=p.fl&2?.4:1}'],
- ["if(!inB(m)){g.fillStyle='#a5483af5'","drawFx();if(!inB(m)){g.fillStyle='#a5483af5'"],
- ['g.arc(C,C,zr,0,7);g.stroke()}','g.arc(C,C,zr,0,7);g.stroke()}post(m);'],
- ["for(const k of['m','a']){const j=tch[k];if(!j)continue;","ov(m,w,h);for(const k of['m','a']){const j=tch[k];if(!j)continue;"]]);
 const d0=draw,h0=hud,w0=world,f0=finish;
 draw=()=>{const n=performance.now();fx(Math.min(.05,(n-lt)/1000));lt=n;d0()};
 hud=()=>{h0();const p=P[me];$('b2').style.outline=p&&p.ch>=100?'4px solid #ff7ac6':''};
@@ -732,7 +716,7 @@ onData=ptch(onData,[['hz=null;B=[];','hz=null;B=[];Zn=[];spec=-1;'],['B=m.b.map(
 // ---------- map: springs, mana wells, biomes, decor (non-blocking, so bot navigation stays valid) ----------
 const w1=world;world=s=>{w1(s);const r=rng(s^0x5bd1),pt=d=>{let x,y,t=0;do{const a=r()*6.283,q=Math.sqrt(r())*d;x=C+Math.cos(a)*q;y=C+Math.sin(a)*q}while((Bd.some(b=>x>b.x-40&&x<b.x+b.w+40&&y>b.y-40&&y<b.y+b.h+40)||Wl.some(b=>x>b.x-40&&x<b.x+b.w+40&&y>b.y-40&&y<b.y+b.h+40)||R.some(o=>Math.hypot(o.x-x,o.y-y)<o.r+60))&&++t<40);return[x,y]};
   Sz=[];for(let i=0;i<7;i++){const[x,y]=pt(A-400);Sz.push({x,y,r:70,k:i<4?'spring':'mana'})}
-  Dc=[];for(let i=0;i<260;i++){const[x,y]=pt(A-80);Dc.push({x,y,k:r()*3|0})}Gp.forEach(q=>q.c=r()*3|0)};
+  Dc=[];for(let i=0;i<260;i++){const[x,y]=pt(A-80);Dc.push({x,y,k:r()*2|0})}Gp.forEach(q=>q.c=r()*3|0)};
 
 // ---------- sound ----------
 let AX,NB;const aud=()=>{if(!AX)try{AX=new(window.AudioContext||window.webkitAudioContext)();NB=AX.createBuffer(1,AX.sampleRate,AX.sampleRate);const d=NB.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1}catch(e){}};
@@ -762,9 +746,9 @@ function fx2(dt){
     if(p._H==null){p._H=p.hp;p.px=p.x;p.py=p.y;p._K=p.k;p._A=p.ac}
     p.mv=Math.hypot(p.x-p.px,p.y-p.py)>.6;p.px=p.x;p.py=p.y;
     const see=p===m||seen(p,m),d=p.hp-p._H,F=p.fl|0,r=Math.random;
-    if(d>0&&p._H>0&&p.hp>0){p.ha=(p.ha||0)+d;if(see){if(r()<dt*12)Q.push({k:'+',x:p.x+(r()-.5)*28,y:p.y-6,vy:-50,t:.8,l:.8,c:'#5dff8a'});
-      if(p.ha>=5){num(p.x,p.y-44,'+'+Math.round(p.ha),'#5dff8a',17);p.ha=0;if(p===m&&now-hT>900){hT=now;sf('heal')}}}}
-    if(p._H>0&&p.hp<=0&&see){Q.push({k:'t',s:'👻',z:32,x:p.x,y:p.y-20,vy:-55,t:1.5,l:1.5,c:'#fff'});puff(p.x,p.y,'#c9c9d6',10);Q.push({k:'r',x:p.x,y:p.y,R:80,t:.6,l:.6,c:'#fff'})}
+    if(d>0&&p._H>0&&p.hp>0){p.ha=(p.ha||0)+d;if(p===m){if(r()<dt*12)Q.push({k:'+',x:p.x+(r()-.5)*28,y:p.y-6,vy:-50,t:.8,l:.8,c:'#5dff8a'}); // healing is only shown for the player you are watching, so natural regen on everyone else doesn't clutter the screen
+      if(p.ha>=5){num(p.x,p.y-44,'+'+Math.round(p.ha),'#5dff8a',17);p.ha=0;if(now-hT>900){hT=now;sf('heal')}}}}
+    if(p._H>0&&p.hp<=0&&see){Q.push({k:'t',s:'👻',z:32,x:p.x,y:p.y-20,vy:-55,t:1.5,l:1.5,c:'#fff'});Q.push({k:'r',x:p.x,y:p.y,R:80,t:.6,l:.6,c:'#fff'})}
     if(p===P[me]){if(p.k>p._K){KO=1.3;sf('ko')}if(p._A>0&&p.ac<=0&&p.hp>0)sf('rdy')}
     if(see&&p.hp>0){
       if(F&32&&r()<dt*30)Q.push({k:'c',x:p.x+(r()-.5)*18,y:p.y,vy:-70,t:.5,l:.5,c:r()<.5?'#ff9d3a':'#ff4d2e',r:6});
@@ -773,7 +757,7 @@ function fx2(dt){
       if(F&256&&r()<dt*3)Q.push({k:'t',s:'💫',z:20,x:p.x,y:p.y-30,vy:-20,t:.7,l:.7,c:'#fff'})}
     p._H=p.hp;p._K=p.k;p._A=p.ac});
   for(const z of Zn.concat(Sz)){if(z.k=='met'||Math.hypot(z.x-m.x,z.y-m.y)>700)continue;
-    if(Math.random()<dt*z.r*.14){const a=Math.random()*6.28,q=Math.sqrt(Math.random())*z.r*.9,x=z.x+Math.cos(a)*q,y=z.y+Math.sin(a)*q;
+    if(Math.random()<dt*z.r*.07){const a=Math.random()*6.28,q=Math.sqrt(Math.random())*z.r*.9,x=z.x+Math.cos(a)*q,y=z.y+Math.sin(a)*q;
       if(z.k=='fire')Q.push({k:'c',x,y,vy:-70,t:.6,l:.6,c:'#ff9d3a',r:7});else if(z.k=='frost')Q.push({k:'c',x,y:y-40,vy:50,t:.7,l:.7,c:'#eaf9ff',r:3});
       else if(z.k=='mana')Q.push({k:'c',x,y,vy:-40,t:.8,l:.8,c:'#c9a0ff',r:4});else Q.push({k:'+',x,y,vy:-45,t:.8,l:.8,c:z.k=='spring'?'#9ef':'#5dff8a'})}}
 }
@@ -788,31 +772,40 @@ function drawQ(){
     else if(f.k=='s'){bolt(f.x,f.y-500,f.x,f.y,'#fff3a0',7);bolt(f.x,f.y-500,f.x,f.y,'#fff',3)}}
   g.globalAlpha=1
 }
-const dfx0=window.drawFx;window.drawFx=()=>{dfx0();for(const b of B){const k=CL[b.c|0].sc;g.globalAlpha=.3;cir(b.x,b.y,13,k);g.globalAlpha=1;cir(b.x,b.y,7,k);cir(b.x,b.y,3,'#fff')}drawQ()};
+const dfx0=window.drawFx;window.drawFx=()=>{dfx0();for(const b of B){const k=CL[b.c|0].sc;g.globalAlpha=.3;cir(b.x,b.y,11,k);g.globalAlpha=1;cir(b.x,b.y,6,k);cir(b.x,b.y,2.5,'#fff')}drawQ()};
 
-// ---------- cartoon look ----------
-function decor(){
-  const T=performance.now()/1000;
-  for(const q of Gp)if(q.c!=null){g.fillStyle=BIO[q.c];g.beginPath();g.arc(q.x,q.y,q.r,0,7);g.fill()}
-  g.strokeStyle='rgba(255,255,255,.07)';g.lineWidth=6;g.beginPath();g.arc(C,C,260,0,7);g.stroke();g.beginPath();g.arc(C,C,180,0,7);g.stroke();
-  g.lineCap='round';
+// ---------- cartoon look: map layers (called from draw in a fixed order) ----------
+function patches(){ // big soft grass patches with a faint biome tint (under the roads)
+  for(const q of Gp){g.fillStyle='#4a6e4866';g.beginPath();g.arc(q.x,q.y,q.r,0,7);g.fill();if(q.c!=null){g.fillStyle=BIO[q.c];g.fill()}}
+}
+function ground(){ // flat things on the ground: faint grass + flowers, ponds, springs / wells, spell zones
+  const T=performance.now()/1000;g.lineCap='round';g.globalAlpha=.55;
   for(const d of Dc){
     if(d.k==0){g.strokeStyle='#2f6a3a';g.lineWidth=3;g.beginPath();for(const o of[-6,0,6]){g.moveTo(d.x+o,d.y+4);g.lineTo(d.x+o*1.4,d.y-6)}g.stroke()}
-    else if(d.k==1){for(let j=0;j<5;j++)cir(d.x+Math.cos(j*1.257)*5,d.y+Math.sin(j*1.257)*5,3.6,j%2?'#ff9ad5':'#ffd1ec');cir(d.x,d.y,3,'#ffd23f')}
-    else{cir(d.x,d.y+3,5,'#f3e9d2');g.fillStyle='#ff5a5a';g.strokeStyle=OL;g.lineWidth=2;g.beginPath();g.arc(d.x,d.y-1,9,Math.PI,0);g.fill();g.stroke();cir(d.x-3,d.y-5,1.8,'#fff');cir(d.x+3,d.y-4,1.5,'#fff')}}
-  g.textAlign='center';
-  for(const z of Sz){const sp=z.k=='spring';g.fillStyle=sp?'#3fc7e8':'#8a5cff';g.strokeStyle=OL;g.lineWidth=4;g.beginPath();g.arc(z.x,z.y,z.r*.8,0,7);g.fill();g.stroke();
-    g.strokeStyle=sp?'#bff4ff':'#e0ccff';g.lineWidth=3;g.setLineDash([10,12]);g.lineDashOffset=-T*20;g.beginPath();g.arc(z.x,z.y,z.r*.62+Math.sin(T*3)*3,0,7);g.stroke();g.setLineDash([]);
+    else{for(let j=0;j<5;j++)cir(d.x+Math.cos(j*1.257)*5,d.y+Math.sin(j*1.257)*5,3.6,j%2?'#ff9ad5':'#ffd1ec');cir(d.x,d.y,3,'#ffd23f')}}
+  g.globalAlpha=1;g.textAlign='center';
+  for(const r of R)if(r.w){g.fillStyle='#2f6fb3';g.strokeStyle='#7cc4ff';g.lineWidth=5;g.beginPath();g.arc(r.x,r.y,r.r,0,7);g.fill();g.stroke()}
+  for(const z of Sz){const sp=z.k=='spring';g.globalAlpha=.7;g.fillStyle=sp?'#3fc7e8':'#8a5cff';g.strokeStyle=sp?'#bff4ff':'#e0ccff';g.lineWidth=4;g.beginPath();g.arc(z.x,z.y,z.r,0,7);g.fill();g.stroke();g.globalAlpha=1; // the pad is exactly the area that heals / charges
     g.font='26px sans-serif';g.fillStyle='#fff';g.fillText(sp?'💧':'🔮',z.x,z.y+9)}
   for(const z of Zn){const fr=z.T?z.t/z.T:z.f;
     if(z.k=='met'){const p=1-fr;g.strokeStyle='#ff3b3b';g.lineWidth=5;g.beginPath();g.arc(z.x,z.y,z.r,0,7);g.stroke();g.fillStyle='rgba(255,70,40,'+(.12+.28*p)+')';g.beginPath();g.arc(z.x,z.y,z.r*p,0,7);g.fill();g.font='bold 44px sans-serif';g.fillText('☄️',z.x,z.y-90*fr+14)}
-    else{const c={fire:'255,140,40',frost:'140,220,255',heal:'90,255,140'}[z.k]||'255,255,255';g.fillStyle='rgba('+c+','+(.18+.1*Math.sin(T*9))+')';g.strokeStyle='rgba('+c+',.9)';g.lineWidth=4;g.setLineDash([14,10]);g.beginPath();g.arc(z.x,z.y,z.r*Math.min(1,fr/.15),0,7);g.fill();g.stroke();g.setLineDash([])}}
-  for(const w of Wl)if(w.hd||w.st){g.fillStyle=w.hd?'#2f7d3a':'#6b7280';g.fillRect(w.x,w.y,w.w,w.h);g.fillStyle=w.hd?'#44b04f':'#8b93a3';g.fillRect(w.x+5,w.y+5,w.w-10,w.h-10)} // hedges (green) and ruined stone walls (grey)
-  g.strokeStyle=OL;g.lineWidth=5;for(const w of Wl)g.strokeRect(w.x,w.y,w.w,w.h);
-  for(const r of R){g.lineWidth=4;g.beginPath();g.arc(r.x,r.y,r.r+3,0,7);g.stroke();if(!r.w){g.fillStyle='rgba(255,255,255,.2)';g.beginPath();g.arc(r.x-r.r*.3,r.y-r.r*.3,r.r*.35,0,7);g.fill()}}
+    else{const c={fire:'255,140,40',frost:'140,220,255',heal:'90,255,140'}[z.k]||'255,255,255';g.fillStyle='rgba('+c+','+(.2+.06*Math.sin(T*4))+')';g.strokeStyle='rgba('+c+',.85)';g.lineWidth=3;g.beginPath();g.arc(z.x,z.y,z.r*Math.min(1,fr/.15),0,7);g.fill();g.stroke()}}
 }
+function walls(){ // walls, hedges, ruins and rocks: all outlines first, then all fills, so pieces of one wall never show seams
+  g.lineJoin='round';g.strokeStyle=OL;g.lineWidth=10;
+  for(const w of Wl)g.strokeRect(w.x,w.y,w.w,w.h);
+  for(const w of Wl){g.fillStyle=w.hd?'#2f7d3a':w.st?'#6b7280':'#5a4632';g.fillRect(w.x,w.y,w.w,w.h);
+    if(w.hd||w.st){g.fillStyle=w.hd?'#44b04f':'#8b93a3';g.fillRect(w.x+5,w.y+5,w.w-10,w.h-10)}}
+  for(const r of R)if(!r.w){g.lineWidth=4;g.fillStyle='#6b7280';g.beginPath();g.arc(r.x,r.y,r.r,0,7);g.fill();g.stroke();g.fillStyle='rgba(255,255,255,.2)';g.beginPath();g.arc(r.x-r.r*.3,r.y-r.r*.3,r.r*.35,0,7);g.fill()}
+}
+function bushes(){ // drawn BEFORE walls so walls and hedges always sit on top; people inside are simply not drawn unless you are close (see seen())
+  for(const[col,dr,ox,oy,k]of[[OL,4,0,0,1],['#3da048',0,0,0,1],['#56c25f',0,-.25,-.3,.5]])for(const q of Bu){g.fillStyle=col;g.beginPath();g.arc(q.x+ox*q.r,q.y+oy*q.r,q.r*k+dr,0,7);g.fill()}
+}
+function roofs(m){ // every house you are not standing in is dark from above (doorways stay open so you can see where to enter)
+  const mb=bi(m);g.fillStyle='#3a2c3a';Bd.forEach((q,k)=>{if(k!=mb)g.fillRect(q.x+22,q.y+22,q.w-44,q.h-44)});
+}
+Object.assign(window,{patches,ground,walls,bushes,roofs});
 person=function(p,me){
-  if(dF!=FRM){dF=FRM;decor()}
   const c=CL[p.cl],z=c.z||1,b=p.mv?Math.sin(performance.now()/85+p.cl)*.06:0,L=c.gl+12;
   g.save();g.translate(p.x,p.y);g.scale(z*(1+b),z*(1-b));
   g.fillStyle='rgba(0,0,0,.28)';g.beginPath();g.ellipse(0,6,20,15,0,0,7);g.fill();
@@ -834,20 +827,7 @@ person=function(p,me){
   g.restore();
 };
 
-// ---------- bushes (opaque from outside), roofs, smooth lighting ----------
-const lbl=p=>{g.fillStyle='#000a';g.fillRect(p.x-22,p.y-34,44,7);g.fillStyle=p.hp>CL[p.cl].hp*.35?'#4cff7a':'#ff4d4d';g.fillRect(p.x-22,p.y-34,44*p.hp/CL[p.cl].hp,7);g.fillStyle='#fff';g.font='bold 14px sans-serif';g.textAlign='center';g.fillText(p.n,p.x,p.y-40)};
-const post0=window.post;let nf=0;const CP=CanvasRenderingContext2D.prototype,f0=CP.fill,r0=CP.fillRect; // the old hard fog is muted; floating numbers still use post()
-CP.fill=function(...a){return nf&&this===g?0:f0.apply(this,a)};
-CP.fillRect=function(...a){return nf&&this===g?0:r0.apply(this,a)};
-window.post=m=>{
-  const mb=bi(m); // dark roofs: every house you are not standing in is pitch dark inside (the doorways stay open so you can see where to enter)
-  Bd.forEach((q,k)=>{if(k==mb)return;g.fillStyle='#100c18';g.fillRect(q.x+22,q.y+22,q.w-44,q.h-44);g.strokeStyle='rgba(255,255,255,.05)';g.lineWidth=3;g.beginPath();for(let y=q.y+48;y<q.y+q.h-30;y+=28){g.moveTo(q.x+34,y);g.lineTo(q.x+q.w-34,y)}g.stroke();g.strokeStyle=OL;g.lineWidth=6;g.strokeRect(q.x,q.y,q.w,q.h)});
-  const ins=q=>Math.hypot(m.x-q.x,m.y-q.y)<q.r;
-  for(const [col,dr,ox,oy] of [[OL,4,0,0],['#3da048',0,0,0],['#56c25f',-.5,-.25,-.3]])for(const q of Bu){g.globalAlpha=ins(q)?.5:1;g.fillStyle=col;g.beginPath();g.arc(q.x+ox*q.r,q.y+oy*q.r,dr==-.5?q.r*.5:q.r+dr,0,7);g.fill()}
-  g.globalAlpha=1;
-  P.forEach((p,i)=>{if(p.hp>0&&inBush(p)&&(p===m||seen(p,m))){if(p.fl&2)g.globalAlpha=.4;person(p,i==me);lbl(p);g.globalAlpha=1}}); // anyone you can actually see inside a bush is drawn on top
-  nf=1;try{post0(m)}finally{nf=0}
-};
+// ---------- smooth lighting ----------
 function rayR(ox,oy,dx,dy,L){let b=L;for(const w of Wl){let t0=0,t1=b;
   if(dx){let u=(w.x-ox)/dx,v=(w.x+w.w-ox)/dx;if(u>v){const s=u;u=v;v=s}if(u>t0)t0=u;if(v<t1)t1=v}else if(ox<w.x||ox>w.x+w.w)continue;
   if(dy){let u=(w.y-oy)/dy,v=(w.y+w.h-oy)/dy;if(u>v){const s=u;u=v;v=s}if(u>t0)t0=u;if(v<t1)t1=v}else if(oy<w.y||oy>w.y+w.h)continue;
@@ -857,10 +837,10 @@ function light(m,w,h){ // low-res soft darkness, ray lengths eased over time => 
   const cw=Math.max(1,w>>2),ch=Math.max(1,h>>2),N=120;if(lc.width!=cw||lc.height!=ch){lc.width=cw;lc.height=ch}
   const L=lc.getContext('2d'),s=Math.min(w,h)/650,k=1-Math.exp(-DT*16);
   if(!RL||lm!==m)RL=new Float32Array(N).fill(-1);lm=m;
-  L.globalCompositeOperation='source-over';L.setTransform(1,0,0,1,0,0);L.clearRect(0,0,cw,ch);L.fillStyle='rgba(8,10,32,.46)';L.fillRect(0,0,cw,ch);
+  L.globalCompositeOperation='source-over';L.setTransform(1,0,0,1,0,0);L.clearRect(0,0,cw,ch);L.fillStyle='rgba(8,10,32,.4)';L.fillRect(0,0,cw,ch);
   L.setTransform(s/4,0,0,s/4,cw/2,ch/2);L.translate(-m.x,-m.y);L.globalCompositeOperation='destination-out';L.beginPath();
   for(let i=0;i<N;i++){const a=i/N*6.2832,dx=Math.cos(a),dy=Math.sin(a),t=rayR(m.x,m.y,dx,dy,V);RL[i]=RL[i]<0?t:RL[i]+(t-RL[i])*k;const x=m.x+dx*(RL[i]+20),y=m.y+dy*(RL[i]+20);i?L.lineTo(x,y):L.moveTo(x,y)}
-  L.closePath();const q=L.createRadialGradient(m.x,m.y,V*.4,m.x,m.y,V*1.05);q.addColorStop(0,'rgba(0,0,0,1)');q.addColorStop(1,'rgba(0,0,0,.25)');L.fillStyle=q;L.fill();
+  L.closePath();const q=L.createRadialGradient(m.x,m.y,V*.4,m.x,m.y,V*1.05);q.addColorStop(0,'rgba(0,0,0,1)');q.addColorStop(1,'rgba(0,0,0,0)');L.fillStyle=q;L.fill(); // fades to nothing at the rim, so there is no visible circle edge
   g.imageSmoothingEnabled=true;g.drawImage(lc,0,0,w,h)
 }
 const ov0=window.ov;window.ov=(m,w,h)=>{light(m,w,h);ov0(m,w,h);
