@@ -1809,14 +1809,114 @@ pick(cls);
 LOG.unshift(['v1.21.0',['New hero: Cog, the Mechanic. Wrench melee (heals 5 HP per hit); Snare Trap: placed traps (max 3) vanish from enemy view after 1.5s, stun 1.2s and hurt whoever steps in; Auto-Turret ultimate: 300 HP, 12s, rapid fire up to 560 range, enemy fire can destroy it']]);
 $('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
  
-
-
- 
- 
  pick(cls);
 LOG.unshift(['v1.21.0',['Code cleanup: dead code and patch layers removed; ultimate charge is now one set of numbers','Error messages (room not found, host left, room full) show on the menu again','Zephyr Gust no longer fires a stray lightning strike','Debug cheats only work in offline practice']]);
 function renderLog(){$('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');}
 renderLog();
+
+ const GI=CL.findIndex(c=>c.n=='Grit'),TI=CL.findIndex(c=>c.n=='Tide'),CI=CL.findIndex(c=>c.n=='Cog');
+let Wv=[],wvT=0,wvSent=0;                                      // Tide's tsunami waves
+ 
+// ---------------- COG: real wrench swing, small nerf ----------------
+if(CI>=0){
+  Object.assign(CL[CI],{hp:155,d:21,cd:.6,pl:3,sa:1.2,bt:.21});   // was 165 HP, 24 dmg, .55s; now 3 wide hitboxes = one wide sweep (still one hit per target)
+  CL[CI].mn=['Wrench Swing','a wide overhead swing, short range; one hit per target, small knock-back, each hit repairs you 5 HP'];
+  const drawBoltC=drawBolt;
+  drawBolt=function(b,T){if(CL[b.c|0].bk==9)return;drawBoltC(b,T)};          // the hitboxes are invisible: the swing itself is the visual
+  const weaponC=weapon;
+  weapon=function(p){if(p.cl!=CI)return weaponC(p);
+    const now=performance.now();
+    if(p.sc!=null){if(p._sw==null)p._sw=p.sc;if(p._sw!==p.sc){p._sw=p.sc;p.swT=now}}
+    const t=p.sc!=null?(now-(p.swT||-1e4))/220:(pvPh==0?(now%(CL[CI].cd*1000))/220:9);   // menu preview swings on a timer
+    const sw=t<1,e=1-(1-Math.min(1,t))*(1-Math.min(1,t)),ang=sw?-1.2+2.4*e:.6;
+    g.save();g.translate(p.x,p.y);g.lineCap='round';g.lineJoin='round';
+    if(sw){g.rotate(p.a);g.strokeStyle=CL[CI].sc;g.globalAlpha=.55*(1-t);g.lineWidth=18;g.beginPath();g.arc(0,0,52,-1.2,ang);g.stroke();   // swing trail
+      g.strokeStyle='#fff';g.lineWidth=4;g.beginPath();g.arc(0,0,52,Math.max(-1.2,ang-.7),ang);g.stroke();g.globalAlpha=1;g.rotate(-p.a)}
+    g.rotate(p.a+ang);
+    for(const[col,w]of[[OL,10],['#c8ccd4',6]]){g.strokeStyle=col;g.lineWidth=w;g.beginPath();g.moveTo(12,0);g.lineTo(50,0);g.stroke()}
+    for(const[col,w]of[[OL,12],['#c8ccd4',7]]){g.strokeStyle=col;g.lineWidth=w;g.beginPath();g.arc(58,0,10,.8,6.283-.8);g.stroke()}   // open jaw
+    g.restore()}}
+ 
+// ---------------- GRIT: shorter range, Rampage stuns ----------------
+if(GI>=0){
+  CL[GI].bt=.16;CL[GI].r=70;                                    // range 140 -> 112
+  CL[GI].mn=['Triple Punch','three fast shock arcs, SHORT range; one hit per target per swing + small knock-back'];
+  CL[GI].ul.x='shove nearby enemies away and STUN them for 1s, heal 50 HP, then 6s of +40% damage and +30% speed';
+  const castG=cast;
+  cast=function(p,i,u){
+    if(u.k!='rampage'||p.cl!=GI)return castG(p,i,u);
+    const L=P.filter(q=>q!==p&&q.hp>0&&Math.hypot(q.x-p.x,q.y-p.y)<220);   // who is in range before they get shoved
+    castG(p,i,u);
+    for(const q of L){q.fz=Math.max(q.fz,1);q.bl=Math.max(q.bl,1)}}}   // stun = can't move, can't shoot
+ 
+// ---------------- TIDE: spiral burst attack + Harbor-style tsunami wave ----------------
+function waveSpr(x,y,a){const T=performance.now()/1000;g.save();g.translate(x,y);g.rotate(a);g.lineJoin=g.lineCap='round';
+  const gr=g.createLinearGradient(-190,0,0,0);gr.addColorStop(0,'rgba(58,160,255,0)');gr.addColorStop(1,'rgba(58,160,255,.4)');g.fillStyle=gr;g.fillRect(-190,-140,190,280);
+  const crest=(w,col)=>{g.strokeStyle=col;g.lineWidth=w;g.beginPath();for(let y=-140;y<=140;y+=14){const x=Math.sin(y*.07+T*9)*7+(1-Math.abs(y)/140)*16;y==-140?g.moveTo(x,y):g.lineTo(x,y)}g.stroke()};
+  crest(40,'#1f5f9a');crest(26,'#58b8ea');crest(8,'#ffffff');g.restore()}
+const wvPos=w=>w.ts?{x:w.x+Math.cos(w.a)*560*(performance.now()-w.ts)/1000,y:w.y+Math.sin(w.a)*560*(performance.now()-w.ts)/1000}:w;   // clients extrapolate between snapshots
+if(TI>=0){
+  // main attack: 5 small bolts that corkscrew around the aim point (same single focus, many hits)
+  Object.assign(CL[TI],{pl:5,sa:0,wv:[22,16],d:3.2,cd:.62});
+  CL[TI].mn=['Water Burst','a burst of 5 small water bolts spiralling around your aim point; +50% damage to enemies standing in water'];
+  CL[TI].ul={n:'Tsunami',x:'send a wide wave along your aim: it hurts and slows everything it touches and carries them forward · heals you 40 HP, you run faster for 4s',k:'tsunami'};
+  PV.tsunami=['line',640];                                      // in-game aim preview: a line along the wave's path
+  const drawBoltT=drawBolt;
+  drawBolt=function(b,T){if(CL[b.c|0].bk!=8)return drawBoltT(b,T);
+    g.save();g.translate(b.x,b.y);g.scale(.6,.6);g.translate(-b.x,-b.y);drawBoltT(b,T);g.restore()};   // smaller droplets
+  const castT=cast;
+  cast=function(p,i,u){
+    if(u.k!='tsunami'||p.cl!=TI)return castT(p,i,u);
+    Wv.push({x:p.x+Math.cos(p.a)*30,y:p.y+Math.sin(p.a)*30,a:p.a,d:0,o:i,h:[]});
+    p.bv=Math.max(p.bv,4);p.hp=Math.min(CL[TI].hp,p.hp+40);ev(1,p.x,p.y,90,p.cl)};
+  const drawFxT=drawFx;
+  drawFx=function(){for(const w of Wv){const q=wvPos(w);waveSpr(q.x,q.y,w.a)}drawFxT()};
+  const onDataT=onData;
+  onData=function(m){
+    if(m.t=='wv'){const n=performance.now();Wv=m.v.map(a=>({x:a[0],y:a[1],a:a[2],ts:n}));return}
+    if(m.t=='s')Wv=[];
+    onDataT(m)};
+  const sgT=startGame;startGame=function(){Wv=[];sgT()};
+  const tmT=toMenu;toMenu=function(t){Wv=[];tmT(t)};
+  // menu preview: spiral phases + a wave that rolls over the dummies (the preview swaps the wave's path for a placed-zone layout)
+  const pvFT=pvFrame;
+  pvFrame=function(dt){
+    if(cls!=TI)return pvFT(dt);
+    const sv=PV.tsunami;PV.tsunami=['at',300,6,200];
+    try{pvFT(dt)}finally{PV.tsunami=sv}
+    let n=0;for(const b of pvB)if(b.c==TI&&!b.k2){b.k2=1;b.ph=n++*6.2832/CL[TI].pl}
+    const lt=pvT%3;
+    if(pvPh==2&&lt>.5&&lt<1.6){const cs=[...document.querySelectorAll('canvas.pv')].filter(x=>x.offsetParent),sg=g;
+      for(const cvs of cs){g=cvs.getContext('2d');const k=cvs.width/654;g.setTransform(k,0,0,k,0,0);waveSpr(WZ[0]+560*(lt-.5),180,0);g.setTransform(1,0,0,1,0,0)}g=sg}};
+}
+ 
+// ---------------- host step: spiral phases for Tide's burst, wave movement + hits + sync ----------------
+const step22=step;
+step=function(dt){
+  step22(dt);
+  if(!host||st!='play'||TI<0)return;
+  const cnt={};for(const b of B)if(b.c==TI&&!b.k2){b.k2=1;const n=cnt[b.o]|0;cnt[b.o]=n+1;b.ph=n*6.2832/CL[TI].pl}   // evenly spaced around the aim line
+  for(const w of Wv){const c=Math.cos(w.a),s=Math.sin(w.a),nx=w.x+c*560*dt,ny=w.y+s*560*dt;w.d+=560*dt;
+    if(w.d>620||!los(w.x,w.y,nx,ny)||Math.hypot(nx-C,ny-C)>A-20){w.dead=1;continue}      // stops at walls and the arena edge
+    w.x=nx;w.y=ny;
+    for(const q of P)if(q.hp>0&&q!==P[w.o]&&!w.h.includes(q)){const dx=q.x-w.x,dy=q.y-w.y,al=dx*c+dy*s,pp=-dx*s+dy*c;
+      if(Math.abs(pp)<140&&al>-30&&al<50){w.h.push(q);hit(q,35,w.o);q.sl=Math.max(q.sl,2);push(q,c,s,140)}}      // each enemy is hit once, slowed and carried
+    if(typeof crHurt=='function')crHurt(w.x,w.y,140,80*dt)}
+  Wv=Wv.filter(w=>!w.dead);
+  if((wvT+=dt)>.08){wvT=0;if(Wv.length||wvSent){bc2({t:'wv',v:Wv.map(w=>[w.x|0,w.y|0,+w.a.toFixed(2)])});wvSent=Wv.length}}};
+ 
+// ---- Changelog ----
+pick(cls);
+LOG.unshift(['v1.22.0',['Cog: attack is now a real overhead wrench swing with a trail (no more fist arcs); nerfed (155 HP, 21 damage, slower swing, slightly shorter range)','Grit: Rampage also stuns nearby enemies for 1s; punch range lowered','Tide: attack is a burst of 5 small bolts spiralling around the aim point; Tsunami is now a wide wave that rolls along your aim, hurting, slowing and carrying enemies']]);
+$('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
+
+
+
+
+
+
+
+ 
 
 // ---------- 14. Main loop ----------
 
