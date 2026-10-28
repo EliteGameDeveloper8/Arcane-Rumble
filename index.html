@@ -2162,7 +2162,151 @@ LOG.unshift(['v1.24.0',['Cog: the wrench is held sideways in the hand when you a
   'Terra ultimate preview: you hold the aim outline in place, the wall is placed, then the dummies walk toward you and are blocked by it']]);
 renderLog();pick(cls);
 
+/* ===== ARCANE RUMBLE v1.25 PATCH =====
+   
+*/
+let SHQ=[],pvC=0,pvPause=0,pvUk=-1,TR=0,cogS=null,cogK=0; // SHQ = Terra shard queue, pvC = preview clock 0..12, TR = training mode
+{const s=document.createElement('style');s.textContent='.pvr{display:flex;gap:6px;align-items:center;margin-bottom:6px}.pvr button{padding:4px 10px;font-size:13px;box-shadow:0 2px 0 #222a3d}u.pvs{flex:1;height:8px;border-radius:4px;background:#10131c;cursor:pointer;display:block;overflow:hidden;text-decoration:none}.pvs i{display:block;height:100%;width:0;background:#6ee7ff}.pex{margin-bottom:6px}';document.head.appendChild(s)}
 
+// ---- 1. Terra shards: they were pushed into B while B.filter() was running, so they vanished. Now queued and added after the step ----
+const stepS=step;
+step=function(dt){stepS(dt);if(SHQ.length){B.push(...SHQ);SHQ=[]}};
+
+// ---- 2. Hero picker: Range + Healing stats, explanation under the preview (follows the preview), 4 phases with a timeline + pause ----
+const HLP={Ember:35,Frost:30,Lumi:100,Hex:70,Volt:40,Terra:40,Zephyr:30,Grit:50,Tide:70,Cog:55}; // healing rating 0-100 (kit: lifesteal, regen, heals)
+const heroHTML=i=>{const c=CL[i];return '<canvas class="pv" width="360" height="200"></canvas><div class="pvr"><button class="s pvp">'+(pvPause?'▶':'⏸')+'</button>'+[0,1,2,3].map(k=>'<u class="pvs" data-k="'+k+'"><i></i></u>').join('')+'</div><div class="pex"></div><h3>'+logo(i,30)+' '+c.n+', '+c.t+'</h3><div style="margin:4px 0 6px">'+sb('Health',c.hp/2)+sb('Speed',c.sp/2.8)+sb('Damage',c.d*(c.pl||1)/c.cd*2.4)+sb('Range',c.bs*c.bt/6.5)+sb('Healing',HLP[c.n]||30)+'</div>'};
+const pickP=pick;
+pick=function(i){pickP(i);$('cd').innerHTML=$('cd2').innerHTML=heroHTML(i);pvC=0;pvUk=-1};
+function pvGo(k){pvC=((k%4+4)%4)*3;pvT=pvC%9;pvPh=pvC>=9?3:-1;pvUk=-1;pvB=[]}
+document.addEventListener('click',e=>{const t=e.target.closest?e.target.closest('.pvp,.pvs'):null;if(!t)return;
+  if(t.classList.contains('pvp')){pvPause^=1;document.querySelectorAll('.pvp').forEach(b=>b.textContent=pvPause?'▶':'⏸')}else pvGo(+t.dataset.k)});
+function pvUI(){const k=pvC/3|0,f=pvC%3/3;
+  document.querySelectorAll('.pvs').forEach((e,j)=>{j%=4;e.firstChild.style.width=(j<k?100:j==k?f*100:0)+'%';e.style.outline=j==k?'1px solid #6ee7ff88':''});
+  if(k!=pvUk){pvUk=k;const c=CL[cls],x=[row('MAIN','#ffd23f',c.mn[0],c.mn[1]),row('ABILITY ('+kn(KB.q)+')','#6ee7ff',c.ab.n,c.ab.x),row('ULTIMATE ('+kn(KB.e)+')','#ff7ac6',c.ul.n,c.ul.x),row('PASSIVE','#9dff8a',c.ps.n,c.ps.x)][k];
+    document.querySelectorAll('.pex').forEach(e=>e.innerHTML=x)}}
+
+// ---- 3. Preview dummies stand at the REAL hit range of the main attack, and a dashed arc marks it ----
+const pvSetR=pvSet;
+pvSet=function(ph,c){pvSetR(ph,c);const R=c.bs*c.bt;
+  if(!ph)pvD=[[WZ[0]+R*.95,180],[WZ[0]+R*.8,125],[WZ[0]+R*.8,235]];
+  else if(CI>=0&&c===CL[CI])pvD=cogPos(ph,0)};
+function rangeArcs(cs,c){const R=c.bs*c.bt,sg=g;
+  for(const cvs of cs){g=cvs.getContext('2d');const s=cvs.width/654;g.setTransform(s,0,0,s,0,0);g.strokeStyle='#ffffff88';g.lineWidth=2;g.setLineDash([6,8]);g.beginPath();g.arc(WZ[0],WZ[1],R,-.45,.45);g.stroke();g.setLineDash([]);
+    g.font='bold 11px system-ui';g.textAlign='center';g.fillStyle='#ffffffcc';g.fillText('range',WZ[0]+R*.9,Math.max(30,WZ[1]-R*.45-6));g.setTransform(1,0,0,1,0,0)}
+  g=sg}
+
+// ---- 4. Cog ability / ultimate previews: a real trap (hides, then stuns a dummy that walks over it) and a real turret (shoots) ----
+delete KE.trap;delete KE.turret;                                   // the old generic dummy effects were wrong for these two
+const cogPos=(ph,lt)=>ph==1?[[lt<.9?520:lt<2.02?520-(lt-.9)*170:330,180],[560,125],[560,235]]:[[470,180],[520,120],[520,240]];
+function cogUnder(){const{ph,lt}=cogS; // drawn under the dummies
+  if(ph==1){if(lt>.3)trapSpr({x:300,y:180,age:lt-.3},lt-.3<1.5?1:.4)}
+  else if(lt>.3){turSpr({x:300,y:180,hp:TU_HP,life:TU_LIFE-(lt-.3),a:0},1);
+    for(let n=0;n<14;n++){const t=lt-.7-n*.17;if(t>0){const x=334+t*850;if(x<445)cir(x,180,5,'#ffe27a')}}}}
+const dumC=dummy;
+dummy=function(x,y,h){if(cogS){const j=cogK++%3;if(!j)cogUnder();h=cogS.h[j]||0}return dumC(x,y,h)};
+function cogOver(cs){const{ph,lt}=cogS;if(ph!=1||lt<=2.02)return;const sg=g;
+  for(const cvs of cs){g=cvs.getContext('2d');const s=cvs.width/654;g.setTransform(s,0,0,s,0,0);
+    g.fillStyle='rgba(150,225,255,.5)';g.strokeStyle='#fff';g.lineWidth=3;g.beginPath();g.arc(330,180,25,0,7);g.fill();g.stroke(); // stunned
+    if(lt<2.4){g.strokeStyle='#ffb347';g.lineWidth=4;g.beginPath();g.arc(300,180,10+(lt-2.02)*190,0,7);g.stroke()}
+    if(lt<2.9){g.font='bold 18px sans-serif';g.textAlign='center';g.lineWidth=4;g.strokeStyle=OL;g.strokeText('18',330,140-(lt-2.02)*20);g.fillStyle='#ffe066';g.fillText('18',330,140-(lt-2.02)*20)}
+    g.setTransform(1,0,0,1,0,0)}
+  g=sg}
+
+// ---- 5. Passive previews (4th phase) ----
+function pvPas(cvs,lt){
+  const c=CL[cls],k=c.ps.k,T=performance.now()/1000,X0=WZ[0],Y=180,cl=cls,hm=c.hp;
+  g=cvs.getContext('2d');const s=cvs.width/654;g.setTransform(s,0,0,s,0,0);
+  g.fillStyle='#3c5a3c';g.fillRect(0,0,654,364);g.strokeStyle='#ffffff14';g.lineWidth=2;for(let x=0;x<654;x+=60){g.beginPath();g.moveTo(x,0);g.lineTo(x,364);g.stroke()}
+  g.lineCap=g.lineJoin='round';
+  const hb=(x,y,f,w)=>{g.fillStyle='#000a';g.fillRect(x-w/2-1,y-1,w+2,9);g.fillStyle=f>.35?'#4cff7a':'#ff4d4d';g.fillRect(x-w/2,y,w*Math.max(0,Math.min(1,f)),7)},
+    tx=(t,x,y,col,z)=>{g.font='bold '+(z||18)+'px sans-serif';g.textAlign='center';g.lineWidth=4;g.strokeStyle=OL;g.strokeText(t,x,y);g.fillStyle=col;g.fillText(t,x,y)},
+    me=(x,y,a)=>{g.globalAlpha=a==null?1:a;const o=pvPh;if(c.ef=='wrench')pvPh=0;person({x,y,a:0,cl,mv:0,fl:0},0);pvPh=o;g.globalAlpha=1},
+    bo=(x,y,z)=>{g.save();g.translate(x,y);g.scale(z,z);g.translate(-x,-y);drawBolt({x,y,vx:1,vy:0,c:cl},T);g.restore()};
+  if(k=='ash'){const d=lt<1.2;if(d){dummy(340,Y,lt%.3<.1?.2:0);hb(340,Y-34,1-lt/1.2,44);bo(X0+30+(lt*700)%300,Y,1)}else tx('💀',340,Y-20,'#fff',32);
+    me(X0,Y);hb(X0,Y-34,lt<1.3?.5:.5+30/hm,44);if(lt>1.3)tx('+30',X0,Y-46-(lt-1.3)*25,'#8dffb0')}
+  else if(k=='bless'){me(X0,Y);hb(X0,Y-34,.3+Math.min(.7,lt*.2),44);
+    for(const[n,y,r]of[['Normal healing',260,1],['Blessed: 60% faster',305,1.6]]){tx(n,330,y-6,'#fff',13);hb(330,y,.2+Math.min(.8,lt*.2*r),220)}}
+  else if(k=='frost'){const h=lt>.8;dummy(X0+110,Y,h&&lt<1.05?.2:0);me(X0,Y);
+    if(h){g.fillStyle='rgba(150,225,255,.4)';g.strokeStyle='#fff';g.lineWidth=3;g.beginPath();g.arc(X0+110,Y,26,0,7);g.fill();g.stroke();tx('slowed',X0+110,Y-36,'#cff4ff',14)}
+    if(lt<.8)tx('→',X0+55+lt*40,Y-30,'#ff6b6b',20);else if(lt<1.3)tx('-12',X0,Y-44,'#ff6b6b')}
+  else if(k=='cloak'){me(X0,Y,lt>1.5?.3:1);g.strokeStyle='#b78cff';g.lineWidth=4;g.beginPath();g.arc(X0,Y,32,-1.57,-1.57+6.283*Math.min(1,lt/1.5));g.stroke();tx(lt>1.5?'invisible!':'stand still 1.5s',X0,Y-50,'#d8b8ff',15)}
+  else if(k=='stat'){const n=Math.floor((lt-.4)/.5),q=n%3==2;dummy(330,Y,n>=0&&(lt-.4)%.5<.1?.2:0);me(X0,Y);
+    for(let i=0;i<6;i++){const t=lt-i*.5;if(t>0&&t<.4)bo(X0+30+t*700,Y,i%3==2?1.7:1)}
+    if(n>=0&&n<6&&(lt-.4)%.5<.4)tx(q?Math.round(c.d*1.6)+'  STATIC!':''+Math.round(c.d),330,Y-40,q?'#ffe84a':'#fff',q?24:16);tx('every 3rd shot +60%',X0+230,330,'#ffe84a',14)}
+  else if(k=='skin'||k=='wstep'){const m=k=='wstep',x=X0+(m?Math.sin(lt*3)*50:0),t=lt%1,bx=450-t*(450-x-24)/.55;dummy(450,Y,0);me(x,Y);
+    if(bx>x+24&&t<.55)cir(bx,Y,7,'#ff6b6b');else{g.strokeStyle=m?'#bff5ea':'#c9a36a';g.lineWidth=6;g.beginPath();g.arc(x,Y,29,-1,1);g.stroke();tx(m?'-10%':'-15%',x+10,Y-44-t*20,'#9dff8a')}
+    if(m){g.strokeStyle='#ffffff88';g.lineWidth=3;for(let i=0;i<3;i++){g.beginPath();g.moveTo(x-30-i*14,Y-12+i*12);g.lineTo(x-60-i*14,Y-12+i*12);g.stroke()}}}
+  else if(k=='fury'){const t=lt%.66;g.fillStyle='rgba(255,60,30,'+(.2+.1*Math.sin(T*8))+')';g.beginPath();g.arc(X0,Y,36,0,7);g.fill();me(X0,Y);hb(X0,Y-34,.4,44);g.fillStyle='#fff';g.fillRect(X0-1,Y-36,2,11);
+    dummy(X0+95,Y,t<.1?.2:0);tx(''+Math.round(c.d*1.25),X0+95,Y-36-t*30,'#ff9a6a');tx('below 50% HP: +25% damage',330,320,'#ff9a6a',15)}
+  else if(k=='riptide'){g.fillStyle='#58b8ea';g.fillRect(180,110,474,150);g.fillStyle='#ffffff55';for(let i=0;i<8;i++)g.fillRect(190+i*60+(T*30)%60,130+(i%3)*40,30,3);
+    const x=200+lt*130;dummy(200+lt*40,Y+45,0);me(x,Y-25);hb(x,Y-60,1,44);tx('+8 HP/s',x,Y-72,'#8dffb0',14);tx('you: +70% speed  ·  others crawl',330,320,'#bff',15)}
+  else if(k=='tinker'){const t=lt%.66;me(X0,Y);dummy(X0+100,Y,t>.1&&t<.22?.2:0);hb(X0,Y-34,.7,44);if(t>.1&&t<.5)tx('+5',X0,Y-46-t*25,'#8dffb0');trapSpr({x:430,y:Y,age:2},1);tx('traps stay armed 25s',430,Y-44,'#ffb347',14)}
+  else{me(X0,Y);tx(c.ps.n,330,Y,'#fff',22)}
+  g.setTransform(1,0,0,1,0,0);g.font='bold 14px system-ui';g.textAlign='left';g.lineWidth=4;g.strokeStyle=OL;g.lineJoin='round';
+  const t='PASSIVE: '+c.ps.n;g.strokeText(t,8,20);g.fillStyle='#9dff8a';g.fillText(t,8,20);
+  g.font='11px system-ui';g.textAlign='right';g.fillStyle='#ffffffbb';g.fillText('tap to switch',cvs.width-8,cvs.height-8)}
+
+// ---- 6. Preview driver: 4 phases x 3s, pause freezes time, timeline bar ----
+const pvFrameP=pvFrame;
+pvFrame=function(dt){
+  const cs=[...document.querySelectorAll('canvas.pv')].filter(x=>x.offsetParent);
+  if(!cs.length)return pvFrameP(dt);
+  if(pvPause)dt=0;
+  const sg=g,fz=performance.now(),c=CL[cls];
+  if(pvPause)performance.now=()=>fz;                               // paused: every time-based animation freezes
+  try{
+    if(pvC<9){
+      const ph=pvC/3|0,lt=pvC%3;let sv=null;
+      if(CI>=0&&cls==CI&&(ph==1||ph==2)){cogS={ph,lt,h:[ph==1?(lt>2.02&&lt<2.25?.3:0):(lt>.9&&(lt-.7)%.17<.07?.2:0),0,0]};pvD=cogPos(ph,lt);cogK=0;sv=[PV.trap,PV.turret];PV.trap=PV.turret=['x',0]}
+      pvT=pvC;const d=Math.min(dt,Math.max(0,8.999-pvC));
+      try{pvFrameP(d)}finally{if(sv){PV.trap=sv[0];PV.turret=sv[1]}}
+      pvC=pvT;
+      if(cogS){cogOver(cs);cogS=null}
+      if(dt>d){pvC=9;pvPh=3}else if(ph==0)rangeArcs(cs,c);
+    }else{
+      pvC+=dt;pvPh=3;if(pvC>=12){pvC=0;pvT=0;pvPh=-1}
+      for(const cvs of cs)pvPas(cvs,Math.min(2.99,pvC-9))}
+  }finally{if(pvPause)delete performance.now;g=sg;cogS=null}
+  pvUI()};
+
+// ---- 7. Training: dummies + a few test obstacles, offline only ----
+const btr=document.createElement('button');btr.className='s';btr.textContent='🎯 Training';$('bh').after(btr);
+btr.onclick=()=>{
+  TR=1;host=true;code='OFFLINE';lobby=[{n:myName(),c:0,k:cls}];st='lobby';
+  $('s5').value='1';$('s1').value='8';$('s2').value='1';$('s5').parentElement.style.display='none';
+  const sv=$('s7').value,o=new Option('Training','1000');$('s7').add(o);$('s7').value='1000';
+  startGame();$('s7').remove(o.index);$('s7').value=sv;
+  if(st!='play'){TR=0;return}
+  dbgOn=1;const m=P[me];m.x=C-300;m.y=C;m.a=0;let k=0;                // debug buttons (full ultimate, reset ability...) are on in training
+  P.forEach((p,i)=>{if(i==me)return;const d=[130,220,320,430,560,330,330][k%7],oy=[0,-40,40,-60,0,-150,150][k%7];
+    Object.assign(p,{td:k>4?2:1,n:'Dummy '+(k+1),cl:GI>=0?GI:6,hx:C-300+d,hy:C+oy,x:C-300+d,y:C+oy});p.hp=CL[p.cl].hp;k++})};
+const worldTR=world;
+world=function(seed){worldTR(seed);if(!TR)return;
+  Bd=[];Wn=[];Wl=[{x:C+60,y:C-110,w:30,h:220,c:'#6f6a7a'}];R=[{x:C-180,y:C-170,r:34}];Bu=[];
+  for(const[x,y]of[[C+200,C+190],[C-60,C+200]])for(let j=0;j<3;j++)Bu.push({x:x+(j-1)*50,y:y+(j&1)*30,r:55});
+  Wc=Wl.concat(Wn);grid();buildMini();winSetup()};
+const aiTR=ai;
+ai=function(p,i,dt){if(!p.td)return aiTR(p,i,dt);p.mx=0;p.my=p.td==2?Math.sin(zt*.9+i)*.4:0;p.f=0;p.aq=p.au=0;const m=P[me];if(m)p.a=Math.atan2(m.y-p.y,m.x-p.x)};
+const rsTR=respawn;respawn=function(p){rsTR(p);if(p.td){p.x=p.hx;p.y=p.hy}};
+const finTR=finish;finish=function(w){if(!TR)finTR(w)};
+const hudTR=hud;hud=function(){hudTR();if(TR&&st=='play'){const p=P[me];$('hud').textContent='TRAINING · dummies respawn · '+(p&&p.hp>0?'HP '+Math.ceil(p.hp):'Respawning...')+' · cheat buttons top-left'}};
+const tmTR=toMenu;toMenu=function(t){TR=0;tmTR(t)};
+
+// ---- Changelog ----
+LOG.unshift(['v1.25.0',['Hero picker: new Range and Healing stats; the explanation sits under the preview and always matches what is playing','Preview now has 4 parts (main, ability, ultimate, passive) with a timeline bar, pause button, and click a segment to jump','Preview dummies stand at the attack\'s real hit range, with a dashed range arc','Cog ability / ultimate previews show the real trap (hides, stuns) and turret (shoots)','Terra boulder shards now really spawn on impact with a player, wall or rock (3 x 40% extra damage)','Training map: test any hero on dummies, a wall, a rock, bushes and the river (menu > Training)','Cog wrench is held beside the head, no longer over the eyes']]);
+renderLog();pick(cls);
+
+/* ===== THE 4 SMALL EDITS (find -> replace, each appears exactly once in the file) =====
+ 1. Find:    pvT=((((pvT%9)/3|0)+1)%3)*3;
+    Replace: pvGo(((pvC/3|0)+1)%4);
+ 2. Find:    for(let i=0;i<3;i++)cir(cvs.width-16-i*14,14,4,i==2-ph?'#fff':'#ffffff44');
+    Replace: (nothing: delete it, the timeline bar replaces those 3 dots)
+ 3. Find:    B.push({x,y,vx:Math.cos(s)*520,vy:Math.sin(s)*520,o:b.o,t:.3,d:b.d*.3,c:b.c,e:'none',sh:1})
+    Replace: SHQ.push({x,y,vx:Math.cos(s)*520,vy:Math.sin(s)*520,o:b.o,t:.3,d:b.d*.4,c:b.c,e:'none',sh:1})
+ 4. Find:    ox=(1-s)*12*Math.cos(ang)+s*15,oy=(1-s)*12*Math.sin(ang)-s*26,rot=(1-s)*ang+s*1.5708
+    Replace: ox=(1-s)*12*Math.cos(ang)-s*2,oy=(1-s)*12*Math.sin(ang)-s*25,rot=(1-s)*ang
+    And in the same function: g.arc(15,-9,5.5,0,7)  ->  g.arc(5,-23,5.5,0,7)
+*/
 
  
 
