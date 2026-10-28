@@ -3,11 +3,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>Storm Arena</title>
 <style>
+ .pn>*{flex-shrink:0}
 *{box-sizing:border-box;margin:0;touch-action:none;user-select:none;-webkit-user-select:none}
 body{background:#10131c;color:#fff;font:600 16px system-ui,sans-serif;overflow:hidden}
 canvas{position:fixed;inset:0;width:100%;height:100%}
 .pn{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;justify-content:safe center;gap:10px;background:#10131cdd;text-align:center;padding:16px;overflow-y:auto}
-.pn.h{display:none}
+.pn.h{display:none} .pn,.pn *{touch-action:pan-x pan-y}
 h1{font-size:46px;color:#ffd23f;text-shadow:0 4px 0 #b8860b}
 button,input,select{font:inherit;padding:12px 22px;border-radius:12px;border:0}
 button{background:#ffd23f;color:#222;box-shadow:0 4px 0 #b8860b;cursor:pointer}
@@ -42,22 +43,31 @@ canvas.pv{position:static;inset:auto;display:block;width:100%;height:auto;border
 .dd[open] summary::after{transform:rotate(180deg);vertical-align:3px}.dd #cd,.dd #cd2{margin-top:6px}
 #kbl{display:grid;grid-template-columns:1fr 1fr;gap:8px}#kbl button{padding:8px 10px;font-size:13px}#kbl .lis{outline:3px solid #ffd23f}
 .cc{width:80px}.cc img{display:block;margin:0 auto 2px}canvas.pv{cursor:pointer}.cc.s{transform:translateY(-3px);box-shadow:0 0 14px #ffd23f88}
+#menu{background:none;justify-content:flex-start;gap:8px}#menu h1{font-size:40px;margin-top:4px}
+#hs{flex:1 0 150px;width:100%}#hn{text-align:center;font-size:22px;line-height:1.1;text-shadow:0 2px 0 #000}#hn small{font-size:13px;opacity:.8}
+#menu #cs{flex-wrap:nowrap;overflow-x:auto;max-width:100%;padding:6px 4px;justify-content:safe center}#menu .cc{flex:0 0 auto}
+.mb{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}button.big{font-size:20px;padding:14px 34px}
+#fs{position:fixed;right:62px;top:10px;padding:8px 12px;z-index:6}
+#help,#lg{background:#222a3d;border-radius:14px;padding:10px 14px;max-width:420px;font-size:14px;line-height:1.5;text-align:left}#lg h3{color:#ffd23f;margin-top:8px}#lg li{margin-left:18px}
 </style></head><body>
 <canvas id="c"></canvas><div id="hud"></div>
 <div class="ab" id="ab"><button id="b1">E</button><button id="b2" class="s">Q</button></div>
 <button id="lv" class="s" style="position:fixed;left:10px;top:10px;display:none">Leave game</button>
 <button id="mt" class="s">🔊</button>
-<button id="cx">✕</button>
+<button id="fs" class="s">⛶</button><button id="cx">✕</button>
 <div id="sp"><button class="s" id="spL">◀</button><span id="spN"></span><button class="s" id="spR">▶</button></div>
 
 <div class="pn" id="menu">
 <h1>STORM ARENA</h1>
 <input id="nm" maxlength="12" placeholder="Your name">
-<div id="cs"></div><details class="dd" open><summary>Hero info</summary><div id="cd"></div></details>
-<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center"><button id="bh">Host a room</button><button id="bo" class="s">Play offline (bots)</button></div>
-<div><input id="rc" maxlength="4" placeholder="Room code" style="width:130px;text-transform:uppercase"> <button id="bj" class="s">Join</button></div>
-<button id="bset" class="s">⚙ Settings</button>
-<small id="mg">Pick a hero! Move: WASD / left stick (all keys can be changed in Settings). Aim + shoot: mouse / right stick. Hold E = ability, hold Q = ultimate (the further you aim, the further placed spells land; release to cast, Esc / right-click / ✕ to cancel). Bushes hide people, houses are dark from outside. 💧 Springs heal, 🔮 wells charge your ultimate.</small>
+<div id="hs"></div>
+<div id="hn"></div>
+<div id="cs"></div>
+<details class="dd" open><summary>Hero info</summary><div id="cd"></div></details>
+<div class="mb"><button id="bo" class="big">▶ Play offline</button><button id="bh" class="s">Host a room</button></div>
+<div class="mb"><input id="rc" maxlength="4" placeholder="Room code" style="width:130px;text-transform:uppercase"> <button id="bj" class="s">Join</button></div>
+<div class="mb"><button id="bset" class="s">⚙ Settings</button><button id="blog" class="s">📜 Changelog</button></div>
+<small id="mg"></small>
 </div>
 
 <div class="pn h" id="lobby">
@@ -83,11 +93,13 @@ canvas.pv{position:static;inset:auto;display:block;width:100%;height:auto;border
 <div class="pn h" id="cfg"><h1 style="font-size:34px">SETTINGS</h1>
 <div id="set2" style="display:flex;flex-direction:column;gap:12px;align-items:center">
  <label>Ability / ultimate aiming<select id="c1"><option value="0">Hold to aim, release to cast<option value="1">Quick cast (instant)</select></label>
- <label>On-screen ability / ultimate buttons<select id="c2"><option value="1">Show<option value="0">Hide</select></label></div>
+ <label>On-screen ability / ultimate buttons<select id="c2"><option value="1">Show<option value="0">Hide</select></label>  <label>Minimap size<select id="c3"><option value="130">Small<option value="160">Medium<option value="190">Large<option value="240">Huge</select></label></div>
 <small>Keybinds: click one, then press the new key (Esc cancels)</small><div id="kbl"></div><button id="kbr" class="s">Reset keys</button>
+<h3 style="color:#ffd23f">How to play</h3>
+<div id="help">Move: WASD / left stick (keys can be changed above).<br>Aim + shoot: mouse / right stick.<br>Hold your ability key for the ability and your ultimate key for the ultimate: the further you aim, the further placed spells land. Release to cast; Esc / right-click / ✕ cancels.<br>Bushes hide people, houses are dark from outside.<br>💧 Springs heal, 🔮 wells charge your ultimate.</div>
 <button id="cb">Back</button></div>
 
-<div id="ver">v1.7.0</div> <!-- version label: edit this text when you release -->
+<div class="pn h" id="log"><h1 style="font-size:34px">CHANGELOG</h1><div id="lg"></div><button id="lb">Back</button></div> <div id="ver"></div>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
 (()=>{
@@ -113,7 +125,7 @@ let cls=0,S={n:10,m:0},peer,host=false,hc=null,me=-1,st='menu',lobby=[],code='',
 let P=[],B=[],R=[],Bu=[],Bd=[],Wl=[],Gp=[],Sz=[],Zn=[],EV=[],hz=null,md=0,zr=C,zt=0,netT=0,inT=0;
 let Bx=[],bxT=0,mod=0,modT=0; // Bx = power boxes, mod = Showdown modifier (0 none, 1 loot boxes, 2 golden bot)
 const BN=['+60 HP','DAMAGE UP!','SPEED UP!','ULTIMATE +60','GOLD POWER!'],MODN=['','LOOT RUSH: grab the 🎁 boxes for power-ups!','GOLDEN BOT: kill the 👑 for permanent power!'];
-let pvT=0,pvPh=-1,pvB=[],pvD=[],pvH=[0,0,0],pvCd=0; // menu preview state
+let mT=0,mPop=0,pvT=0,pvPh=-1,pvB=[],pvD=[],pvH=[0,0,0],pvCd=0; // menu preview state
 let keys={},mouse={x:0,y:0,d:0},pq=0,pu=0,aimQ=0,aimE=0,aimPid=-1,DT=.016,last=0;
 const tch={m:null,a:null,mx:0,my:0,ax:0,ay:0,on:0};
 
@@ -143,7 +155,8 @@ const CL=[
  ul:{n:'Tornado',x:'PLACE a cyclone that pulls enemies in and shreds them',k:'tornado'},ps:{n:'Windstep',x:'take 10% less damage while moving',k:'wstep'}}];
 
 // ---------- 3. UI ----------
-const CFG=Object.assign({quick:0,btn:1,info:1},(()=>{try{return JSON.parse(localStorage.getItem('storm-cfg'))}catch(e){return null}})()); // saved settings
+const CFG=Object.assign({quick:0,btn:1,info:1,map:190},(()=>{try{return JSON.parse(localStorage.getItem('storm-cfg'))}catch(e){return null}})()); // saved settings
+if(!CFG.mv){CFG.mv=1;CFG.info=0}
 const saveCfg=()=>{try{localStorage.setItem('storm-cfg',JSON.stringify(CFG))}catch(e){}};
 const KD={u:'Move up',l:'Move left',d:'Move down',r:'Move right',q:'Ability',e:'Ultimate'},KDEF={u:'w',l:'a',d:'s',r:'d',q:'e',e:'q'}; // q = ability key, e = ultimate key (defaults: E and Q)
 const KB=Object.assign({},KDEF,CFG.kb);if(!CFG.kbv){CFG.kbv=1;if(KB.q=='q'&&KB.e=='e'){KB.q='e';KB.e='q'}} // old saved defaults follow the swap
@@ -154,10 +167,10 @@ function kbDraw(){const l=$('kbl');l.textContent='';for(const a in KD){const b=d
 function kbCap(e,k){if(!lis)return 0;e.preventDefault();if(k!='escape'){const o=KB[lis];for(const a in KB)if(KB[a]==k)KB[a]=o;KB[lis]=k;saveCfg()}lis=null;kbDraw();return 1} // a key already in use is swapped, so no two actions share a key
 $('kbr').onclick=()=>{Object.assign(KB,KDEF);lis=null;saveCfg();kbDraw()};
 const dds=[...document.querySelectorAll('.dd')];dds.forEach(d=>{d.open=!!CFG.info;d.addEventListener('toggle',()=>{const o=d.open?1:0;if(CFG.info==o)return;CFG.info=o;dds.forEach(x=>x.open=!!o);saveCfg()})}); // the info dropdown remembers open / closed
-$('bset').onclick=()=>{$('c1').value=CFG.quick;$('c2').value=CFG.btn;lis=null;kbDraw();show('cfg')};
-$('cb').onclick=()=>{lis=null;CFG.quick=+$('c1').value;CFG.btn=+$('c2').value;try{localStorage.setItem('storm-cfg',JSON.stringify(CFG))}catch(e){}show('menu')};
-const show=id=>{['menu','lobby','end','cfg'].forEach(x=>$(x).classList.toggle('h',x!=id));$('ab').style.display=id||!CFG.btn?'none':'flex';$('lv').style.display='none';$('sp').style.display='none';$('cx').style.display='none';aimQ=aimE=0};
-const MENU_MSG=$('mg').textContent,msg=t=>toMenu(t);
+$('bset').onclick=()=>{$('c1').value=CFG.quick;$('c2').value=CFG.btn;$('c3').value=CFG.map;lis=null;kbDraw();show('cfg')};
+$('cb').onclick=()=>{lis=null;CFG.quick=+$('c1').value;CFG.btn=+$('c2').value;CFG.map=+$('c3').value;try{localStorage.setItem('storm-cfg',JSON.stringify(CFG))}catch(e){}show('menu')};
+const show=id=>{['menu','lobby','end','cfg','log'].forEach(x=>$(x).classList.toggle('h',x!=id));$('ab').style.display=id||!CFG.btn?'none':'flex';$('lv').style.display='none';$('sp').style.display='none';$('cx').style.display='none';aimQ=aimE=0};
+const MENU_MSG='',msg=t=>toMenu(t);
 // Hand-drawn class badges (canvas -> image) so the picker never depends on emoji fonts
 const LG=[],LC=['#ffd23f','#fff','#fff','#e3d0ff','#fff','#e0c08a','#fff'];
 const LI=[ // [path builder, mode]  mode 0 = filled shape, 1 = lines, 2 = filled + lines, 3 = crescent
@@ -182,8 +195,8 @@ function logoURL(i){
 const logo=(i,z)=>'<img src="'+logoURL(i)+'" width="'+z+'" height="'+z+'" style="vertical-align:middle">';
 const sb=(l,v)=>'<div class="st"><b>'+l+'</b><u><i style="width:'+Math.min(100,v)+'%"></i></u></div>';
 const row=(l,c,n,x)=>'<div><span style="background:'+c+'">'+l+'</span><b>'+n+'</b> — '+x+'</div>';
-function pick(i){cls=i;pvT=0;pvPh=-1;for(const el of[$('cs'),$('cs2')])[...el.children].forEach((x,j)=>x.classList.toggle('s',j==i));const c=CL[i];
-  $('cd').innerHTML=$('cd2').innerHTML='<canvas class="pv" width="360" height="200"></canvas><h3>'+logo(i,30)+' '+c.n+', '+c.t+'</h3><div style="margin:4px 0 6px">'+sb('Health',c.hp/2)+sb('Speed',c.sp/2.8)+sb('Damage',c.d*(c.pl||1)/c.cd*2.4)+'</div>'+
+function pick(i){cls=i;pvT=0;pvPh=-1;mPop=1;for(const el of[$('cs'),$('cs2')])[...el.children].forEach((x,j)=>x.classList.toggle('s',j==i));const c=CL[i];
+  $('hn').innerHTML=logo(i,30)+' <b>'+c.n+'</b><br><small>'+c.t+'</small>';$('cd').innerHTML=$('cd2').innerHTML='<canvas class="pv" width="360" height="200"></canvas><h3>'+logo(i,30)+' '+c.n+', '+c.t+'</h3><div style="margin:4px 0 6px">'+sb('Health',c.hp/2)+sb('Speed',c.sp/2.8)+sb('Damage',c.d*(c.pl||1)/c.cd*2.4)+'</div>'+
     row('MAIN','#ffd23f',c.mn[0],c.mn[1])+row('ABILITY ('+kn(KB.q)+')','#6ee7ff',c.ab.n,c.ab.x)+row('ULTIMATE ('+kn(KB.e)+')','#ff7ac6',c.ul.n,c.ul.x)+row('PASSIVE','#9dff8a',c.ps.n,c.ps.x);
   if(st=='lobby'){if(host){lobby[0].k=i;sendLobby()}else if(hc&&hc.open)hc.send({t:'k',k:i})}} // change wizard while waiting in a lobby
 for(const el of[$('cs'),$('cs2')])CL.forEach((c,i)=>{const d=document.createElement('div');d.className='cc';d.innerHTML='<b>'+logo(i,44)+'</b>'+c.n;d.onclick=()=>pick(i);el.appendChild(d)});pick(0);
@@ -195,7 +208,7 @@ const bc=m=>lobby.forEach(l=>l.conn&&l.conn.open&&l.conn.send(m));        // hos
 const bc2=m=>P.forEach(p=>p.conn&&p.conn.open&&p.conn.send(m));           // host -> players in game
 const sendLobby=()=>{drawLobby();bc({t:'l',l:lobby.map(x=>x.n),k:lobby.map(x=>x.k|0)})};
 const leave=()=>toMenu();
-function toMenu(text){ // back to the main menu without reloading the page (a reload 404s inside previews)
+function toMenu(text){
   const p=peer;st='menu';peer=hc=null;host=false;
   if(p)try{p.destroy()}catch(e){}
   lobby=[];P=[];B=[];Zn=[];EV=[];Q=[];KF=[];Bx=[];mod=modT=0;me=-1;hz=null;md=0;zr=C;zt=0;spec=-1;code='';flash=KO=shk=vg=dieT=0;
@@ -206,7 +219,18 @@ $('bl1').onclick=$('bl2').onclick=$('lv').onclick=leave;
 const modVis=()=>{$('s6').parentElement.style.display=$('s2').value=='0'?'':'none'}; // the Modifiers switch only exists for Showdown
 $('s2').onchange=modVis;
 
-// ---------- 4. Networking (PeerJS, host-authoritative) ----------
+/* Changelog + fullscreen. Add new releases at the TOP of LOG; the version label follows it. */
+const LOG=[
+ ['v1.9.0',['Windows on some buildings: see and shoot through, but you cannot walk through','Bigger minimap, with a size setting','Bushes are clearer when you stand in them']],
+ ['v1.8.0',['New main menu: your hero spins in the middle of the screen','Help text moved to Settings','Distinct map zones: Dune Village (lots of small buildings), Frost Keep (one big hall), Murk Swamp (giant bushes, no buildings), Old Ruins (walls only), Town Centre','Current zone shown in the top bar','Fullscreen button','Changelog']],
+ ['v1.7.0 and earlier',['7 wizards, 3 modes, online rooms + offline bots, biomes, fog of war, power-up modifiers']]];
+$('ver').textContent=LOG[0][0];
+$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
+$('blog').onclick=()=>show('log');$('lb').onclick=()=>show('menu');
+const fsE=document.documentElement,fsR=fsE.requestFullscreen||fsE.webkitRequestFullscreen;
+if(!fsR)$('fs').style.display='none';
+$('fs').onclick=()=>{try{if(document.fullscreenElement||document.webkitFullscreenElement)(document.exitFullscreen||document.webkitExitFullscreen).call(document);else Promise.resolve(fsR.call(fsE)).catch(()=>{})}catch(e){}};
+/* ---------- 4. Networking (PeerJS, host-authoritative) ---------- */
 $('bh').onclick=()=>{host=true;mkRoom()};
 // Offline practice: no network. This tab hosts a lobby of one and bots fill the rest.
 $('bo').onclick=()=>{
@@ -216,6 +240,7 @@ $('bo').onclick=()=>{
   show('lobby');drawLobby();
 };
 function mkRoom(){
+ if(m.t=='j'&&(st!='lobby'||lobby.length>=+$('s1').value)){c.send({t:'x'});setTimeout(()=>c.close(),300);return}
   code=Math.random().toString(36).slice(2,6).toUpperCase();
   peer=new Peer('storm-'+code);
   peer.on('error',e=>{if(e.type=='unavailable-id')mkRoom();else msg('Network error: '+e.type)});
@@ -253,7 +278,7 @@ function onData(m){ // client side
       p.a=a[2];p.hp=a[3];p.k=a[4];p.fl=a[5];p.ac=a[6];p.ch=a[7];p.pt=a[8];p.sc=a[9]});
     B=m.b.map(a=>({x:a[0],y:a[1],c:a[2],a:a[3]/100}));zr=m.z;hz=m.h?{x:m.h[0],y:m.h[1]}:null;
     Zn=m.zn.map(a=>({x:a[0],y:a[1],r:a[2],f:a[3],k:ZK[a[4]]}));m.ev.forEach(e=>evFx(...e));(m.sz||[]).forEach((a,i)=>{if(Sz[i]){Sz[i].gx=a[0];Sz[i].gy=a[1]}});Bx=(m.bx||[]).map(a=>({x:a[0],y:a[1]}));
-  }else if(m.t=='e')finish(m.w);
+  }else if(m.t=='x')msg('Room is full or already started');   else if(m.t=='e')finish(m.w);
 }
 
 // ---------- 5. World ----------
@@ -261,12 +286,33 @@ function rng(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t
 const inBush=q=>Bu.some(b=>Math.hypot(b.x-q.x,b.y-q.y)<b.r);
 const hid=q=>!(q.fl&16)&&((q.fl&2)||inBush(q));                    // hidden in bush / cloak unless it just shot
 const bi=q=>Bd.findIndex(b=>q.x>b.x&&q.x<b.x+b.w&&q.y>b.y&&q.y<b.y+b.h); // building index (-1 = outside)
-function bld(x,y,w,h,ds,dg,o){ // building: 22-thick walls with door gaps; ds = [[side,position 0..1],...] (sides: 0 top, 1 right, 2 bottom, 3 left)
-  const t=22;Bd.push({x,y,w,h,...o});
+function bld(x,y,w,h,ds,dg,o){ // building: 22-thick walls with door gaps; ds = [[side,position 0..1],...] (sides: 0 top, 1 right, 2 bottom, 3 left); about half the buildings also get windows
+  const t=22,wn=WR()<.5;Bd.push({x,y,w,h,...o});
   for(let sd=0;sd<4;sd++){
     const hz=sd%2==0,len=hz?w:h-2*t,x0=hz?x:sd==1?x+w-t:x,y0=hz?(sd?y+h-t:y):y+t;
     const gs=ds.filter(d=>d[0]==sd).map(d=>Math.max(dg/2+4,Math.min(len-dg/2-4,len*d[1]))).sort((a,b)=>a-b);
-    let p=0;for(const c of[...gs,len+dg/2]){const e=c-dg/2;if(e>p+1)Wl.push(hz?{x:x0+p,y:y0,w:e-p,h:t,c:o.c}:{x:x0,y:y0+p,w:t,h:e-p,c:o.c});p=c+dg/2}}
+    let p=0;for(const c of[...gs,len+dg/2]){const e=c-dg/2;if(e>p+1)wseg(hz?{x:x0+p,y:y0,w:e-p,h:t,c:o.c}:{x:x0,y:y0+p,w:t,h:e-p,c:o.c},hz,wn);p=c+dg/2}}
+}
+ let Wn=[],Wc=[],WR=Math.random; // Wn = windows, Wc = everything that blocks walking (walls + windows), WR = the world's seeded random
+function wseg(s,hz,wn){ // one wall piece; long pieces in "windowed" buildings sometimes get a 70px window
+  const L=hz?s.w:s.h;
+  if(wn&&L>=160&&WR()<.6){const wl=70,a=30+WR()*(L-wl-60);
+    if(hz){Wl.push({...s,w:a},{...s,x:s.x+a+wl,w:L-a-wl});Wn.push({x:s.x+a,y:s.y,w:wl,h:s.h})}
+    else{Wl.push({...s,h:a},{...s,y:s.y+a+wl,h:L-a-wl});Wn.push({x:s.x,y:s.y+a,w:s.w,h:wl})}}
+  else Wl.push(s)
+}
+function winSetup(){ // windows block the nav grid (bots) and show on the minimap
+  const lo=v=>Math.max(0,Math.floor(v/GS-.5)+1),hi=v=>Math.min(GN-1,Math.ceil(v/GS-.5)-1),m=MC.getContext('2d'),k=300/W;
+  m.fillStyle='#9fd8ff';
+  for(const w of Wn){for(let j=lo(w.y-26);j<=hi(w.y+w.h+26);j++)for(let i=lo(w.x-26);i<=hi(w.x+w.w+26);i++)Gb[j*GN+i]=1;m.fillRect(w.x*k,w.y*k,Math.max(1.5,w.w*k),Math.max(1.5,w.h*k))}
+}
+const wb=(ax,ay,bx,by)=>{const n=Math.ceil(Math.hypot(bx-ax,by-ay)/8);for(let i=1;i<n;i++){const x=ax+(bx-ax)*i/n,y=ay+(by-ay)*i/n;for(const w of Wn)if(x>w.x-3&&x<w.x+w.w+3&&y>w.y-3&&y<w.y+w.h+3)return 1}return 0}; // does a straight line cross a window?
+function wins(){ // glass pane with a frame and a centre bar
+  g.lineJoin='round';
+  for(const w of Wn){g.fillStyle='rgba(150,215,255,.5)';g.fillRect(w.x,w.y,w.w,w.h);g.strokeStyle=OL;g.lineWidth=5;g.strokeRect(w.x,w.y,w.w,w.h);
+    g.strokeStyle='rgba(255,255,255,.75)';g.lineWidth=3;g.beginPath();
+    if(w.w>w.h){g.moveTo(w.x+w.w/2,w.y+4);g.lineTo(w.x+w.w/2,w.y+w.h-4)}else{g.moveTo(w.x+4,w.y+w.h/2);g.lineTo(w.x+w.w-4,w.y+w.h/2)}
+    g.stroke()}
 }
 function bpaint(q){ // pre-render each building's floor and roof once per world (roof styles: 0 tiles, 1 thatch/corrugated, 2 slate + chimneys, 3 tower pyramid)
   const mk=(w,h,f)=>{const c=document.createElement('canvas');c.width=w|0;c.height=h|0;f(c.getContext('2d'),w,h);return c},
@@ -282,44 +328,76 @@ function bpaint(q){ // pre-render each building's floor and roof once per world 
     else{L(x,0,0,w,h,d,5);L(x,w,0,0,h,d,5);x.strokeStyle=d;x.lineWidth=4;for(let n=1;n<4;n++)x.strokeRect(w*n/8,h*n/8,w*(1-n/4),h*(1-n/4));x.fillStyle=l;x.beginPath();x.arc(w/2,h/2,10,0,7);x.fill()}
     x.strokeStyle=OL;x.lineWidth=8;x.strokeRect(0,0,w,h)})}
 function world(seed){
-  const r=rng(seed);R=[];Bu=[];Gp=[];Bd=[];Wl=[];Sz=[];
+  const r=rng(seed);WR=r;R=[];Bu=[];Gp=[];Bd=[];Wl=[];Wn=[];Sz=[];
   const bush=(x,y,n,s)=>{for(let j=0;j<n;j++)Bu.push({x:x+(r()-.5)*(s||130),y:y+(r()-.5)*(s||130),r:48+r()*25})};
-  // Everything is placed at random spots (no grid). Each footprint is reserved, so buildings never overlap each other, and foliage is kept out of them.
   const spots=[[C-200,C-200,400,400]],ri=(a,b)=>a+(r()*(b-a)|0),pk=a=>a[r()*a.length|0];
-  const spot=(w,h,m)=>{for(let t=0;t<120;t++){const x=C+(r()*2-1)*(A-200)-w/2,y=C+(r()*2-1)*(A-200)-h/2;
-    if(Math.hypot(x+w/2-C,y+h/2-C)+Math.hypot(w,h)/2<A-120&&!spots.some(o=>x<o[0]+o[2]+m&&x+w+m>o[0]&&y<o[1]+o[3]+m&&y+h+m>o[1])){spots.push([x,y,w,h]);return[x,y]}}return null};
-  for(let n=0;n<4;n++){const a=n*1.571+.785;R.push({x:C+Math.cos(a)*95,y:C+Math.sin(a)*95,r:22})} // plaza pillars
-  const TY=[ // building types: hall (big, stone, two rooms), barn (wide, big doors), house, tower (small, stone), cabin (tiny)
-   {n:3,w:[430,540],h:[290,380],dg:100,wc:'#6f6a7a',fc:'#b9b2a2',fs:1,rs:2,rc:['#6b7280','#4a5a78','#5a4a6a','#3f6a64']},
-   {n:2,w:[360,440],h:[190,230],dg:150,wc:'#7a3b2a',fc:'#b89a5a',fs:0,rs:1,rc:['#a8392e','#8a5a2a','#9a4a2a']},
-   {n:6,w:[240,330],h:[200,290],dg:96,wc:'#5a4632',fc:'#9c8461',fs:0,rs:0,rc:['#b5483a','#3f6fa8','#4f8a4a','#7a4fa0','#a85a7a','#2f8f8a']},
-   {n:3,w:[165,185],h:[165,185],dg:90,wc:'#7b8394',fc:'#a0a4ad',fs:1,rs:3,rc:['#5f6c86','#8a5a8a','#4a7a6a']},
-   {n:4,w:[150,190],h:[130,170],dg:90,wc:'#5a3d24',fc:'#a8895e',fs:0,rs:1,rc:['#c98a3b','#b0763a','#a85a3a']}];
-  TY.forEach((T,ty)=>{for(let q=0;q<T.n;q++){
-    const w=ri(...T.w),h=ri(...T.h),p=spot(w,h,80);if(!p)continue;
+  biomes(r);
+  const rc=[0,0,0,0,0];
+  BS.forEach(s=>rc[s.t]++);
+  const spot=(w,h,m,bt,an)=>{
+    for(let t=0;t<400;t++){
+      const cx=an?an[0]+(r()*2-1)*an[2]:C+(r()*2-1)*(A-200),cy=an?an[1]+(r()*2-1)*an[2]:C+(r()*2-1)*(A-200),x=cx-w/2,y=cy-h/2;
+      if(bt!=null&&biomeAt(cx,cy)!=bt)continue;
+      if(Math.hypot(cx-C,cy-C)+Math.hypot(w,h)/2<A-120&&!spots.some(o=>x<o[0]+o[2]+m&&x+w+m>o[0]&&y<o[1]+o[3]+m&&y+h+m>o[1])){spots.push([x,y,w,h]);return[x,y]}
+    }
+    return null;
+  };
+  for(let n=0;n<4;n++){const a=n*1.571+.785;R.push({x:C+Math.cos(a)*95,y:C+Math.sin(a)*95,r:22})}
+  const TY=[
+   {w:[430,540],h:[290,380],dg:100,wc:'#6f6a7a',fc:'#b9b2a2',fs:1,rs:2,rc:['#6b7280','#4a5a78','#5a4a6a','#3f6a64']},
+   {w:[360,440],h:[190,230],dg:150,wc:'#7a3b2a',fc:'#b89a5a',fs:0,rs:1,rc:['#a8392e','#8a5a2a','#9a4a2a']},
+   {w:[240,330],h:[200,290],dg:96,wc:'#5a4632',fc:'#9c8461',fs:0,rs:0,rc:['#b5483a','#3f6fa8','#4f8a4a','#7a4fa0','#a85a7a','#2f8f8a']},
+   {w:[165,185],h:[165,185],dg:90,wc:'#7b8394',fc:'#a0a4ad',fs:1,rs:3,rc:['#5f6c86','#8a5a8a','#4a7a6a']},
+   {w:[150,190],h:[130,170],dg:90,wc:'#5a3d24',fc:'#a8895e',fs:0,rs:1,rc:['#c98a3b','#b0763a','#a85a3a']}];
+  const put=(ty,bt,an)=>{
+    const T=TY[ty],w=ri(...T.w),h=ri(...T.h),p=spot(w,h,70,bt,an);
+    if(!p)return;
     const ds=ty==0?[[0,.28],[2,.28],[1,.5],[3,.5]]:ty==1?[[3,.5],[1,.5],[0,.7]]:ty==2?(r()<.5?[[0,.5],[2,.5]]:[[1,.5],[3,.5]]):[[r()*4|0,.5]];
     bld(p[0],p[1],w,h,ds,T.dg,{c:T.wc,fc:T.fc,fs:T.fs,rs:T.rs,rc:pk(T.rc),ty});
-    if(ty==0){const px=p[0]+w*.62-11,gy=p[1]+h/2-50+(r()-.5)*50;Wl.push({x:px,y:p[1]+22,w:22,h:gy-p[1]-22,c:T.wc},{x:px,y:gy+100,w:22,h:p[1]+h-22-gy-100,c:T.wc})}}}); // halls get an inner wall with a doorway
-  for(const[kind,n]of[[0,6],[1,6],[2,5],[3,5],[4,5]])for(let q=0;q<n;q++){ // hedge mazes, ruins, stone forts, ponds, groves
-    const sz=[300,260,310,330,260][kind],p=spot(sz,sz,60);if(!p)continue;const cx=p[0]+sz/2,cy=p[1]+sz/2,sx=r()<.5?-1:1,sy=r()<.5?-1:1,sw=r()<.5;
-    if(kind==0){const H=(ox,oy,w,h)=>{if(sw){[ox,oy]=[oy,ox];[w,h]=[h,w]}Wl.push({x:cx+ox-w/2,y:cy+oy-h/2,w,h,hd:1})};H(-70,-75,200,34);H(70,75,200,34);bush(cx,cy,2)}
+    if(ty==0){const px=p[0]+w*.62-11,gy=p[1]+h/2-50+(r()-.5)*50;Wl.push({x:px,y:p[1]+22,w:22,h:gy-p[1]-22,c:T.wc},{x:px,y:gy+100,w:22,h:p[1]+h-22-gy-100,c:T.wc})}
+  };
+  const feat=(kind,bt,an)=>{
+    const sz=[300,260,310,330,260,340][kind],p=spot(sz,sz,60,bt,an);
+    if(!p)return;
+    const cx=p[0]+sz/2,cy=p[1]+sz/2,sx=r()<.5?-1:1,sy=r()<.5?-1:1,sw=r()<.5;
+    if(kind==5){for(let i=0;i<6;i++){const hz2=r()<.5,w=hz2?150+r()*130:30,h=hz2?30:150+r()*130;Wl.push({x:cx+(r()-.5)*300-w/2,y:cy+(r()-.5)*300-h/2,w,h,st:1})}}
+    else if(kind==0){const H=(ox,oy,w,h)=>{if(sw){[ox,oy]=[oy,ox];[w,h]=[h,w]}Wl.push({x:cx+ox-w/2,y:cy+oy-h/2,w,h,hd:1})};H(-70,-75,200,34);H(70,75,200,34);bush(cx,cy,2)}
     else if(kind==1){const hx=sx>0?cx-120:cx-80,vx=sx>0?cx-120:cx+90,hy=sy>0?cy-100:cy+70,vy=sy>0?cy-100:cy-80;Wl.push({x:hx,y:hy,w:200,h:30,st:1},{x:vx,y:vy,w:30,h:180,st:1});R.push({x:cx-sx*20,y:cy-sy*10,r:26});bush(cx+sx*90,cy+sy*90,2)}
     else if(kind==2){const gt=r()*6|0;for(let k=0;k<6;k++)if(k!=gt){const a=k/6*6.283+.3;R.push({x:cx+Math.cos(a)*105,y:cy+Math.sin(a)*105,r:22+r()*8})}bush(cx,cy,1)}
     else if(kind==3)R.push({x:cx,y:cy,r:105+r()*45,w:1});
-    else{bush(cx-70,cy-70,2);bush(cx+70,cy+70,2);R.push({x:cx+60,y:cy-60,r:30})}}
-  for(let n=0;n<34;n++)for(let t=0;t<20;t++){const a=r()*6.283,q=Math.sqrt(r())*(A-120),x=C+Math.cos(a)*q,y=C+Math.sin(a)*q; // loose bushes, never next to a footprint
-    if(!spots.some(o=>x>o[0]-110&&x<o[0]+o[2]+110&&y>o[1]-110&&y<o[1]+o[3]+110)){bush(x,y,2,50);break}}
-  Bu=Bu.filter(b=>!Bd.some(q=>b.x>q.x-b.r&&b.x<q.x+q.w+b.r&&b.y>q.y-b.r&&b.y<q.y+q.h+b.r)&&!R.some(o=>o.w&&Math.hypot(o.x-b.x,o.y-b.y)<o.r+b.r*.6)); // final sweep: no foliage in buildings or ponds
+    else{bush(cx-70,cy-70,2);bush(cx+70,cy+70,2);R.push({x:cx+60,y:cy-60,r:30})}
+  };
+  const anch=bt=>{for(let t=0;t<400;t++){const x=C+(r()*2-1)*(A-400),y=C+(r()*2-1)*(A-400);if(Math.hypot(x-C,y-C)<A-300&&biomeAt(x,y)==bt)return[x,y]}return null};
+  const giant=(x,y)=>{Bu.push({x,y,r:150+r()*40});for(let i=0;i<7;i++){const a=i*.9+r(),d=150+r()*70;Bu.push({x:x+Math.cos(a)*d,y:y+Math.sin(a)*d,r:70+r()*40})}};
+  [3,3,2,2,2,1].forEach(t=>put(t,4,[C,C,620]));
+  for(let bt=0;bt<4;bt++){
+    for(let k=0;k<rc[bt];k++){
+      const an=anch(bt);
+      if(!an)continue;
+      const at=m=>[an[0],an[1],m];
+      if(bt==0){[4,4,4,4,4,3,2,2,4].forEach(t=>put(t,0,at(650)));feat(4,0,at(800))}
+      else if(bt==1){put(0,1,at(150));feat(2,1,at(550));feat(2,1);feat(3,1);feat(4,1)}
+      else if(bt==2){const q=spot(460,460,40,2,at(300))||[an[0]-230,an[1]-230];giant(q[0]+230,q[1]+230);feat(3,2);feat(3,2);feat(0,2);feat(0,2);feat(4,2)}
+      else{for(let i=0;i<4;i++)feat(1,3);feat(2,3);feat(2,3);for(let i=0;i<3;i++)feat(5,3);feat(0,3)}
+    }
+  }
+  for(let n=0;n<34;n++){
+    for(let t=0;t<20;t++){
+      const a=r()*6.283,q=Math.sqrt(r())*(A-120),x=C+Math.cos(a)*q,y=C+Math.sin(a)*q;
+      if(biomeAt(x,y)==0&&r()<.8)continue;
+      if(!spots.some(o=>x>o[0]-110&&x<o[0]+o[2]+110&&y>o[1]-110&&y<o[1]+o[3]+110)){bush(x,y,2,50);break}
+    }
+  }
+  Bu=Bu.filter(b=>!Bd.some(q=>b.x>q.x-b.r&&b.x<q.x+q.w+b.r&&b.y>q.y-b.r&&b.y<q.y+q.h+b.r)&&!R.some(o=>o.w&&Math.hypot(o.x-b.x,o.y-b.y)<o.r+b.r*.6));
   Bd.forEach(bpaint);
-  biomes(r);
   const free=d=>{let x,y,t=0;do{const a=r()*6.283,q=Math.sqrt(r())*d;x=C+Math.cos(a)*q;y=C+Math.sin(a)*q}while((Wl.some(b=>x>b.x-40&&x<b.x+b.w+40&&y>b.y-40&&y<b.y+b.h+40)||R.some(o=>Math.hypot(o.x-x,o.y-y)<o.r+60))&&++t<40);return[x,y]};
-  for(let i=0;i<7;i++){const[x,y]=free(A-400);Sz.push({x,y,r:70,k:i<4?'spring':'mana'})} // healing springs / ultimate wells
-  scatter(r);grid();buildMini();
+  for(let i=0;i<7;i++){const[x,y]=free(A-400);Sz.push({x,y,r:70,k:i<4?'spring':'mana'})}
+  scatter(r);Wc=Wl.concat(Wn);grid();buildMini();winSetup();
 }
 
 // ---------- Biomes: big warped Voronoi regions, so borders are wavy but clear ----------
 // 0 desert  1 snow  2 swamp  3 meadow  4 plains (the town centre stays normal grass)
-const BRGB=[[217,194,122],[230,240,245],[47,74,60],[116,176,78],[60,90,60]];
+const ZN=['Dune Village','Frost Keep','Murk Swamp','Old Ruins','Town Centre']; const BRGB=[[217,194,122],[230,240,245],[47,74,60],[116,176,78],[60,90,60]];
 let BS=[],BW={},BC=null,MC=null,Dc=[];     // region seeds, warp params, biome canvas, minimap layer, decoration
 const biomeAt=(x,y)=>{
   const wx=x+BW.a*Math.sin(y*.004+BW.p)+BW.b*Math.sin(y*.011+BW.q),wy=y+BW.a*Math.sin(x*.004+BW.q)+BW.b*Math.sin(x*.011+BW.p);
@@ -332,7 +410,7 @@ function biomes(r){
   BS=[{x:C,y:C,t:4}];
   for(let i=0;i<6;i++){const a=i*1.0472+(r()-.5)*.5,d=A*(.64+r()*.1);BS.push({x:C+Math.cos(a)*d,y:C+Math.sin(a)*d,t:ty[i]})}
   // paint once into a 1000x1000 canvas (4 world units per pixel); pixels next to another biome are darkened = border line
-  const N=1000,K=W/N,fx=new Float32Array(N),fy=new Float32Array(N),T=new Uint8Array(N*N).fill(255);
+  const N=500,K=W/N,fx=new Float32Array(N),fy=new Float32Array(N),T=new Uint8Array(N*N).fill(255);
   for(let i=0;i<N;i++){const v=(i+.5)*K;fx[i]=BW.a*Math.sin(v*.004+BW.p)+BW.b*Math.sin(v*.011+BW.q);fy[i]=BW.a*Math.sin(v*.004+BW.q)+BW.b*Math.sin(v*.011+BW.p)}
   for(let j=0;j<N;j++)for(let i=0;i<N;i++){
     const x=(i+.5)*K,y=(j+.5)*K;if((x-C)*(x-C)+(y-C)*(y-C)>(A-60)*(A-60))continue;
@@ -364,10 +442,12 @@ function buildMini(){ // static minimap layer: biomes + houses, walls, bushes, r
 // ---------- 6. Navigation & line of sight ----------
 let Gb=new Uint8Array(GN*GN);const PAR=new Int32Array(GN*GN),DX=[1,-1,0,0,1,1,-1,-1],DY=[0,0,1,-1,1,-1,1,-1];
 const gb=(x,y)=>x<0||y<0||x>=W||y>=W||Gb[(y/GS|0)*GN+(x/GS|0)];
-function grid(){ // blocked cells = walls, rocks, ponds-free rim (inflated by body size)
+function grid(){ // blocked cells = rim, rocks / ponds, walls (inflated by body size); each obstacle only marks nearby cells
   Gb=new Uint8Array(GN*GN);
-  for(let j=0;j<GN;j++)for(let i=0;i<GN;i++){const x=(i+.5)*GS,y=(j+.5)*GS;
-    Gb[j*GN+i]=Math.hypot(x-C,y-C)>A-40||R.some(r=>Math.hypot(x-r.x,y-r.y)<r.r+26)||Wl.some(w=>x>w.x-26&&x<w.x+w.w+26&&y>w.y-26&&y<w.y+w.h+26)?1:0}
+  const lo=v=>Math.max(0,Math.floor(v/GS-.5)+1),hi=v=>Math.min(GN-1,Math.ceil(v/GS-.5)-1); // range of cells whose centres lie strictly inside
+  for(let j=0;j<GN;j++)for(let i=0;i<GN;i++)if(Math.hypot((i+.5)*GS-C,(j+.5)*GS-C)>A-40)Gb[j*GN+i]=1;
+  for(const w of Wl)for(let j=lo(w.y-26);j<=hi(w.y+w.h+26);j++)for(let i=lo(w.x-26);i<=hi(w.x+w.w+26);i++)Gb[j*GN+i]=1;
+  for(const r of R){const m=r.r+26;for(let j=lo(r.y-m);j<=hi(r.y+m);j++)for(let i=lo(r.x-m);i<=hi(r.x+m);i++)if(Math.hypot((i+.5)*GS-r.x,(j+.5)*GS-r.y)<m)Gb[j*GN+i]=1}
 }
 function clear(x0,y0,x1,y1){const n=Math.ceil(Math.hypot(x1-x0,y1-y0)/12);for(let i=1;i<=n;i++)if(gb(x0+(x1-x0)*i/n,y0+(y1-y0)*i/n))return 0;return 1}
 function freePt(x0,y0,r){let x,y,n=0;do{const a=Math.random()*6.283,q=Math.sqrt(Math.random())*r;x=x0+Math.cos(a)*q;y=y0+Math.sin(a)*q}while(gb(x,y)&&++n<25);return{x,y}}
@@ -404,7 +484,7 @@ function los(ax,ay,bx,by,rk){ // line of sight; rk=1 also blocked by rocks (what
 }
 // can the viewer m see player p? (range, bushes, buildings, walls)
 const seen=(p,m)=>{if(p===m)return 1;const d=Math.hypot(p.x-m.x,p.y-m.y);return d<V&&!(hid(p)&&d>130)&&!(bi(p)>=0&&bi(p)!=bi(m))&&los(m.x,m.y,p.x,p.y)};
-const cam=()=>{const m=P[me]||{x:C,y:C,hp:1};if(m.hp>0||dieT>0)return m;const t=P[spec];return t&&t.hp>0?t:P.find(p=>p.hp>0)||m}; // dead: follow the spectated player
+const cam=()=>{const m=P[me]||{x:C,y:C,hp:1};if(m.hp>0||dieT>0||md)return m;const t=P[spec];return t&&t.hp>0?t:P.find(p=>p.hp>0)||m}; // dead: follow the spectated player
 
 // ---------- 7. Simulation (host) ----------
 function mkPlayer(l,i){
@@ -434,10 +514,10 @@ function hit(p,d,by){
     if(CL[p.cl].ps.k=='frost'&&o&&o!==p&&Math.hypot(o.x-p.x,o.y-p.y)<220)o.sl=Math.max(o.sl,.8); // Permafrost
     p.ch=Math.min(100,p.ch+d*.4);if(o&&o!==p)o.ch=Math.min(100,o.ch+d*.8)} // fighting charges the ultimate
   d*=CL[p.cl].ps.k=='skin'||(CL[p.cl].ps.k=='wstep'&&Math.hypot(p.mx,p.my)>.1)?.9:1;p.hp-=d;p.rl=4;
-  if(p.hp<=0&&by!=null&&o){o.k++;if(p.gold){o.gb=(o.gb||0)+1;o.hp=CL[o.cl].hp;ev(4,o.x,o.y,4,0)}if(CL[o.cl].ps.k=='ash')o.hp=Math.min(CL[o.cl].hp,o.hp+30)}
+  if(p.hp<=0&&by!=null&&o&&o!==p){o.k++;if(p.gold){o.gb=(o.gb||0)+1;o.hp=CL[o.cl].hp;ev(4,o.x,o.y,4,0)}if(CL[o.cl].ps.k=='ash')o.hp=Math.min(CL[o.cl].hp,o.hp+30)}
 }
-function respawn(p){const a=Math.random()*6.283,q=Math.sqrt(Math.random())*(A-250);
-  Object.assign(p,{x:C+Math.cos(a)*q,y:C+Math.sin(a)*q,hp:CL[p.cl].hp,rl:0,sl:0,vl:0,ch:0,bn:0,fz:0,bl:0,sk:0})}
+function respawn(p){const q=freePt(C,C,A-250);
+  Object.assign(p,{x:q.x,y:q.y,hp:CL[p.cl].hp,rl:0,sl:0,vl:0,ch:0,bn:0,fz:0,bl:0,sk:0,pa:0})}
 function ev(t,x,y,a,b){EV.push([t,x|0,y|0,a|0,b|0]);evFx(t,x,y,a,b)} // visual event: applied locally + sent to clients
 function bolt(b,q){ // a bolt hit q: damage + the wizard's on-hit effect
   const o=P[b.o],e=b.e,d=b.d;hit(q,d,b.o);
@@ -452,12 +532,12 @@ function strike(p,i){ // Storm Call: lightning on the nearest visible enemy
   if(t){hit(t,9,i);ev(3,t.x,t.y,0,p.cl)}
 }
 // where Shadow Step really lands (never through walls / rocks) and how far Thunder Dash really gets; the aim preview uses the same functions
-const stepTo=(ox,oy,a)=>{for(let L=260;L>0;L-=30){const x=ox+Math.cos(a)*L,y=oy+Math.sin(a)*L;if(!gb(x,y)&&los(ox,oy,x,y,1))return{x,y}}return null};
+const stepTo=(ox,oy,a)=>{for(let L=260;L>0;L-=30){const x=ox+Math.cos(a)*L,y=oy+Math.sin(a)*L;if(!gb(x,y)&&los(ox,oy,x,y,1)&&!wb(ox,oy,x,y))return{x,y}}return null};
 const dashEnd=(ox,oy,a,L)=>{let t=L;for(;t>0;t-=10)if(los(ox,oy,ox+Math.cos(a)*(t+18),oy+Math.sin(a)*(t+18),1))break;return Math.max(0,t)};
 function bmove(b,dt){ // straight flight, or a snaking / zig-zag / helix path (w=[amplitude,frequency]) around the aim line
   b.x+=b.vx*dt;b.y+=b.vy*dt;
   if(b.w){b.g=(b.g||0)+dt;const o=Math.sin(b.g*b.w[1]+(b.ph||0))*b.w[0]*Math.min(1,b.g*5),dl=o-(b.po||0),s=Math.hypot(b.vx,b.vy)||1;b.po=o;b.x+=-b.vy/s*dl;b.y+=b.vx/s*dl}}
-function push(q,ux,uy,d){const e=Math.hypot(ux,uy)||1,nx=q.x+ux/e*d,ny=q.y+uy/e*d;if(!gb(nx,ny)&&los(q.x,q.y,nx,ny,1)){q.x=nx;q.y=ny}} // knock-back never goes through walls
+function push(q,ux,uy,d){const e=Math.hypot(ux,uy)||1,nx=q.x+ux/e*d,ny=q.y+uy/e*d;if(!gb(nx,ny)&&los(q.x,q.y,nx,ny,1)&&!wb(q.x,q.y,nx,ny)){q.x=nx;q.y=ny}} // knock-back never goes through walls
 const plc=(p,mx,mn)=>{const d=Math.max(mn,Math.min(mx,p.pd||230));return[p.x+Math.cos(p.a)*d,p.y+Math.sin(p.a)*d]}; // placed spells land where YOU aim (distance = how far the cursor / stick is)
 function cast(p,i,u){
   const k=u.k,dx=Math.cos(p.a),dy=Math.sin(p.a),en=P.filter(q=>q!==p&&q.hp>0),near=r=>en.filter(q=>Math.hypot(q.x-p.x,q.y-p.y)<r);
@@ -471,7 +551,7 @@ function cast(p,i,u){
     Zn.push({x:t?t.x:p.x+dx*380,y:t?t.y:p.y+dy*380,r:150,t:1.1,T:1.1,k:'met',o:i})}
   else if(k=='blizzard')Zn.push({x:p.x,y:p.y,r:200,t:4.5,T:4.5,k:'frost',o:i,fw:1});
   else if(k=='flare'){near(320).forEach(q=>{hit(q,30,i);q.bl=2.5});p.hp=Math.min(CL[p.cl].hp,p.hp+40);ev(1,p.x,p.y,320,p.cl)}
-  else if(k=='rift'){near(380).forEach(q=>{if(!los(p.x,p.y,q.x,q.y,1))return;const d=Math.hypot(q.x-p.x,q.y-p.y)||1,L=Math.max(0,d-90);q.x-=(q.x-p.x)/d*L;q.y-=(q.y-p.y)/d*L;hit(q,20,i);q.sl=1.5});ev(1,p.x,p.y,380,p.cl)}
+    else if(k=='rift'){near(380).forEach(q=>{if(!los(p.x,p.y,q.x,q.y,1)||wb(p.x,p.y,q.x,q.y))return;const d=Math.hypot(q.x-p.x,q.y-p.y)||1,L=Math.max(0,d-90);q.x-=(q.x-p.x)/d*L;q.y-=(q.y-p.y)/d*L;hit(q,20,i);q.sl=1.5});ev(1,p.x,p.y,380,p.cl)}
   else if(k=='storm'){p.sk=3;p.sj=0}
   else if(k=='quake'){near(170).forEach(q=>{hit(q,14,i);push(q,q.x-p.x,q.y-p.y,90);q.sl=Math.max(q.sl,.8)});ev(1,p.x,p.y,170,p.cl)}
   else if(k=='gust'){near(220).forEach(q=>push(q,q.x-p.x,q.y-p.y,140));p.bv=2.5;ev(1,p.x,p.y,220,p.cl)}
@@ -512,7 +592,7 @@ function step(dt){
     else{p.x+=p.mx*sp*dt;p.y+=p.my*sp*dt}
     // collisions: rocks, walls, arena rim
     for(const r of R){const dx=p.x-r.x,dy=p.y-r.y,d=Math.hypot(dx,dy),m=r.r+18;if(d<m&&d>0){p.x=r.x+dx/d*m;p.y=r.y+dy/d*m}}
-    for(const w of Wl){const cx=Math.max(w.x,Math.min(p.x,w.x+w.w)),cy=Math.max(w.y,Math.min(p.y,w.y+w.h)),ex=p.x-cx,ey=p.y-cy,e=Math.hypot(ex,ey);
+    for(const w of Wc){const cx=Math.max(w.x,Math.min(p.x,w.x+w.w)),cy=Math.max(w.y,Math.min(p.y,w.y+w.h)),ex=p.x-cx,ey=p.y-cy,e=Math.hypot(ex,ey);
       if(e>0&&e<18){p.x=cx+ex/e*18;p.y=cy+ey/e*18}
       else if(!e){const a=p.x-w.x,b=w.x+w.w-p.x,t=p.y-w.y,u=w.y+w.h-p.y,m=Math.min(a,b,t,u);if(m==a)p.x=w.x-18;else if(m==b)p.x=w.x+w.w+18;else if(m==t)p.y=w.y-18;else p.y=w.y+w.h+18}}
     const dx=p.x-C,dy=p.y-C,d=Math.hypot(dx,dy);if(d>A-10){p.x=C+dx/d*(A-10);p.y=C+dy/d*(A-10)}
@@ -642,7 +722,7 @@ const SF={
 function sfx(k,x,y,c){ // volume falls off with distance from the camera; each sound type is rate-limited
   if(mut||!AX)return;const n=performance.now();if(n-(sfxT[k]||0)<35)return;
   const m=cam(),q=x==null?1:Math.max(0,1-Math.hypot(x-m.x,y-m.y)/850);if(q>.04){sfxT[k]=n;SF[k](q,c)}}
-addEventListener('click',e=>{if(e.target.tagName=='BUTTON'&&e.target.id!='mt')sfx('click')});
+addEventListener('click',e=>{if(e.target.tagName=='BUTTON'){if(e.target.id!='mt')sfx('click');e.target.blur()}});
 $('mt').onclick=()=>{mut^=1;$('mt').textContent=mut?'🔇':'🔊'};
 
 // ---------- 10. Effects (derived from state changes, so host and clients match) ----------
@@ -665,7 +745,7 @@ function fx(dt){
   P.forEach((p,i)=>{
     if(p._h==null){Object.assign(p,{_h:p.hp,_k:p.k,_s:p.sc,_a:p.ac,_c:p.ch,hf:0,da:0,px:p.x,py:p.y})}
     const sn=i==me||seen(p,m),d=p._h-p.hp,c=CL[p.cl],F=p.fl|0;
-    p.hf=Math.max(0,p.hf-dt);p.mv=Math.hypot(p.x-p.px,p.y-p.py)>.6;p.px=p.x;p.py=p.y;
+    p.hf=Math.max(0,p.hf-dt);p.hl=Math.max(0,(p.hl||0)-dt);if(d<0&&p._h>0&&p.hp>0)p.hl=.4;p.mv=Math.hypot(p.x-p.px,p.y-p.py)>.6;p.px=p.x;p.py=p.y;
     if(d>0&&sn){p.hf=d<2.5?.02:.12;
       if(d>=2.5){if(i==me||Math.hypot(p.x-m.x,p.y-m.y)<320)num(p.x,p.y-38,Math.round(d),i==me?'#ff6b6b':'#ffe066',d>=30?24:17);
         spark(p.x,p.y,i==me?'#ff4d4d':'#fff',4,220,.3,4);sfx(i==me?'hurt':'hit',p.x,p.y);if(i==me){shk=Math.min(8,shk+1+d*.15);vg=Math.min(.55,vg+.3)}}}
@@ -681,7 +761,8 @@ function fx(dt){
     if(i==me&&p._a>0&&p.ac<=0&&p.hp>0)sfx('rdy');
     if(p.hp>0&&p._h>0&&p._c-p.ch>50){sfx('ult',p.x,p.y);if(sn){Q.push({k:'r',x:p.x,y:p.y,R:170,t:.6,l:.6,c:'#ff7ac6'});spark(p.x,p.y,'#ff7ac6',18,320,.6,6)}}
     if(i==me&&p.ch>=100&&p._c<100){num(p.x,p.y-50,'ULTIMATE READY!','#ff7ac6',18);sfx('ready')}
-    if(sn&&p.hp>0){ // status particles
+    if(sn&&p.hp>0){ // status particles       
+     if(p.hl>0&&r()<dt*12)Q.push({k:'t',s:'+',z:16+(r()*8|0),x:p.x+(r()-.5)*36,y:p.y+(r()-.5)*24,vy:-45,t:.8,l:.8,c:'#8dffb0'});
       if(F&32&&r()<dt*30)Q.push({k:'c',x:p.x+(r()-.5)*18,y:p.y,vy:-70,t:.5,l:.5,c:r()<.5?'#ff9d3a':'#ff4d2e',r:6});
       if(F&64&&r()<dt*14)Q.push({k:'c',x:p.x+(r()-.5)*40,y:p.y+(r()-.5)*40,t:.4,l:.4,c:'#e6f9ff',r:4});
       if(F&256&&r()<dt*3)num(p.x,p.y-30,'💫','#fff',20)}
@@ -736,6 +817,12 @@ function statusIcons(p){ // icons above the name + a pulsing ring while burning
   if(ic){g.font='16px sans-serif';g.fillText(ic,p.x,p.y-56)}
   if(F&32){g.strokeStyle='#ff8a3d';g.lineWidth=3;g.globalAlpha=.55+.25*Math.sin(performance.now()/120);g.beginPath();g.arc(p.x,p.y,30,0,7);g.stroke();g.globalAlpha=1}
 }
+ function healAura(p){ // soft green glow + dashed ring (Sanctuary's look) around anyone who is healing
+  const T=performance.now()/1000;g.save();g.globalAlpha=Math.min(1,p.hl*3);
+  const q=g.createRadialGradient(p.x,p.y,6,p.x,p.y,40);q.addColorStop(0,'rgba(109,255,154,.45)');q.addColorStop(1,'rgba(109,255,154,0)');
+  g.fillStyle=q;g.beginPath();g.arc(p.x,p.y,40,0,7);g.fill();
+  g.strokeStyle='#6dff9a';g.lineWidth=3;g.setLineDash([9,7]);g.lineDashOffset=-T*30;g.beginPath();g.arc(p.x,p.y,32+2*Math.sin(T*6),0,7);g.stroke();
+  g.restore()}
 function ground(m,w,h,s){ // flat ground layers: biomes, decoration, ponds, springs / wells, spell zones
   g.drawImage(BC,0,0,W,W);decor(m,w,h,s);
   g.textAlign='center';
@@ -750,7 +837,7 @@ function padsAndZones(pa,za){ // drawn under the roofs, then again over them (so
     if(z.k=='met'){const p=1-fr;g.strokeStyle='#ff3b3b';g.lineWidth=5;g.beginPath();g.arc(z.x,z.y,z.r,0,7);g.stroke();g.fillStyle='rgba(255,70,40,'+(.12+.28*p)+')';g.beginPath();g.arc(z.x,z.y,z.r*p,0,7);g.fill();g.font='bold 44px sans-serif';g.fillStyle='#fff';g.fillText('☄️',z.x,z.y-90*fr+14)}
     else{const c={fire:'255,140,40',frost:'140,220,255',heal:'90,255,140',wind:'190,240,230'}[z.k];g.fillStyle='rgba('+c+','+(za+.06*Math.sin(T*4))+')';g.strokeStyle='rgba('+c+',.85)';g.lineWidth=3;g.beginPath();g.arc(z.x,z.y,z.r*Math.min(1,fr/.15),0,7);g.fill();g.stroke()}}
 }
-function bushes(){for(const[col,dr,ox,oy,k]of[[OL,4,0,0,1],['#3da048',0,0,0,1],['#56c25f',0,-.25,-.3,.5]])for(const q of Bu){g.fillStyle=col;g.beginPath();g.arc(q.x+ox*q.r,q.y+oy*q.r,q.r*k+dr,0,7);g.fill()}}
+function bushes(f){for(const[col,dr,ox,oy,k]of[[OL,4,0,0,1],['#3da048',0,0,0,1],['#56c25f',0,-.25,-.3,.5]])for(const q of Bu){if(f&&!f(q))continue;g.fillStyle=col;g.beginPath();g.arc(q.x+ox*q.r,q.y+oy*q.r,q.r*k+dr,0,7);g.fill()}}
 function walls(){ // outlines first, then fills, so pieces of one wall never show seams
   g.lineJoin='round';g.strokeStyle=OL;g.lineWidth=10;
   for(const w of Wl)g.strokeRect(w.x,w.y,w.w,w.h);
@@ -791,7 +878,7 @@ function aimLane(){ // your attack's real path: one lane per projectile (Frost f
     g.restore()}
 }
 const PV={pool:['at',300,95,40],quake:['self',170],gust:['self',220],slide:['at',480,170,100],tornado:['at',420,150,60],nova:['self',150],sanct:['self',110],blizzard:['self',200],flare:['self',320],rift:['self',380],storm:['self',520],zap:['line',130],step:['line',260],meteor:['meteor']};
-const mtPos=p=>{let t=null,bd=.45;for(const q of P)if(q!==p&&q.hp>0){const d=Math.hypot(q.x-p.x,q.y-p.y),a=Math.atan2(q.y-p.y,q.x-p.x)-p.a,n=Math.abs(Math.atan2(Math.sin(a),Math.cos(a)));if(d<650&&n<bd){bd=n;t=q}}return{x:t?t.x:p.x+Math.cos(p.a)*380,y:t?t.y:p.y+Math.sin(p.a)*380}};
+const mtPos=(p,aim)=>{let t=null,bd=.45;for(const q of P)if(q!==p&&q.hp>0){const d=Math.hypot(q.x-p.x,q.y-p.y),a=Math.atan2(q.y-p.y,q.x-p.x)-aim,n=Math.abs(Math.atan2(Math.sin(a),Math.cos(a)));if(d<650&&n<bd){bd=n;t=q}}return{x:t?t.x:p.x+Math.cos(aim)*380,y:t?t.y:p.y+Math.sin(aim)*380}};
 function aimPreview(){ // while Q / E is held: show where the ability / ultimate will land (white = ready, red = not ready); it fires on release
   const q=P[me];if(st!='play'||!q||q.hp<=0||!(aimQ||aimE))return;
   const c=CL[q.cl],u=aimQ?c.ab:c.ul,ok=aimQ?q.ac<=0:q.ch>=100,I=input(),a=I.a,dx=Math.cos(a),dy=Math.sin(a),pv=PV[u.k],col=ok?'#ffffff':'#ff6b6b';
@@ -844,7 +931,7 @@ function drawFx(){ // bolts and particles
 }
 function overlay(m,w,h){ // screen space: light, minimap, vignette, bars, kill feed, warnings
   if(m.cl==null)return;light(m,w,h);
-  const ms=Math.min(150,w*.3),x0=w-ms-10,y0=56,k=ms/2/A,cx=x0+ms/2,cy=y0+ms/2,mp=(x,y)=>[cx+(x-C)*k,cy+(y-C)*k];
+  const ms=Math.min(CFG.map,w*.3,Math.max(90,h-216)),x0=w-ms-10,y0=56,k=ms/2/A,cx=x0+ms/2,cy=y0+ms/2,mp=(x,y)=>[cx+(x-C)*k,cy+(y-C)*k],bt=(y0+ms+12)+'px'; if($('ab').style.top!=bt)$('ab').style.top=$('cx').style.top=bt; // keep the ability buttons under the map,x0=w-ms-10,y0=56,k=ms/2/A,cx=x0+ms/2,cy=y0+ms/2,mp=(x,y)=>[cx+(x-C)*k,cy+(y-C)*k];
   g.save();g.beginPath();g.arc(cx,cy,ms/2,0,7);g.clip();
   g.fillStyle='#10131ccc';g.fillRect(x0,y0,ms,ms);cir(cx,cy,ms/2,'#cdb877');g.drawImage(MC,x0,y0,ms,ms);
   for(const z of Sz){const[a,b]=mp(z.x,z.y);cir(a,b,Math.max(2.5,z.r*k),z.k=='spring'?'#3fc7e8':'#8a5cff')} // live pads
@@ -876,7 +963,7 @@ function overlay(m,w,h){ // screen space: light, minimap, vignette, bars, kill f
   if(KO>0){g.save();g.globalAlpha=Math.min(1,KO*2);g.font='900 '+(56+20*Math.max(0,KO-1))+'px system-ui';g.textAlign='center';g.lineWidth=8;g.strokeStyle=OL;g.fillStyle='#ffd23f';g.strokeText('KO!',w/2,h*.3);g.fillText('KO!',w/2,h*.3);g.restore()}
 }
 function draw(){
-  const w=cv.width=innerWidth,h=cv.height=innerHeight,s=Math.min(w,h)/650,m=cam();
+  if(cv.width!=innerWidth)cv.width=innerWidth;if(cv.height!=innerHeight)cv.height=innerHeight; g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.setLineDash([]);g.lineCap='butt';g.lineJoin='miter';g.textAlign='start'; const w=cv.width,h=cv.height,s=Math.min(w,h)/650,m=cam();
   fx(DT);
   g.fillStyle='#10131c';g.fillRect(0,0,w,h);
   g.save();g.translate(w/2+(Math.random()-.5)*shk,h/2+(Math.random()-.5)*shk);g.scale(s,s);g.translate(-m.x,-m.y);
@@ -884,17 +971,17 @@ function draw(){
   ground(m,w,h,s);
   if(md==2&&hz){g.fillStyle='#ffd23f33';g.strokeStyle='#ffd23f';g.lineWidth=6;g.beginPath();g.arc(hz.x,hz.y,170,0,7);g.fill();g.stroke()}
   for(const q of Bd)g.drawImage(q.fr,q.x,q.y);
-  bushes();walls();roofs(m);
+  bushes();walls();wins();roofs(m);
   g.textAlign='center';
   P.forEach((p,i)=>{
     if(p.hp<=0||i!=me&&!seen(p,m))return;
     if(p.fl&2)g.globalAlpha=.4;
-    person(p,i==me);
+    if(p.hl>0)healAura(p);person(p,i==me);
     if(p.hf>0){g.globalAlpha=Math.min(.7,p.hf*6);cir(p.x,p.y,21,'#fff');g.globalAlpha=p.fl&2?.4:1}
     g.fillStyle='#000a';g.fillRect(p.x-22,p.y-34,44,7);g.fillStyle=p.hp>CL[p.cl].hp*.35?'#4cff7a':'#ff4d4d';g.fillRect(p.x-22,p.y-34,44*p.hp/CL[p.cl].hp,7);
     g.fillStyle='#fff';g.font='bold 14px sans-serif';g.fillText(p.n,p.x,p.y-40);statusIcons(p);g.globalAlpha=1;
   });
-  g.globalAlpha=.5;bushes();g.globalAlpha=1; // bushes drawn again over players, see-through
+  g.globalAlpha=.5;bushes(q=>Math.hypot(q.x-m.x,q.y-m.y)>=q.r);g.globalAlpha=.2;bushes(q=>Math.hypot(q.x-m.x,q.y-m.y)<q.r);g.globalAlpha=1; // bushes drawn again over players, see-through
   if(m===P[me]&&m.hp>0&&inBush(m)&&!(m.fl&16)){g.font='bold 13px sans-serif';g.lineWidth=3;g.strokeStyle='#000';g.fillStyle='#b8ffb8';g.strokeText('hidden',m.x,m.y+46);g.fillText('hidden',m.x,m.y+46)}
   drawFx();
   if(md==0){g.fillStyle='#ff1e1e55';g.beginPath();g.rect(-600,-600,W+1200,W+1200);g.moveTo(C+zr,C);g.arc(C,C,zr,0,7);g.fill('evenodd');
@@ -913,13 +1000,14 @@ function hud(){
   $('sp').style.display=dead?'flex':'none';$('cx').style.display=(aimQ||aimE)&&st=='play'?'block':'none';
   if(dead){if(!P[spec]||P[spec].hp<=0||spec==me)cyc(1);if(P[spec])$('spN').textContent='Watching: '+P[spec].n}
   $('hud').textContent=(modT>0&&mod?MODN[mod]+' · ':'')+(md==0?'Alive '+al+' · ':md==1?'First to 10 kills (best '+top+') · ':'Hold the zone (best '+top+'/100) · ')+'Kills '+(p?p.k:0)+(md==2?' · Points '+(p?p.pt|0:0):'')+
-    ' · '+(p&&p.hp>0?'HP '+Math.ceil(p.hp):md?'Respawning...':'Spectating')+(md==0&&zt<20&&host?' · Storm in '+Math.ceil(20-zt)+'s':'');
+    ' · '+(p&&p.hp>0?'HP '+Math.ceil(p.hp):md?'Respawning...':'Spectating')+(p&&p.hp>0?' · 📍'+ZN[biomeAt(p.x,p.y)]:'')+(md==0&&zt<20&&host?' · Storm in '+Math.ceil(20-zt)+'s':'');
 }
 
 // ---------- 12. Input (keyboard + mouse, or twin touch sticks) ----------
 addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(kbCap(e,k))return;keys[k]=1;if(st=='play'&&!e.repeat){if(isQ(k)){if(CFG.quick)pq=1;else aimQ=1}if(k==KB.e){if(CFG.quick)pu=1;else aimE=1}}if(k=='escape')aimQ=aimE=0;
   if(st=='play'&&md==0&&P[me]&&P[me].hp<=0){if(k=='arrowleft'||k==KB.l)cyc(-1);if(k=='arrowright'||k==KB.r)cyc(1)}});
 addEventListener('keyup',e=>{const k=e.key.toLowerCase();keys[k]=0;if(isQ(k)&&aimQ==1){aimQ=0;pq=1}if(k==KB.e&&aimE==1){aimE=0;pu=1}});
+addEventListener('blur',()=>{keys={};aimQ=aimE=0;mouse.d=0});
 addEventListener('pointerup',e=>{if(e.pointerId!=aimPid)return;aimPid=-1;if(aimQ==2){aimQ=0;pq=1}if(aimE==2){aimE=0;pu=1}}); // only the finger that holds the button releases it (other fingers = sticks)
 addEventListener('pointercancel',e=>{if(e.pointerId==aimPid){aimPid=-1;aimQ=aimE=0}});
 $('cx').onpointerdown=()=>{aimQ=aimE=0;aimPid=-1}; // cancel button: tap it (any finger) while holding Q / E
@@ -991,7 +1079,15 @@ function pvFrame(dt){
     for(let i=0;i<3;i++)cir(cvs.width-16-i*14,14,4,i==2-ph?'#fff':'#ffffff44');g.font='11px system-ui';g.textAlign='right';g.fillStyle='#ffffffbb';g.fillText('tap to switch',cvs.width-8,cvs.height-8)}
   g=sg}
 
-// ---------- 13. Main loop ----------
+// ---------- Menu scene: the chosen hero spins slowly in the middle of the free space ---------- 
+ function menuScene(dt){   
+  if(cv.width!=innerWidth)cv.width=innerWidth;if(cv.height!=innerHeight)cv.height=innerHeight;   
+  const w=cv.width,h=cv.height,T=(mT+=dt),c=CL[cls],q=$('hs').getBoundingClientRect(),x=q.left+q.width/2,y=q.top+q.height/2;   mPop=Math.max(0,mPop-dt*3);   
+  const s=Math.max(1.4,Math.min(q.height/95,q.width/130,6.5))*(1+.18*mPop);   
+  const bg=g.createRadialGradient(x,y,0,x,y,Math.max(w,h)*.65);bg.addColorStop(0,c.oc+'77');bg.addColorStop(1,'#10131c');g.fillStyle=bg;g.fillRect(0,0,w,h);   g.save();g.translate(x,y);g.lineWidth=3;   
+  for(let i=0;i<3;i++){g.strokeStyle=c.sc+(i?'44':'99');g.setLineDash(i==1?[14,12]:[]);g.lineDashOffset=T*(i?-30:20);g.beginPath();g.arc(0,0,s*(36+i*10),0,7);g.stroke()}   g.setLineDash([]);   
+  for(let i=0;i<16;i++){const a=T*.5+i*.39,r=s*(44+10*Math.sin(T*1.7+i*2));cir(Math.cos(a)*r,Math.sin(a)*r*.9,2+s*.4*(i%3==0),i%2?c.sc:'#fff')}   g.scale(s,s);person({x:0,y:0,a:T*.7,cl:cls,mv:0,fl:0},0);g.restore()} 
+ // ---------- 13. Main loop ----------
 function loop(t){
   DT=Math.min(.05,(t-last)/1000||0);last=t;
   if(st=='play'){
@@ -1004,7 +1100,7 @@ function loop(t){
     }
     draw();hud();
   }else if(st=='over')draw();
-  else{g.clearRect(0,0,cv.width,cv.height);if(st=='menu'||st=='lobby')pvFrame(DT)}
+  else{if(st=='menu')menuScene(DT);else g.clearRect(0,0,cv.width,cv.height);if(st=='menu'||st=='lobby')pvFrame(DT)}
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
