@@ -2581,6 +2581,143 @@ if(TI>=0)CL[TI].ps.x+=' · only Tide can cross the dark deep channel (lobby sett
 LOG.unshift(['v1.27.0',['Optional deep water: lobby setting "Deep water" adds a dark channel along the river that nobody can cross except on the bridges (Tide can swim through it); shown on the minimap']]);
 renderLog();pick(cls);
 
+ /* ===== ARCANE RUMBLE v1.29 PATCH =====
+   In this patch:
+    1. Grit Leap Slam is a real jump: he rises toward the camera, his shadow shrinks on the ground, he is
+       INVINCIBLE and cannot shoot while airborne, then slams down (damage + slow + 15 heal on landing)
+    2. Ember Meteor no longer hurts (or burns) Ember
+    3. Showdown lobby: "Storm speed" option; in-game info bar shows match timer + storm countdown (host AND clients)
+    4. Main menu: opening "Hero info" hides the spinning hero and shrinks the preview so the page doesn't scroll
+    5. Hex nerfed a bit (damage, HP, Shadow Step cooldown)
+    6. Cog Snare Trap breaks when an enemy projectile touches it
+    7. Cog and Grit attack-cone indicators are smaller (tune CONE_PAD below)
+
+   Already in your file (no change needed): bots hunting the last seen spot = v1.26 (aiHu),
+   Grit Rampage stun + shorter range = v1.22 / v1.23.
+*/
+
+// ---- tunable numbers ----
+const LEAP_T=.6,LEAP_SCALE=1.55,LEAP_LIFT=46,SLAM_R=110;   // jump time (s) · size at the top (set below 1 to SHRINK instead of grow) · how far he rises on screen · slam radius (same as before)
+const CONE_PAD=8;                                          // Cog / Grit indicator: extra px past the bolt's travel distance (0 = tightest)
+const HX=CL.findIndex(c=>c.n=='Hex');
+let stormT=0,SS=1,gT0=0,arT=0,arS=0;                       // storm clock, storm speed, client match clock, airborne sync
+
+// ---- 5. Hex nerf ----
+if(HX>=0){CL[HX].d=12.5;CL[HX].hp=118;CL[HX].ab.cd=7}      // was 14 damage, 125 HP, 6s Shadow Step
+
+// ---- 1. Grit Leap Slam: real jump ----
+const leapDest=p=>{const a=p.a,ox=p.x,oy=p.y;for(let L=200;L>0;L-=20){const x=ox+Math.cos(a)*L,y=oy+Math.sin(a)*L;if(!gb(x,y)&&los(ox,oy,x,y,1)&&!wb(ox,oy,x,y))return{x,y}}return{x:ox,y:oy}}; // never into walls, rocks or water
+function slam(p,i,x,y){
+  for(const q of P)if(q!==p&&q.hp>0&&Math.hypot(q.x-x,q.y-y)<SLAM_R){hit(q,25,i);q.sl=Math.max(q.sl,1.2)}
+  crHurt(x,y,SLAM_R,25);p.hp=Math.min(CL[GI].hp,p.hp+15);ev(1,x,y,SLAM_R,p.cl)}
+const castJ=cast;
+cast=function(p,i,u){
+  if(u.k!='leap'||p.cl!=GI)return castJ(p,i,u);
+  if(p.lp)return;
+  const d=leapDest(p);p.lp={x0:p.x,y0:p.y,x1:d.x,y1:d.y,t:0};p.air=.001;ev(1,p.x,p.y,70,p.cl)}; // take-off dust; the flight itself runs in step() below
+const rsJ=respawn;respawn=function(p){rsJ(p);p.lp=null;p.air=0};
+
+// invincible in the air (hit() is the one door every damage source goes through) + nobody hurts themselves (Meteor was the only self-hit)
+const hitJ=hit;
+hit=function(p,d,by){if(p.lp||(by!=null&&P[by]===p))return;hitJ(p,d,by)};
+
+// ---- one step() wrapper: storm speed clock, airborne movement, trap breaking, sync ----
+const stepG=step;
+step=function(dt){
+  const on=host&&st=='play';
+  if(on){
+    if(!S.m){stormT+=dt;zt=(stormT<=20?stormT:20+(stormT-20)*SS)-dt}                 // feeds the old storm formula a scaled clock (the 20s delay stays)
+    for(const p of P)if(p.lp){if(p.hp<=0){p.lp=null;p.air=0}else{p.mx=p.my=0;p.f=0;p.aq=0;p.cd=Math.max(p.cd,.15)}} // airborne: no walking, no shooting
+  }
+  stepG(dt);
+  if(!on||st!='play')return;
+  P.forEach((p,i)=>{
+    if(p.bn>0&&p.bo===i)p.bn=0;                                                        // Meteor burn on its own caster
+    if(!p.lp)return;
+    const L=p.lp;L.t+=dt;const u=Math.min(1,L.t/LEAP_T),e=u*u*(3-2*u);
+    p.x=L.x0+(L.x1-L.x0)*e;p.y=L.y0+(L.y1-L.y0)*e;p.air=Math.max(.001,u);             // flies over everything on a straight line
+    if(u>=1){p.lp=null;p.air=0;slam(p,i,L.x1,L.y1)}});
+  if(Tp.length&&B.length)Tp=Tp.filter(z=>{for(const b of B)if(b.o!=z.o&&Math.hypot(b.x-z.x,b.y-z.y)<30){ev(1,z.x,z.y,50,CI>=0?CI:0);return false}return true}); // 6. enemy bolt breaks a Snare Trap
+  if((arT+=dt)>.05){arT=0;const v=[];P.forEach((p,i)=>{if(p.air>0)v.push([i,+p.air.toFixed(3)])});if(v.length||arS){bc2({t:'ar',v});arS=v.length}}};
+
+const onDataG=onData;
+onData=function(m){
+  if(m.t=='ar'){P.forEach(p=>{p.air=0;p.ats=0});for(const a of m.v){const p=P[a[0]];if(p){p.air=a[1];p.ats=performance.now()}}return} // clients: who is airborne
+  if(m.t=='s')gT0=0;
+  onDataG(m)};
+
+// look: ground shadow shrinks + fades, the body rises and grows (his own shadow is hidden so it doesn't rise with him)
+const personJ=person;
+person=function(p,isMe){
+  const u=p.air>0?(p.ats?Math.min(1,p.air+(performance.now()-p.ats)/(LEAP_T*1000)):p.air):0;
+  if(!(u>0))return personJ(p,isMe);
+  const h=Math.sin(Math.PI*u),s=1+(LEAP_SCALE-1)*h;
+  g.save();g.fillStyle='rgba(0,0,0,'+(.3-.15*h)+')';g.beginPath();g.ellipse(p.x,p.y+6,20*(1-.35*h),15*(1-.35*h),0,0,7);g.fill();g.restore();
+  const e=g.ellipse;g.ellipse=function(...a){if(a[1]==6&&a[2]==20&&a[3]==15)return;e.apply(this,a)};
+  g.save();g.translate(p.x,p.y-LEAP_LIFT*h);g.scale(s,s);g.translate(-p.x,-p.y);
+  try{personJ(p,isMe)}finally{g.restore();delete g.ellipse}};
+
+// aim preview for Leap Slam: the real landing spot + the real slam circle
+const aimPreviewJ=aimPreview;
+aimPreview=function(){
+  const q=P[me];
+  if(st=='play'&&q&&q.hp>0&&aimQ&&!aimE&&q.cl==GI){
+    const d=leapDest({x:q.x,y:q.y,a:input().a}),col=q.ac<=0?'#ffffff':'#ff6b6b';
+    g.save();g.setLineDash([12,8]);g.lineWidth=3;g.strokeStyle=col+'cc';g.fillStyle=col+'22';
+    g.beginPath();g.moveTo(q.x,q.y);g.lineTo(d.x,d.y);g.stroke();g.beginPath();g.arc(d.x,d.y,SLAM_R,0,7);g.fill();g.stroke();g.restore();return}
+  aimPreviewJ()};
+
+// ---- 3. Storm speed option (Showdown lobby) + match timer in the info bar ----
+{const l=document.createElement('label');
+ l.innerHTML='Storm speed<select id="s10"><option value="0.6">Slow</option><option value="1" selected>Normal</option><option value="1.7">Fast</option></select>';
+ $('set').appendChild(l);
+ const vis=()=>{l.style.display=$('s2').value=='0'?'':'none'},o=$('s2').onchange;
+ $('s2').onchange=()=>{if(o)o();vis()};vis()}
+const sgS=startGame;
+startGame=function(){SS=+$('s10').value||1;stormT=0;gT0=0;sgS()};
+const hudS=hud;
+hud=function(){hudS();
+  if(st!='play'||TR)return;
+  if(!gT0)gT0=performance.now();
+  const el=host&&!md?stormT:(performance.now()-gT0)/1000,m=el/60|0,s=el%60|0;
+  let t=$('hud').textContent.replace(/ · Storm in \d+s$/,'');                          // the old host-only countdown is replaced by this one
+  t+=' · ⏱ '+m+':'+(s<10?'0':'')+s;
+  if(!md)t+=20-el>0?' · Storm in '+Math.ceil(20-el)+'s':' · Storm closing';
+  $('hud').textContent=t};
+
+// ---- 4. Main menu: Hero info open = spinner hidden, preview smaller, nothing to scroll ----
+{const st2=document.createElement('style');
+ st2.textContent='#menu.io #hs,#menu.io #hn{display:none}#menu.io canvas.pv{width:auto;max-width:100%;max-height:26vh;margin:0 auto 6px}';
+ document.head.appendChild(st2);
+ const dd=$('cd').closest('details'),sync=()=>$('menu').classList.toggle('io',dd.open);
+ dd.addEventListener('toggle',sync);sync()}
+const menuSceneH=menuScene;
+menuScene=function(dt){
+  if(!$('menu').classList.contains('io'))return menuSceneH(dt);
+  if(cv.width!=innerWidth)cv.width=innerWidth;if(cv.height!=innerHeight)cv.height=innerHeight;
+  const w=cv.width,h=cv.height,c=CL[cls],bg=g.createRadialGradient(w/2,h*.3,0,w/2,h*.3,Math.max(w,h)*.65);
+  bg.addColorStop(0,c.oc+'77');bg.addColorStop(1,'#10131c');g.fillStyle=bg;g.fillRect(0,0,w,h)}; // just the glow, no spinning hero
+
+// ---- 7. Smaller attack indicators for Cog and Grit (one tight cone each) ----
+const aimLaneC=aimLane;
+aimLane=function(){
+  const q=P[me];if(!q||q.hp<=0||(q.cl!=CI&&q.cl!=GI))return aimLaneC();
+  const c=CL[q.cl];coneLane(q,c,c.sa/2+.05,c.bs*c.bt+CONE_PAD,mouse.d||(tch.a&&Math.hypot(tch.ax,tch.ay)>.15))};
+
+// ---- Changelog ----
+LOG.unshift(['v1.29.0',['Grit Leap Slam is a real jump: he rises and grows toward the camera, his shadow shrinks, he is invincible and cannot shoot while airborne, then slams down; aim preview shows the real landing spot and slam circle',
+  'Ember Meteor no longer hurts or burns Ember',
+  'Showdown lobby: Storm speed (Slow / Normal / Fast); the info bar now shows the match timer and the storm countdown for everyone',
+  'Main menu: opening Hero info hides the spinning hero and shrinks the preview so the page does not scroll',
+  'Hex nerfed: 12.5 damage (was 14), 118 HP (was 125), Shadow Step cooldown 7s (was 6s)',
+  'Cog Snare Trap breaks when an enemy projectile hits it',
+  'Cog and Grit attack indicators are smaller and match the real hit area']]);
+renderLog();pick(cls);
+
+
+
+
+ 
  
 // ---------- 14. Main loop ----------
 
