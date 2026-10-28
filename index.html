@@ -111,7 +111,7 @@ canvas.pv{position:static;inset:auto;display:block;width:100%;height:auto;border
    ARCANE RUMBLE: single-script build
    Sections: 1 Constants  2 Wizards  3 UI  4 Networking  5 World
              6 Navigation  7 Simulation  8 Bot AI  9 Sound  10 Effects
-             11 Rendering  12 Input  13 Main loop
+             11 Rendering  12 Input   13. updated patches unsorted  14 Main loop
    The host runs the simulation; clients send input and render snapshots.
    ===================================================================== */
 
@@ -1071,7 +1071,7 @@ function input(){
   return{mx,my,a,f,pd};
 }
 
-// ---------- 14. Wizard preview (menu / lobby): the real bolt visuals and ability demos on training dummies ----------
+// ---------- 13. updated patches unsorted  ----------
 const WZ=[90,180];
 addEventListener('click',e=>{if(e.target.classList&&e.target.classList.contains('pv')){pvT=((((pvT%9)/3|0)+1)%3)*3;sfx('click')}}); // tap / click the preview: next animation
 function dummy(x,y,h){g.save();g.translate(x,y);g.fillStyle='rgba(0,0,0,.3)';g.beginPath();g.ellipse(0,6,18,12,0,0,7);g.fill();g.strokeStyle=OL;g.lineWidth=4;g.fillStyle=h>0?'#fff':'#c9a26b';g.beginPath();g.arc(0,0,20,0,7);g.fill();g.stroke();g.strokeStyle='#d33';g.beginPath();g.arc(0,0,12,0,7);g.stroke();cir(0,0,4,'#d33');g.restore()}
@@ -1266,7 +1266,69 @@ LOG.unshift(['v1.12.0',['Power boxes must be shot open to drop a power cube; the
   'Showdown lobby: Power boxes toggle (on by default, works without modifiers)','Minimap: no spell circles, bigger glowing heal / ultimate ponds, zone names on two lines',
   'Alive / kills text no longer shows in menus','No countdown in offline practice']]);
 $('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
- // ---------- 13. Main loop ----------
+
+// ---- 1. Terra ultimate is now a real temporary STONE WALL (matches its description) ----
+Object.assign(CL[5].ul,{n:'Stone Wall',k:'wall',
+  x:'PLACE a temporary rock wall where you aim: it blocks walking and bolts and slowly crumbles (enemy fire breaks it faster)'});
+PV.wall=['at',300,120,90];                       // aim preview + menu preview
+const twList=()=>Wl.filter(w=>w.tw);
+const twSend=()=>bc2({t:'tw',v:twList().map(w=>[w.x|0,w.y|0,w.w,w.h,Math.round(Math.max(0,w.hp)/w.mx*100)])});
+const twSet=v=>{Wl=Wl.filter(w=>!w.tw);v.forEach(a=>Wl.push({x:a[0],y:a[1],w:a[2],h:a[3],c:'#8a6a3b',tw:1,hp:a[4],mx:100}));Wc=Wl.concat(Wn)}; // client: rebuild walls from snapshot
+ 
+const cast2=cast;
+cast=function(p,i,u){
+  if(u.k!='wall')return cast2(p,i,u);
+  const[x,y]=plc(p,300,90),vt=Math.abs(Math.cos(p.a))>Math.abs(Math.sin(p.a)),w=vt?30:240,h=vt?240:30; // wall is built across your aim direction
+  Wl.push({x:x-w/2,y:y-h/2,w,h,c:'#8a6a3b',tw:1,hp:300,mx:300});Wc=Wl.concat(Wn);   // Wl blocks bolts + sight, Wc blocks walking
+  ev(1,x,y,120,p.cl);twSend()};
+ 
+// host: bolts damage walls, walls crumble by themselves (~12s), clients get updates
+const step2=step;let twT=0;
+step=function(dt){
+  if(host&&st=='play'){const T=twList();if(T.length){let ch=0;
+    B=B.filter(b=>{for(let s=0;s<=4;s++){const x=b.x+b.vx*dt*s/4,y=b.y+b.vy*dt*s/4;
+      for(const w of T)if(w.hp>0&&x>w.x-4&&x<w.x+w.w+4&&y>w.y-4&&y<w.y+w.h+4){w.hp-=b.d*1.5;return false}}return true});
+    T.forEach(w=>w.hp-=300/12*dt);
+    if(T.some(w=>w.hp<=0)){Wl=Wl.filter(w=>!w.tw||w.hp>0);Wc=Wl.concat(Wn);ch=1}
+    twT-=dt;if(ch||twT<=0){twT=.25;twSend()}}}
+  step2(dt)};
+ 
+const onData2=onData;
+onData=function(m){if(m.t=='tw'){twSet(m.v);return}onData2(m)};
+ 
+// look: lighter inner stone, cracks as it breaks, small health bar
+const walls0=walls;
+walls=function(){walls0();
+  for(const w of Wl)if(w.tw){const f=Math.max(0,w.hp/w.mx),cx=w.x+w.w/2,cy=w.y+w.h/2,vt=w.h>w.w;
+    g.fillStyle='rgba(255,255,255,'+(.1+.15*f)+')';g.fillRect(w.x+4,w.y+4,w.w-8,w.h-8);
+    g.strokeStyle=OL;g.lineWidth=3;g.lineCap='round';g.beginPath();
+    for(let i=0;i<(f<.3?4:f<.6?2:f<.85?1:0);i++){const o=(i-1.5)*(vt?w.h:w.w)*.22,x=vt?cx:cx+o,y=vt?cy+o:cy;g.moveTo(x-5,y-5);g.lineTo(x+2,y);g.lineTo(x-3,y+6)}
+    g.stroke();
+    g.fillStyle='#000a';g.fillRect(cx-20,w.y-14,40,6);g.fillStyle=f>.35?'#ffd23f':'#ff6b6b';g.fillRect(cx-20,w.y-14,40*f,6)}};
+ 
+// ---- 2. Ultimate charges a little more from your attacks (about +35%) ----
+const hit3=hit;
+hit=function(p,d,by){const o=P[by];hit3(p,d,by);if(by!=null&&o&&o!==p)o.ch=Math.min(100,o.ch+d*.09)};
+ 
+// ---- 3. Looking into a house: the roof fades out when you are close, so you see the floor ----
+roofs=function(m){const mb=bi(m);
+  Bd.forEach((q,k)=>{if(k==mb)return;
+    const dx=Math.max(q.x-m.x,0,m.x-q.x-q.w),dy=Math.max(q.y-m.y,0,m.y-q.y-q.h);
+    q.ra=q.ra==null?1:q.ra;q.ra+=((Math.hypot(dx,dy)<170?.2:1)-q.ra)*Math.min(1,DT*8);   // smooth fade
+    g.globalAlpha=q.ra;g.drawImage(q.rf,q.x+22,q.y+22,q.w-44,q.h-44)});
+  g.globalAlpha=1;
+  g.save();g.beginPath();Bd.forEach((q,k)=>{if(k!=mb)g.rect(q.x+22,q.y+22,q.w-44,q.h-44)});g.clip();g.textAlign='center';padsAndZones(.8,.45);g.restore()};
+ 
+// ---- Changelog ----
+LOG.unshift(['v1.13.0',['Terra ultimate is now Stone Wall: a temporary wall that blocks walking and bolts, crumbles over ~12s and breaks faster under fire','Ultimates charge a bit more from your own attacks','Houses: the roof fades away when you get close, so you can see the floor inside']]);
+$('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
+
+
+ 
+ // ---------- 14. Main loop ----------
+
+
+ 
 function loop(t){
   DT=Math.min(.05,(t-last)/1000||0);last=t;
   if(st=='play'){
