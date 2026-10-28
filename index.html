@@ -2713,8 +2713,182 @@ LOG.unshift(['v1.29.0',['Grit Leap Slam is a real jump: he rises and grows towar
   'Cog Snare Trap breaks when an enemy projectile hits it',
   'Cog and Grit attack indicators are smaller and match the real hit area']]);
 renderLog();pick(cls);
+/* ===== ARCANE RUMBLE v1.30 PATCH =====
+   In this patch:
+    1. Grit rework: Rampage shoves only a little, stuns 1.5s, heals 25, lasts 7s with +50% damage / +30% speed; range a bit shorter (the cone follows)
+    2. Tide's ability is now BUBBLE TRAP (water themed, nothing like Zephyr's Tornado): a bubble bursts after 0.9s and traps enemies inside
+    3. Mobile: drag the ability / ultimate button like a joystick to aim, release to cast
+    4. Hero info panel: damage, fire rate, range, cooldown, ultimate charge time (without damage or wells) and effect numbers for the part being shown
+    5. Lobby (online + offline) laid out like the main menu: Start / Leave and settings on top, hero picker below; only options that fit the chosen mode
+    6. "Deep water" option renamed "River crossing"
+    7. Boxes and the Terra wall break with flying chunks + dust; Terra wall has +50% health (same 12s lifetime)
+    8. Menu preview: dummies stay pushed away until that part of the preview ends
 
+   Still to do: team modes, bridge heights (under / over), Terra wall perpendicular to the cursor, bigger training map, Tide deep-water speed.
+*/
 
+let Bb=[],bbT=0,Db=[],CrP=[],TwP=[],dbT=0,dbM=-1,mid=0;     // bubbles, debris, break-animation memory, match id
+const bbSend=()=>bc2({t:'bb',v:Bb.map(b=>[b.x|0,b.y|0,b.r,+b.t.toFixed(2),b.T])});
+
+// ---- 1. Grit rework (the aim cone follows bs*bt automatically) ----
+CL[GI].bt=.125;CL[GI].r=56;                                // reach 98 -> ~88 (bot range 56)
+CL[GI].ul.x='shove nearby enemies a short way and STUN them for 1.5s, heal 25 HP, then 7s of +50% damage and +30% speed';
+KE.rampage=['push',.7,40];
+
+// ---- 2. Tide: Bubble Trap replaces Whirlpool ----
+CL[WI].ab={n:'Bubble Trap',x:'PLACE a bubble: after 0.9s it bursts and traps enemies inside in bubbles (they cannot move or shoot) for 1.3s and hurts them · you run faster for 2.5s and heal 15 HP',k:'bubble',cd:8};
+PV.bubble=['at',300,95,40];KE.bubble=['freeze',1.3];
+
+const castK=cast;
+cast=function(p,i,u){
+  if(u.k=='bubble'){const[x,y]=plc(p,300,40);Bb.push({x,y,r:95,t:.9,T:.9,o:i});p.bv=Math.max(p.bv,2.5);p.hp=Math.min(CL[p.cl].hp,p.hp+15);bbSend();return}
+  if(u.k=='rampage'&&p.cl==GI){                            // Grit's Rampage, fully replaced
+    for(const q of P)if(q!==p&&q.hp>0&&Math.hypot(q.x-p.x,q.y-p.y)<220){hit(q,25,i);push(q,q.x-p.x,q.y-p.y,35);q.fz=Math.max(q.fz,1.5);q.bl=Math.max(q.bl,1.5)}
+    p.bd=7;p.bv=7;p.hp=Math.min(CL[GI].hp,p.hp+25);crHurt(p.x,p.y,220,25);ev(1,p.x,p.y,220,p.cl);return}
+  castK(p,i,u);
+  if(u.k=='wall'&&p.cl==TE){for(const w of Wl)if(w.tw&&w.mx==300)w.hp=w.mx=450;twSend()}};   // 7. Terra wall +50% health
+
+// ---- one step() wrapper: Rampage +50%, wall decay, bubbles ----
+const stepK=step;
+step=function(dt){
+  const on=host&&st=='play';
+  stepK(dt);
+  if(!on||st!='play')return;
+  for(const b of B)if(b.c==GI&&!b.g5){b.g5=1;const o=P[b.o];if(o&&o.bd>0)b.d*=1.5/1.4}   // the shot code gives +40%; Rampage is +50%
+  for(const w of Wl)if(w.tw&&w.mx==450)w.hp-=12.5*dt;                                    // 450 HP over the same 12s (old code only drains 25/s)
+  for(const b of Bb){b.t-=dt;if(b.t<=0){b.dead=1;
+    for(const q of P)if(q.hp>0&&q!==P[b.o]&&Math.hypot(q.x-b.x,q.y-b.y)<b.r){hit(q,18,b.o);q.fz=Math.max(q.fz,1.3);q.bl=Math.max(q.bl,1.3)}
+    crHurt(b.x,b.y,b.r,18);ev(1,b.x,b.y,b.r,WI)}}
+  if(Bb.some(b=>b.dead)){Bb=Bb.filter(b=>!b.dead);bbSend()}
+  else if((bbT+=dt)>.25){bbT=0;if(Bb.length)bbSend()}};
+
+const sgK=startGame;startGame=function(){Bb=[];mid++;sgK()};
+const tmK=toMenu;toMenu=function(t){Bb=[];tmK(t)};
+const onDataK=onData;
+onData=function(m){
+  if(m.t=='bb'){const n=performance.now();Bb=m.v.map(a=>({x:a[0],y:a[1],r:a[2],t:a[3],T:a[4],ts:n}));return}
+  if(m.t=='s'){Bb=[];mid++}
+  onDataK(m)};
+
+// ---- drawing: bubble telegraph + break animations for boxes and the Terra wall ----
+function chunks(x,y,n,cols,sp,sz){for(let i=0;i<n;i++){const a=Math.random()*6.283,v=sp*(.4+Math.random()*.8);
+  Db.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,r:Math.random()*6,vr:(Math.random()-.5)*16,t:.9,l:.9,c:cols[i%cols.length],s:sz*(.6+Math.random()*.8)})}}
+const drawFxD=drawFx;
+drawFx=function(){
+  const now=performance.now(),m=cam();
+  for(const b of Bb){if(Math.hypot(b.x-m.x,b.y-m.y)>V+b.r)continue;
+    const t=Math.max(0,b.t-(b.ts?(now-b.ts)/1000:0)),f=1-t/b.T,r=b.r*(.35+.65*f)*(1+.05*Math.sin(now/60));
+    g.save();g.translate(b.x,b.y);g.lineWidth=4;
+    g.fillStyle='rgba(120,200,255,'+(.12+.22*f)+')';g.strokeStyle='#bfe9ff';g.beginPath();g.arc(0,0,r,0,7);g.fill();g.stroke();
+    g.strokeStyle='#ffffff';g.lineWidth=3;g.beginPath();g.arc(0,0,r*.72,3.6,4.6);g.stroke();
+    g.strokeStyle='rgba(190,235,255,.6)';g.lineWidth=3;g.setLineDash([12,10]);g.beginPath();g.arc(0,0,b.r,0,7);g.stroke();g.restore()}
+  if(now-dbT>400||dbM!=mid){CrP=[];TwP=[];Db=[];dbM=mid}dbT=now;      // a gap in drawing / a new match = start fresh, no phantom bursts
+  if(st=='play'){
+    for(const c of CrP)if(!Cr.some(k=>Math.abs(k.x-c.x)<3&&Math.abs(k.y-c.y)<3)&&Math.hypot(c.x-m.x,c.y-m.y)<V+150){   // a crate disappeared: it broke
+      chunks(c.x,c.y,16,['#b44dff','#d9a0ff','#7a2fc0','#ffd23f'],300,9);spark(c.x,c.y,'#ffd23f',10,260,.5,4);spark(c.x,c.y,'#cfcfcf',7,120,.8,9);
+      Q.push({k:'r',x:c.x,y:c.y,R:90,t:.35,l:.35,c:'#ffd23f'})}
+    CrP=Cr.map(c=>({x:c.x,y:c.y}));
+    const tw=Wl.filter(w=>w.tw);
+    for(const o of TwP)if(!tw.some(w=>w.x==o.x&&w.y==o.y)&&Math.hypot(o.x+o.w/2-m.x,o.y+o.h/2-m.y)<V+250){        // a wall piece disappeared: it crumbled
+      for(let i=0,n=Math.round(o.w*o.h/700);i<n;i++)chunks(o.x+Math.random()*o.w,o.y+Math.random()*o.h,1,['#8a6a3b','#6f5530','#a88a58','#6b7280'],240,13);
+      spark(o.x+o.w/2,o.y+o.h/2,'#b8a888',14,170,1,10);shk=Math.max(shk,5)}
+    TwP=tw.map(w=>({x:w.x,y:w.y,w:w.w,h:w.h}))}
+  const f=Math.pow(.05,DT);Db=Db.filter(d=>(d.t-=DT)>0);
+  for(const d of Db){d.x+=d.vx*DT;d.y+=d.vy*DT;d.vx*=f;d.vy*=f;d.r+=d.vr*DT;
+    g.save();g.globalAlpha=Math.min(1,d.t/d.l*1.6);g.translate(d.x,d.y);g.rotate(d.r);g.fillStyle=d.c;g.strokeStyle=OL;g.lineWidth=2;
+    g.fillRect(-d.s/2,-d.s/2,d.s,d.s*.7);g.strokeRect(-d.s/2,-d.s/2,d.s,d.s*.7);g.restore()}
+  drawFxD()};
+
+// ---- 3. Mobile: ability / ultimate buttons are aim joysticks (drag to aim, drag further = place farther, release = cast, ✕ = cancel) ----
+const abj={pid:-1,cx:0,cy:0,x:0,y:0,until:0};
+for(const id of['b1','b2'])$(id).addEventListener('pointerdown',e=>{if(CFG.quick)return;const r=e.currentTarget.getBoundingClientRect();Object.assign(abj,{pid:e.pointerId,cx:r.left+r.width/2,cy:r.top+r.height/2,x:0,y:0,until:0})});
+addEventListener('pointermove',e=>{if(e.pointerId!=abj.pid)return;const dx=(e.clientX-abj.cx)/70,dy=(e.clientY-abj.cy)/70,l=Math.hypot(dx,dy)||1,k=Math.min(1,l)/l;abj.x=dx*k;abj.y=dy*k});
+addEventListener('pointerup',e=>{if(e.pointerId==abj.pid){abj.pid=-1;abj.until=performance.now()+150}});   // keeps the aim for the frame that casts
+addEventListener('pointercancel',e=>{if(e.pointerId==abj.pid){abj.pid=-1;abj.until=0}});
+$('cx').addEventListener('pointerdown',()=>{abj.pid=-1;abj.until=0});
+const inputA=input;
+input=function(){const I=inputA(),on=abj.pid>=0&&(aimQ||aimE)||performance.now()<abj.until;
+  if(on){const l=Math.hypot(abj.x,abj.y);if(l>.22){I.a=Math.atan2(abj.y,abj.x);I.pd=l*480}}   // small drag = keep the normal aim
+  return I};
+const ovA=overlay;
+overlay=function(m,w,h){ovA(m,w,h);if(abj.pid<0||!(aimQ||aimE))return;
+  g.save();g.lineWidth=3;g.strokeStyle='#ffffff88';g.beginPath();g.arc(abj.cx,abj.cy,70,0,7);g.stroke();
+  g.fillStyle='#ffffff77';g.beginPath();g.arc(abj.cx+abj.x*70,abj.cy+abj.y*70,20,0,7);g.fill();g.restore()};
+
+// ---- 4. Hero info: numbers for the part being shown ----
+const AD={pool:'13 dmg/s · burn · lasts 4.5s',nova:'18 dmg · freezes 0.8s · heals 20',sanct:'heals 24 HP/s for 2.5s',zap:'about 30 dmg to everyone you pass',step:'teleport up to 260',meteor:'70 dmg + burn · lands after 1.1s',
+  blizzard:'9 dmg/s · slows · lasts 4.5s',flare:'30 dmg · blinds 2.5s · heals 40',rift:'20 dmg · slows 1.5s',storm:'6 dmg per strike for 3s · heals 4 per strike',quake:'14 dmg · slows · heals 8 per enemy hit',
+  wall:'450 HP · crumbles in 12s',gust:'knock-back · heals 25 · sprint 2.5s',tornado:'12 dmg/s · pulls enemies in · lasts 4s',leap:'25 dmg · slows 1.2s · heals 15 · invincible while airborne',
+  rampage:'25 dmg · stun 1.5s · heals 25 · 7s of +50% dmg and +30% speed',bubble:'18 dmg · traps 1.3s · heals 15',tsunami:'35 +10 dmg · slows 2s · heals 40',trap:'18 dmg · stun 1.2s · max 3 traps',turret:'240 HP · 10s · 6 dmg shots'};
+const pvUIs=pvUI;
+pvUI=function(){pvUIs();
+  const k=pvC/3|0,c=CL[cls];let s='Always active';
+  if(k==0){const n=c.ef=='melee'||c.ef=='wrench'?1:cls==TI?TIDE_N:(c.pl||1);s='Damage '+(+(c.d*n).toFixed(1))+' per shot'+(n>1?' ('+n+' hits)':'')+' · '+(1/c.cd).toFixed(1)+' shots/s (every '+c.cd+'s) · range '+Math.round(c.bs*c.bt)}
+  else if(k==1)s='Cooldown '+c.ab.cd+'s'+(AD[c.ab.k]?' · '+AD[c.ab.k]:'');
+  else if(k==2)s='Charges by itself in about '+Math.round(100/.72)+'s (without damage or wells)'+(AD[c.ul.k]?' · '+AD[c.ul.k]:'');
+  document.querySelectorAll('.pex').forEach(e=>{let d=e.querySelector('.pxs');if(!d){d=document.createElement('div');d.className='pxs';d.style.cssText='margin-top:4px;font-size:12px;color:#ffd23f';e.appendChild(d)}if(d.textContent!=s)d.textContent=s})};
+
+// ---- 5. Lobby layout (online + offline): buttons and settings above the hero picker, only options that fit the mode ----
+{const mb=document.createElement('div');mb.className='mb';mb.append($('bs'),$('bl1'));$('cs2').previousElementSibling.before(mb,$('set'))}
+const modeVis=()=>{const s=$('s2').value=='0';for(const id of['s6','s8','s10']){const e=$(id);if(e)e.parentElement.style.display=s?'':'none'}};   // modifiers / power boxes / storm speed = Showdown only
+$('s2').onchange=modeVis;
+const dlM=drawLobby;drawLobby=function(){dlM();modeVis()};modeVis();
+
+// ---- 6. River option rename ----
+{const l=$('s9').parentElement,o=$('s9').options;l.firstChild.textContent='River crossing';o[0].textContent='Wade anywhere (shallow)';o[1].textContent='Bridges only (deep centre)'}
+
+// ---- 8. Menu preview: dummies stay pushed until that part of the preview is over ----
+const DPo=[{x:0,y:0},{x:0,y:0},{x:0,y:0}];let dpK=-1;
+const dumH=dummy;
+dummy=function(x,y,h){
+  const j=dI%3,s=DS[j],o=DPo[j],k=pvC/3|0;
+  if(k!=dpK){dpK=k;for(const q of DPo)q.x=q.y=o.tx=o.ty=0}
+  if(s.k&&(s.px||s.py)){o.tx=s.px;o.ty=s.py}
+  const e=Math.min(1,DT*14);o.x+=((o.tx||0)-o.x)*e;o.y+=((o.ty||0)-o.y)*e;
+  const px=s.px,py=s.py;s.px=s.py=0;                                                  // the old code would slide it back after ~1s: we do the moving ourselves
+  try{return dumH(x+o.x,y+o.y,h)}finally{s.px=px;s.py=py}};
+
+// ---- Changelog ----
+LOG.unshift(['v1.30.0',['Grit: Rampage shoves only a short way, stuns 1.5s, heals 25 and lasts 7s with +50% damage and +30% speed; punch range is a bit shorter and the cone follows',
+  'Tide: new ability Bubble Trap: a bubble bursts after 0.9s and traps enemies inside (cannot move or shoot) for 1.3s; replaces the Tornado-like Whirlpool',
+  'Mobile: drag the ability / ultimate button to aim like a joystick, release to cast, ✕ to cancel',
+  'Hero info shows damage, fire rate, range, cooldown, ultimate charge time (without damage or wells) and effect numbers for the part being shown',
+  'Lobby (online and offline) is laid out like the main menu; modifiers, power boxes and storm speed only show for Showdown',
+  'Option "Deep water" is now "River crossing" (wade anywhere / bridges only)',
+  'Boxes and the Terra wall break into flying chunks with dust; Terra wall has 450 HP (+50%)',
+  'Menu preview dummies stay pushed away until that part of the preview ends']]);
+renderLog();pick(cls);
+ 
+/* ===== ARCANE RUMBLE v1.31 PATCH =====
+
+   Tide in DEEP water:
+    - deep lakes (the dark ponds) and the river's deep middle channel (lobby: River crossing = Bridges only) both count as deep water
+    - Tide moves at 45% of normal speed there: half of what it was in lakes (90%)
+    - the shallow part of the river is unchanged (Tide still swims +50% faster there)
+   To tune it, change TIDE_DEEP (0.45 = 45% of normal speed).
+*/
+const TIDE_DEEP=.45;
+
+const stepL2=step;
+step=function(dt){
+  const on=host&&st=='play'&&WI>=0,pre=on?P.map(p=>[p.x,p.y]):null;
+  stepL2(dt);
+  if(!on||st!='play')return;
+  const ponds=R.filter(r=>r.w);
+  P.forEach((p,i)=>{
+    if(p.cl!=WI||p.hp<=0||p.dh>0||!pre[i])return;
+    let f=0;                                                                   // extra scale on this frame's movement, on top of what the older patches already applied
+    if(ponds.some(r=>Math.hypot(p.x-r.x,p.y-r.y)<r.r+18))f=TIDE_DEEP/.9;       // deep lake: v1.28 already made it 90%
+    else if(inDeep(p.x,p.y))f=TIDE_DEEP/(CL[WI].wm||1.5);                      // river's deep centre: the river patch already gave Tide its swim bonus
+    if(!f)return;
+    p.x=pre[i][0]+(p.x-pre[i][0])*f;p.y=pre[i][1]+(p.y-pre[i][1])*f})};
+
+CL[WI].ps.x='in the river you swim 50% FASTER (everyone else crawls), heal 2 HP/s and the current cannot move you · deep water (dark lakes and the deep centre of the river): only Tide can enter, at 45% speed';
+
+LOG.unshift(['v1.31.0',['Tide in deep water (deep lakes and the river\'s deep centre) moves at 45% of normal speed, half of its old lake speed; the shallow river is unchanged']]);
+renderLog();pick(cls);
+
+ 
 
 
  
