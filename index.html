@@ -26,9 +26,9 @@ small{opacity:.7;max-width:420px}
 #set{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:460px}
 #set label{font-size:13px;display:flex;flex-direction:column;gap:2px}
 #cs,#cs2{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
-.cc{width:74px;padding:8px 2px;border-radius:14px;background:#222a3d;border:3px solid transparent;cursor:pointer;font-size:13px}
+.cc{width:80px;padding:8px 2px;border-radius:14px;background:#222a3d;border:3px solid transparent;cursor:pointer;font-size:13px}
 .cc b{display:block;font-size:30px}.cc.s{border-color:#ffd23f;background:#2f3a55}
-#cd,#cd2{background:#222a3d;border-radius:14px;padding:10px 14px;max-width:440px;text-align:left;font-size:14px;line-height:1.5}
+#cd,#cd2{background:#222a3d;border-radius:14px;padding:10px 14px;text-align:left;font-size:14px;line-height:1.5}
 #cd h3,#cd2 h3{color:#ffd23f}#cd span,#cd2 span{display:inline-block;min-width:92px;font-size:11px;font-weight:800;padding:1px 6px;border-radius:6px;margin-right:6px;color:#222;text-align:center}
 .ab{display:none;position:fixed;right:10px;top:42%;flex-direction:column;gap:10px}
 .ab button{width:64px;height:64px;border-radius:50%;padding:0;font-size:15px}
@@ -45,7 +45,7 @@ canvas.pv{position:static;inset:auto;display:block;width:100%;height:auto;border
 .dd summary::-webkit-details-marker{display:none}.dd summary::after{content:'';display:inline-block;margin-left:8px;border:5px solid transparent;border-top-color:#fff;vertical-align:-3px;transition:transform .15s}
 .dd[open] summary::after{transform:rotate(180deg);vertical-align:3px}.dd #cd,.dd #cd2{margin-top:6px}
 #kbl{display:grid;grid-template-columns:1fr 1fr;gap:8px}#kbl button{padding:8px 10px;font-size:13px}#kbl .lis{outline:3px solid #ffd23f}
-.cc{width:80px}.cc img{display:block;margin:0 auto 2px}canvas.pv{cursor:pointer}.cc.s{transform:translateY(-3px);box-shadow:0 0 14px #ffd23f88}
+.cc img{display:block;margin:0 auto 2px}canvas.pv{cursor:pointer}.cc.s{transform:translateY(-3px);box-shadow:0 0 14px #ffd23f88}
 #menu{background:none;justify-content:flex-start;gap:8px}#menu h1{font-size:40px;margin-top:4px}
 #hs{flex:1 0 150px;width:100%}#hn{text-align:center;font-size:22px;line-height:1.1;text-shadow:0 2px 0 #000}#hn small{font-size:13px;opacity:.8}
 #menu #cs{flex-wrap:nowrap;overflow-x:auto;max-width:100%;padding:6px 4px;justify-content:safe center}#menu .cc{flex:0 0 auto}
@@ -83,6 +83,7 @@ canvas.pv{position:static;inset:auto;display:block;width:100%;height:auto;border
  <label>Bots<select id="s5"><option value="1">On (fill the room)<option value="0">Off (real players only)</select></label>
  <label>Modifiers<select id="s6"><option value="0">Off<option value="1">On (Showdown only)</select></label>
   <label>Map size<select id="s7"><option value="1400">Small<option value="2000" selected>Normal<option value="2600">Large</select></label>
+ <label>Power boxes<select id="s8"><option value="1" selected>On<option value="0">Off</select></label>
 </div>
 <button id="bs">Start game</button>
 <button id="bl1" class="s">Leave</button>
@@ -118,18 +119,17 @@ canvas.pv{position:static;inset:auto;display:block;width:100%;height:auto;border
 // ---------- 1. Constants & state ----------
 const $=id=>document.getElementById(id),cv=$('c');let g=cv.getContext('2d');
 let A=2000,W=4000,C=2000;        // arena radius, world size, centre (map size option changes these)
-const STP=520,HC=170;            // town block spacing / half size
 const V=520;                     // vision radius
 const GS=32,GN=163;              // navigation grid cell size / cells per side (fits the biggest map)
 const setMap=a=>{A=a;W=a*2;C=a};
 const OL='#2a1a3a';              // cartoon outline colour
 const COLS=['#ff4d4d','#4dc3ff','#6bff6b','#ffd23f','#c77dff','#ff9f43','#2ee6c5','#ff7ac6'];
 const NAMES=[['Goofball','Noodle','Potato','Derp','Bonkers','Muffin','Doofus','Clumsy'],['Sam','Max','Rex','Dave','Pete','Lou','Gus','Bob'],['Socrates','Einstein','Newton','Tesla','Plato','Curie','Darwin','Hawking']];
-const ZK=['fire','frost','heal','met','wind','rock'];            // zone kinds (index sent over the network)
+const ZK=['fire','frost','heal','met','wind'];            // zone kinds (index sent over the network)
 let cls=0,S={n:10,m:0},peer,host=false,hc=null,me=-1,st='menu',lobby=[],code='',spec=-1;
-let P=[],B=[],R=[],Bu=[],Bd=[],Wl=[],Gp=[],Sz=[],Zn=[],EV=[],hz=null,md=0,zr=C,zt=0,netT=0,inT=0;
-let Bx=[],bxT=0,mod=0,modT=0; // Bx = power boxes, mod = Showdown modifier (0 none, 1 loot boxes, 2 golden bot)
-const BN=['+60 HP','DAMAGE UP!','SPEED UP!','ULTIMATE +60','GOLD POWER!'],MODN=['','LOOT RUSH: grab the purple power boxes!','GOLDEN BOT: kill the 👑 for permanent power!'];
+let P=[],B=[],R=[],Bu=[],Bd=[],Wl=[],Sz=[],Zn=[],EV=[],hz=null,md=0,zr=C,zt=0,netT=0,inT=0;
+let Bx=[],mod=0,modT=0; // Bx = power boxes, mod = Showdown modifier (0 none, 1 loot boxes, 2 golden bot)
+const BN=[,,,,'GOLDEN BOT DOWN: 5 CUBES!','+1 POWER CUBE'],MODN=['','LOOT RUSH: more boxes, shoot them open!','GOLDEN BOT: kill the 👑 for 5 power cubes!'];
 let mT=0,mPop=0,pvT=0,pvPh=-1,pvB=[],pvD=[],pvH=[0,0,0],pvCd=0; // menu preview state
 let keys={},mouse={x:0,y:0,d:0},pq=0,pu=0,aimQ=0,aimE=0,aimPid=-1,DT=.016,last=0;
 const tch={m:null,a:null,mx:0,my:0,ax:0,ay:0,on:0};
@@ -137,26 +137,26 @@ const tch={m:null,a:null,mx:0,my:0,ax:0,ay:0,on:0};
 // ---------- 2. Wizards ----------
 // Each has a main attack (ef = on-hit effect), an ability (Q), an ultimate (E, charged by fighting) and a passive.
 const CL=[
-{n:'Ember',t:'Pyromancer',i:'🔥',oc:'#e8552b',hr:'#8a2b1a',sk:'#f5cba7',hs:0,sc:'#ff8a3d',gl:22,hp:145,sp:225,d:16,cd:.55,bs:650,bt:.85,r:330,fl:.3,ef:'burn',bk:0,
- mn:['Fireball','small explosion: splash damage + burn 5/s'],ab:{n:'Flame Pool',x:'throw a pool of fire that burns anyone inside',k:'pool',cd:7},
+{n:'Ember',t:'Pyromancer',oc:'#e8552b',hr:'#8a2b1a',sk:'#f5cba7',hs:0,sc:'#ff8a3d',gl:22,hp:145,sp:225,d:16,cd:.55,bs:650,bt:.85,r:330,fl:.3,ef:'burn',bk:0,
+ mn:['Fireball','small explosion: splash damage + burn 5/s'],ab:{n:'Flame Pool',x:'throw a pool of fire that burns anyone inside · you run faster for 2.5s',k:'pool',cd:7},
  ul:{n:'Meteor',x:'a meteor crashes on the enemy you aim at (they can dodge!)',k:'meteor'},ps:{n:'Ashes',x:'every kill heals you for 30 HP',k:'ash'}},
-{n:'Frost',t:'Cryomancer',i:'❄️',oc:'#4a8fd6',hr:'#e8f6ff',sk:'#f0d9c8',hs:1,sc:'#7fdcff',gl:22,hp:140,sp:210,d:5.5,cd:.65,pl:3,sa:.4,bs:700,bt:.6,r:260,fl:.25,ef:'slow',bk:1,
- mn:['Ice Shards','3-shard fan that slows enemies'],ab:{n:'Frost Nova',x:'freeze nearby enemies for 0.8s + damage',k:'nova',cd:8},
- ul:{n:'Blizzard',x:'a freezing storm follows you for 4.5s',k:'blizzard'},ps:{n:'Permafrost',x:'enemies that hurt you up close get slowed',k:'frost'}},
-{n:'Lumi',t:'Light Cleric',i:'✨',oc:'#f4d35e',hr:'#c99a2e',sk:'#f5d0b5',hs:2,sc:'#ffe27a',gl:24,hp:150,sp:230,d:16,cd:.5,bs:900,bt:.7,r:340,fl:.3,ef:'pierce',bk:2,
- mn:['Light Beam','pierces every enemy in line'],ab:{n:'Sanctuary',x:'a holy circle that rapidly heals you',k:'sanct',cd:9},
+{n:'Frost',t:'Cryomancer',oc:'#4a8fd6',hr:'#e8f6ff',sk:'#f0d9c8',hs:1,sc:'#7fdcff',gl:22,hp:150,sp:210,d:6.5,cd:.65,pl:3,sa:.4,bs:700,bt:.6,r:260,fl:.25,ef:'slow',bk:1,
+ mn:['Ice Shards','3-shard fan that slows enemies'],ab:{n:'Frost Nova',x:'freeze nearby enemies for 0.8s + damage · heals you 20 HP',k:'nova',cd:8},
+ ul:{n:'Blizzard',x:'a freezing storm follows you for 4.5s · you run faster inside it',k:'blizzard'},ps:{n:'Permafrost',x:'enemies that hurt you up close get slowed',k:'frost'}},
+{n:'Lumi',t:'Light Cleric',oc:'#f4d35e',hr:'#c99a2e',sk:'#f5d0b5',hs:2,sc:'#ffe27a',gl:24,hp:150,sp:230,d:16,cd:.5,bs:900,bt:.7,r:340,fl:.3,ef:'pierce',bk:2,
+ mn:['Light Beam','pierces every enemy in line'],ab:{n:'Sanctuary',x:'a holy circle that rapidly heals you · you run faster while standing in it',k:'sanct',cd:12},
  ul:{n:'Solar Flare',x:'blast + blind nearby enemies, heal 40',k:'flare'},ps:{n:'Blessed',x:'natural healing is 60% faster',k:'bless'}},
-{n:'Hex',t:'Warlock',i:'🌙',oc:'#6b3fa0',hr:'#2d1a4a',sk:'#d8b9a0',hs:3,sc:'#b78cff',gl:22,hp:125,sp:225,d:14,cd:.37,bs:800,bt:.7,r:280,fl:.3,ef:'drain',bk:3,wv:[16,12],
+{n:'Hex',t:'Warlock',oc:'#6b3fa0',hr:'#2d1a4a',sk:'#d8b9a0',hs:3,sc:'#b78cff',gl:22,hp:125,sp:225,d:14,cd:.37,bs:800,bt:.7,r:280,fl:.3,ef:'drain',bk:3,wv:[16,12],
  mn:['Soul Bolt','steals 45% of damage dealt as health'],ab:{n:'Shadow Step',x:'teleport forward in your move direction',k:'step',cd:6},
  ul:{n:'Soul Rift',x:'drag nearby enemies next to you, damaged and slowed',k:'rift'},ps:{n:'Shadow Cloak',x:'stand still 1.5s to turn invisible',k:'cloak'}},
-{n:'Volt',t:'Stormcaller',i:'⚡',oc:'#d9b800',hr:'#3a3a55',sk:'#c98f60',hs:4,sc:'#ffe84a',gl:20,hp:126,sp:260,d:11,cd:.33,bs:850,bt:.6,r:300,fl:.3,ef:'chain',bk:4,wv:[8,45],
- mn:['Arc Bolt','lightning jumps to a 2nd enemy (60% dmg)'],ab:{n:'Thunder Dash',x:'dash forward and zap everyone you pass',k:'zap',cd:6},
- ul:{n:'Storm Call',x:'for 3s lightning strikes the nearest enemy',k:'storm'},ps:{n:'Static',x:'every 3rd shot deals +60% damage',k:'stat'}},
-{n:'Terra',t:'Geomancer',i:'🪨',oc:'#8a6a3b',hr:'#5a4a30',sk:'#c99a74',hs:5,sc:'#c9a36a',gl:22,hp:175,sp:205,d:16,cd:.6,bs:540,bt:.9,r:320,fl:.2,ef:'knock',bk:5,
- mn:['Boulder','heavy rock that shoves enemies back'],ab:{n:'Quake',x:'shake the ground: damage, knock back and slow nearby enemies',k:'quake',cd:7},
- ul:{n:'Landslide',x:'PLACE a huge rockfall where you aim: boulders crash down for heavy damage + slow (never hurts you)',k:'slide'},ps:{n:'Stoneskin',x:'take 15% less damage from everything',k:'skin'}},
-{n:'Zephyr',t:'Windcaller',i:'🌪️',oc:'#5fd0c0',hr:'#e8fff8',sk:'#e8c4a8',hs:6,sc:'#9ef0e0',gl:22,hp:112,sp:275,d:6.5,cd:.26,pl:2,sa:0,wv:[14,22],bs:950,bt:.5,r:300,fl:.35,ef:'gale',bk:6,
- mn:['Twin Gale','two bolts spiral around each other'],ab:{n:'Gust',x:'blast nearby enemies away and sprint for 2.5s',k:'gust',cd:7},
+{n:'Volt',t:'Stormcaller',oc:'#d9b800',hr:'#3a3a55',sk:'#c98f60',hs:4,sc:'#ffe84a',gl:20,hp:126,sp:260,d:8.5,cd:.33,bs:850,bt:.6,r:300,fl:.3,ef:'chain',bk:4,wv:[8,45],
+ mn:['Arc Bolt','lightning jumps to up to 2 more enemies (55%, then 38% dmg)'],ab:{n:'Thunder Dash',x:'dash forward and zap everyone you pass',k:'zap',cd:6},
+ ul:{n:'Storm Call',x:'for 3s lightning strikes the nearest enemy · each strike heals you 4 HP',k:'storm'},ps:{n:'Static',x:'every 3rd shot deals +60% damage',k:'stat'}},
+{n:'Terra',t:'Geomancer',oc:'#8a6a3b',hr:'#5a4a30',sk:'#c99a74',hs:5,sc:'#c9a36a',gl:22,hp:175,sp:205,d:16,cd:.6,bs:540,bt:.9,r:320,fl:.2,ef:'knock',bk:5,
+ mn:['Boulder','heavy rock that shoves enemies back, then bursts into 3 shards'],ab:{n:'Quake',x:'shake the ground: damage, knock back and slow nearby enemies · heals 8 HP per enemy hit',k:'quake',cd:7},
+ ul:{n:'Stone Wall',x:'PLACE a temporary rock wall where you aim: it blocks walking and bolts and slowly crumbles (enemy fire breaks it faster) · you run faster for 3s',k:'wall'},ps:{n:'Stoneskin',x:'take 15% less damage from everything',k:'skin'}},
+{n:'Zephyr',t:'Windcaller',oc:'#5fd0c0',hr:'#e8fff8',sk:'#e8c4a8',hs:6,sc:'#9ef0e0',gl:22,hp:112,sp:275,d:5.5,cd:.3,pl:2,sa:0,wv:[14,22],bs:950,bt:.42,r:300,fl:.35,ef:'gale',bk:6,
+ mn:['Twin Gale','two bolts spiral around each other'],ab:{n:'Gust',x:'blast nearby enemies away and sprint for 2.5s · heals 25 HP',k:'gust',cd:7},
  ul:{n:'Tornado',x:'PLACE a cyclone that pulls enemies in and shreds them',k:'tornado'},ps:{n:'Windstep',x:'take 10% less damage while moving',k:'wstep'}}];
 
 // ---------- 3. UI ----------
@@ -174,9 +174,9 @@ function kbCap(e,k){if(!lis)return 0;e.preventDefault();if(k!='escape'){const o=
 $('kbr').onclick=()=>{Object.assign(KB,KDEF);lis=null;saveCfg();kbDraw()};
 const dds=[...document.querySelectorAll('.dd')];dds.forEach(d=>{d.open=!!CFG.info;d.addEventListener('toggle',()=>{const o=d.open?1:0;if(CFG.info==o)return;CFG.info=o;dds.forEach(x=>x.open=!!o);saveCfg()})}); // the info dropdown remembers open / closed
 $('bset').onclick=()=>{$('c1').value=CFG.quick;$('c2').value=CFG.btn;$('c3').value=CFG.map;lis=null;kbDraw();show('cfg')};
-$('cb').onclick=()=>{lis=null;CFG.quick=+$('c1').value;CFG.btn=+$('c2').value;CFG.map=+$('c3').value;try{localStorage.setItem('arcane-cfg',JSON.stringify(CFG))}catch(e){}show('menu')};
-const show=id=>{['menu','lobby','end','cfg','log'].forEach(x=>$(x).classList.toggle('h',x!=id));$('ab').style.display=id||!CFG.btn?'none':'flex';$('lv').style.display='none';$('sp').style.display='none';$('cx').style.display='none';aimQ=aimE=0};
-const MENU_MSG='',msg=t=>toMenu(t);
+$('cb').onclick=()=>{lis=null;CFG.quick=+$('c1').value;CFG.btn=+$('c2').value;CFG.map=+$('c3').value;saveCfg();show('menu')};
+const show=id=>{if(id)$('hud').textContent='';['menu','lobby','end','cfg','log'].forEach(x=>$(x).classList.toggle('h',x!=id));$('ab').style.display=id||!CFG.btn?'none':'flex';$('lv').style.display='none';$('sp').style.display='none';$('cx').style.display='none';aimQ=aimE=0};
+const msg=t=>toMenu(t);
 // Hand-drawn class badges (canvas -> image) so the picker never depends on emoji fonts
 const LG=[],LC=['#ffd23f','#fff','#fff','#e3d0ff','#fff','#e0c08a','#fff'];
 const LI=[ // [path builder, mode]  mode 0 = filled shape, 1 = lines, 2 = filled + lines, 3 = crescent
@@ -215,15 +215,15 @@ const bc2=m=>P.forEach(p=>p.conn&&p.conn.open&&p.conn.send(m));           // hos
 const sendLobby=()=>{drawLobby();bc({t:'l',l:lobby.map(x=>x.n)})};
 const leave=()=>toMenu();
 function toMenu(text){
-  cdStop();
+  cdStop();RV=null;RB=[];dbg.style.display='none';
   const p=peer;st='menu';peer=hc=null;host=false;
   if(p)try{p.destroy()}catch(e){}
   lobby=[];P=[];B=[];Zn=[];EV=[];Q=[];KF=[];Bx=[];mod=modT=0;me=-1;hz=null;md=0;zr=C;zt=0;spec=-1;code='';flash=KO=shk=vg=dieT=0;
   keys={};aimQ=aimE=0;mouse.d=0;tch.m=tch.a=null;tch.mx=tch.my=tch.ax=tch.ay=0;
-  $('s5').parentElement.style.display='';$('lk').textContent='';$('mg').textContent='';show('menu');
+  $('s5').parentElement.style.display='';$('lk').textContent='';$('mg').textContent=text||'';show('menu');
 }
 $('bl1').onclick=$('bl2').onclick=$('lv').onclick=leave;
-const modVis=()=>{$('s6').parentElement.style.display=$('s2').value=='0'?'':'none'}; // the Modifiers switch only exists for Showdown
+const modVis=()=>{for(const id of['s6','s8'])$(id).parentElement.style.display=$('s2').value=='0'?'':'none'}; // the Modifiers switch only exists for Showdown
 $('s2').onchange=modVis;
 
 /* Changelog + fullscreen. Add new releases at the TOP of LOG; the version label follows it. */
@@ -231,8 +231,7 @@ const LOG=[
  ['v1.9.0',['Windows on some buildings: see and shoot through, but you cannot walk through','Bigger minimap, with a size setting','Bushes are clearer when you stand in them']],
  ['v1.8.0',['New main menu: your hero spins in the middle of the screen','Help text moved to Settings','Distinct map zones: Dune Village (lots of small buildings), Frost Keep (one big hall), Murk Swamp (giant bushes, no buildings), Old Ruins (walls only), Town Centre','Current zone shown in the top bar','Fullscreen button','Changelog']],
  ['v1.7.0 and earlier',['7 wizards, 3 modes, online rooms + offline bots, biomes, fog of war, power-up modifiers']]];
-$('ver').textContent=LOG[0][0];
-$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
+
 $('blog').onclick=()=>show('log');$('lb').onclick=()=>show('menu');
 const fsE=document.documentElement,fsR=fsE.requestFullscreen||fsE.webkitRequestFullscreen;
 if(!fsR)$('fs').style.display='none';
@@ -249,7 +248,7 @@ $('bo').onclick=()=>{
 function mkRoom(){
   code=Math.random().toString(36).slice(2,6).toUpperCase();
   peer=new Peer('arcane-'+code);
-  peer.on('error',e=>{if(e.type=='unavailable-id')mkRoom();else msg('Network error: '+e.type)});
+  peer.on('error',e=>{if(e.type=='unavailable-id'){try{peer.destroy()}catch(x){}mkRoom()}else msg('Network error: '+e.type)});
   peer.on('open',()=>{
     lobby=[{n:myName(),c:0,k:cls}];st='lobby';show('lobby');
     $('lk').textContent=location.origin+location.pathname+'?room='+code;drawLobby();
@@ -338,7 +337,7 @@ function bpaint(q){ // pre-render each building's floor and roof once per world 
     else{L(x,0,0,w,h,d,5);L(x,w,0,0,h,d,5);x.strokeStyle=d;x.lineWidth=4;for(let n=1;n<4;n++)x.strokeRect(w*n/8,h*n/8,w*(1-n/4),h*(1-n/4));x.fillStyle=l;x.beginPath();x.arc(w/2,h/2,10,0,7);x.fill()}
     x.strokeStyle=OL;x.lineWidth=8;x.strokeRect(0,0,w,h)})}
 function world(seed){
-  const r=rng(seed);WR=r;R=[];Bu=[];Gp=[];Bd=[];Wl=[];Wn=[];Sz=[];
+  const r=rng(seed);WR=r;R=[];Bu=[];Bd=[];Wl=[];Wn=[];Sz=[];
   const bush=(x,y,n,s)=>{for(let j=0;j<n;j++)Bu.push({x:x+(r()-.5)*(s||130),y:y+(r()-.5)*(s||130),r:48+r()*25})};
   const spots=[[C-200,C-200,400,400]],ri=(a,b)=>a+(r()*(b-a)|0),pk=a=>a[r()*a.length|0];
   biomes(r);
@@ -498,7 +497,7 @@ const cam=()=>{const m=P[me]||{x:C,y:C,hp:1};if(m.hp>0||dieT>0||md)return m;cons
 
 // ---------- 7. Simulation (host) ----------
 function mkPlayer(l,i){
-  return{n:l.n,c:l.c,cl:l.cl!=null?l.cl:l.k,iq:l.iq,bot:l.bot,conn:l.conn,gold:l.gold|0,gb:0,bd:0,bv:0,x:0,y:0,tx:0,ty:0,a:0,hp:CL[l.cl!=null?l.cl:l.k].hp,k:0,cd:0,mx:0,my:0,f:0,
+  return{n:l.n,c:l.c,cl:l.cl!=null?l.cl:l.k,iq:l.iq,bot:l.bot,conn:l.conn,gold:l.gold|0,bd:0,bv:0,x:0,y:0,tx:0,ty:0,a:0,hp:CL[l.cl!=null?l.cl:l.k].hp,k:0,cd:0,mx:0,my:0,f:0,
     s:'search',rt:0,sd:1,aj:0,tg:-1,dest:{x:C,y:C},lk:null,pa:0,pg:[0,0],pr:0,pw:0,
     dh:0,sl:0,ac:0,rv:0,rl:0,ch:0,aq:0,au:0,fl:0,pt:0,dd:0,vl:0,bn:0,bo:-1,fz:0,bl:0,sk:0,sj:0,ht:0,sn:0,st:0,sc:0}
 }
@@ -506,7 +505,7 @@ let cdI=0; // lobby countdown timer
 const cdStop=()=>{clearInterval(cdI);cdI=0;$('bs').disabled=false;$('cdn').textContent=''};
 const cdShow=n=>{$('cdn').textContent=n>0?n:'';if(n>0)sfx('tick')};
 $('bs').onclick=()=>{ // host presses Start: 3, 2, 1, then the game begins
-  if(!host||st!='lobby'||cdI)return;
+  if(!host||st!='lobby'||cdI)return;if(code=='OFFLINE'){startGame();return}
   if($('s5').value!='1'&&lobby.length<2){const t=$('lk').textContent;$('lk').textContent='Bots are off: you need at least 2 players.';setTimeout(()=>$('lk').textContent=t,3000);return}
   let n=3;$('bs').disabled=true;cdShow(n);bc({t:'c',n});
   cdI=setInterval(()=>{n--;if(n>0){cdShow(n);bc({t:'c',n});return}cdStop();bc({t:'c',n:0});startGame()},1000)};
@@ -524,16 +523,8 @@ function startGame(){
   const seed=Math.random()*1e9|0,n=list.length;world(seed);Zn=[];spec=-1;
   P=list.map((l,i)=>{const p=mkPlayer(l,i),a=i/n*6.283;p.x=C+Math.cos(a)*(A-120);p.y=C+Math.sin(a)*(A-120);p.a=a+3.14;return p});
   P.forEach((p,i)=>{if(p.conn){p.conn.pi=i;p.conn.send({t:'s',seed,ps:P.map(q=>({n:q.n,c:q.c,cl:q.cl})),md:S.m,mod,you:i})}else if(!p.bot)me=i});
-  B=[];zt=0;zr=C;md=S.m;Bx=[];bxT=0;modT=8;if(mod==1)for(let i=0;i<14;i++)spawnBox();hz=md==2?{x:C,y:C,t:0}:null;st='play';show(null);
+  B=[];zt=0;zr=C;md=S.m;Bx=[];modT=8;hz=md==2?{x:C,y:C,t:0}:null;st='play';show(null);
 };
-function hit(p,d,by){
-  if(p.hp<=0)return;const o=P[by];
-  if(by!=null){
-    if(CL[p.cl].ps.k=='frost'&&o&&o!==p&&Math.hypot(o.x-p.x,o.y-p.y)<220)o.sl=Math.max(o.sl,.8); // Permafrost
-    p.ch=Math.min(100,p.ch+d*.4);if(o&&o!==p)o.ch=Math.min(100,o.ch+d*.8)} // fighting charges the ultimate
-  d*=CL[p.cl].ps.k=='skin'?.85:(CL[p.cl].ps.k=='wstep'&&Math.hypot(p.mx,p.my)>.1)?.9:1;p.hp-=d;p.rl=4;
-  if(p.hp<=0&&by!=null&&o&&o!==p){o.k++;if(p.gold){o.gb=(o.gb||0)+1;o.hp=CL[o.cl].hp;ev(4,o.x,o.y,4,0)}if(CL[o.cl].ps.k=='ash')o.hp=Math.min(CL[o.cl].hp,o.hp+30)}
-}
 function respawn(p){const q=freePt(C,C,A-250);
   Object.assign(p,{x:q.x,y:q.y,hp:CL[p.cl].hp,rl:0,sl:0,vl:0,ch:0,bn:0,fz:0,bl:0,sk:0,pa:0})}
 function ev(t,x,y,a,b){EV.push([t,x|0,y|0,a|0,b|0]);evFx(t,x,y,a,b)} // visual event: applied locally + sent to clients
@@ -542,12 +533,6 @@ function bolt(b,q){ // a bolt hit q: damage + the wizard's on-hit effect
   if(e=='burn'){q.bn=3;q.bo=b.o;for(const r of P)if(r!==q&&r!==o&&r.hp>0&&Math.hypot(r.x-q.x,r.y-q.y)<70){hit(r,d*.5,b.o);r.bn=3;r.bo=b.o}}else if(e=='slow')q.sl=Math.max(q.sl,.9);
   else if(e=='knock'){push(q,b.vx,b.vy,45)}
   else if(e=='drain'&&o.hp>0)o.hp=Math.min(CL[o.cl].hp,o.hp+d*.45);
-  else if(e=='chain'){let t=null,bd=230;for(const r of P)if(r!==q&&r!==o&&r.hp>0){const dd=Math.hypot(r.x-q.x,r.y-q.y);if(dd<bd&&los(q.x,q.y,r.x,r.y,1)){bd=dd;t=r}}
-    if(t){hit(t,d*.6,b.o);ev(0,q.x,q.y,t.x,t.y)}}
-}
-function strike(p,i){ // Storm Call: lightning on the nearest visible enemy
-  let t=null,bd=520;for(const q of P)if(q!==p&&q.hp>0){const d=Math.hypot(q.x-p.x,q.y-p.y);if(d<bd&&(!hid(q)||d<150)&&los(p.x,p.y,q.x,q.y,1)){bd=d;t=q}}
-  if(t){hit(t,9,i);ev(3,t.x,t.y,0,p.cl)}
 }
 // where Shadow Step really lands (never through walls / rocks) and how far Thunder Dash really gets; the aim preview uses the same functions
 const stepTo=(ox,oy,a)=>{for(let L=260;L>0;L-=30){const x=ox+Math.cos(a)*L,y=oy+Math.sin(a)*L;if(!gb(x,y)&&los(ox,oy,x,y,1)&&!wb(ox,oy,x,y))return{x,y}}return null};
@@ -561,7 +546,7 @@ function cast(p,i,u){
   const k=u.k,dx=Math.cos(p.a),dy=Math.sin(p.a),en=P.filter(q=>q!==p&&q.hp>0),near=r=>en.filter(q=>Math.hypot(q.x-p.x,q.y-p.y)<r);
   if(k=='pool'){const[x,y]=plc(p,300,40);Zn.push({x,y,r:95,t:4.5,T:4.5,k:'fire',o:i})}
   else if(k=='nova'){near(150).forEach(q=>{hit(q,18,i);q.fz=.8});ev(1,p.x,p.y,150,p.cl)}
-  else if(k=='sanct')Zn.push({x:p.x,y:p.y,r:110,t:4,T:4,k:'heal',o:i});
+  else if(k=='sanct')Zn.push({x:p.x,y:p.y,r:110,t:2.5,T:2.5,k:'heal',o:i});
   else if(k=='zap')p.dh=.2;
   else if(k=='step'){const a=Math.hypot(p.mx,p.my)>.1?Math.atan2(p.my,p.mx):p.a,ox=p.x,oy=p.y,d=stepTo(ox,oy,a);
     if(d){p.x=d.x;p.y=d.y;ev(2,ox,oy,d.x,d.y)}}
@@ -572,24 +557,18 @@ function cast(p,i,u){
     else if(k=='rift'){near(380).forEach(q=>{if(!los(p.x,p.y,q.x,q.y,1)||wb(p.x,p.y,q.x,q.y))return;const d=Math.hypot(q.x-p.x,q.y-p.y)||1,L=Math.max(0,d-90);q.x-=(q.x-p.x)/d*L;q.y-=(q.y-p.y)/d*L;hit(q,20,i);q.sl=1.5});ev(1,p.x,p.y,380,p.cl)}
   else if(k=='storm'){p.sk=3;p.sj=0}
   else if(k=='quake'){near(170).forEach(q=>{hit(q,14,i);push(q,q.x-p.x,q.y-p.y,90);q.sl=Math.max(q.sl,.8)});ev(1,p.x,p.y,170,p.cl)}
-  else if(k=='gust'){near(220).forEach(q=>push(q,q.x-p.x,q.y-p.y,140));p.bv=2.5;p.dh=.22;ev(1,p.x,p.y,220,p.cl);ev(3,p.x,p.y,0,0)}
-  else if(k=='slide'){const[x,y]=plc(p,480,100);Zn.push({x,y,r:170,t:1.2,T:1.2,k:'rock',o:i,dm:55})}
-  else if(k=='tornado'){const[x,y]=plc(p,420,60);Zn.push({x,y,r:150,t:5,T:5,k:'wind',o:i})}
+  else if(k=='gust'){near(220).forEach(q=>push(q,q.x-p.x,q.y-p.y,140));p.bv=2.5;p.dh=.22;ev(1,p.x,p.y,220,p.cl)}
+  else if(k=='tornado'){const[x,y]=plc(p,420,60);Zn.push({x,y,r:120,t:4,T:4,k:'wind',o:i})}
 }
 function zones(dt){ // spell zones + springs / wells
   Zn=Zn.filter(z=>{z.t-=dt;const o=P[z.o];if(z.fw&&o){z.x=o.x;z.y=o.y}
-    if(z.k=='met'||z.k=='rock'){if(z.t>0)return true;for(const q of P)if(q.hp>0&&(!z.dm||q!==o)&&Math.hypot(q.x-z.x,q.y-z.y)<z.r){hit(q,z.dm||70,z.o);if(z.dm)q.sl=Math.max(q.sl,1.5);else{q.bn=3;q.bo=z.o}}ev(1,z.x,z.y,z.r,o?o.cl:0);return false}
+    if(z.k=='met'){if(z.t>0)return true;for(const q of P)if(q.hp>0&&Math.hypot(q.x-z.x,q.y-z.y)<z.r){hit(q,70,z.o);q.bn=3;q.bo=z.o}ev(1,z.x,z.y,z.r,o?o.cl:0);return false}
     for(const q of P){if(q.hp<=0||Math.hypot(q.x-z.x,q.y-z.y)>=z.r)continue;
       if(z.k=='heal'){if(q===o)q.hp=Math.min(CL[q.cl].hp,q.hp+24*dt)}
       else if(q!==o){hit(q,(z.k=='fire'?13:z.k=='wind'?12:9)*dt,z.o);if(z.k=='frost')q.sl=Math.max(q.sl,.3);if(z.k=='wind'){const e=Math.hypot(z.x-q.x,z.y-q.y)||1;q.x+=(z.x-q.x)/e*170*dt;q.y+=(z.y-q.y)/e*170*dt}}}
     return z.t>0});
-  for(const q of P)if(q.hp>0)for(const z of Sz)if(Math.hypot(q.x-z.x,q.y-z.y)<z.r){if(z.k=='spring')q.hp=Math.min(CL[q.cl].hp,q.hp+12*dt);else q.ch=Math.min(100,q.ch+10*dt)}
+  for(const q of P)if(q.hp>0)for(const z of Sz)if(Math.hypot(q.x-z.x,q.y-z.y)<z.r){if(z.k=='spring')q.hp=Math.min(CL[q.cl].hp,q.hp+12*dt);else q.ch=Math.min(100,q.ch+6*dt)}
 }
-function spawnBox(){const q=freePt(C,C,A-300);Bx.push({x:q.x,y:q.y})}
-function power(p){ // random power-up from a box
-  const k=Math.random()*4|0;
-  if(k==0)p.hp=Math.min(CL[p.cl].hp,p.hp+60);else if(k==1)p.bd=15;else if(k==2)p.bv=12;else p.ch=Math.min(100,p.ch+60);
-  ev(4,p.x,p.y,k,0)}
 function moveSz(dt){ // springs (heal) and wells (ultimate) glide to a new spot every ~20-35s
   for(const z of Sz){
     if(z.tx==null){if((z.wt=(z.wt==null?12+Math.random()*18:z.wt)-dt)<=0){const q=freePt(C,C,A-420);z.tx=q.x;z.ty=q.y}}
@@ -598,7 +577,7 @@ function moveSz(dt){ // springs (heal) and wells (ultimate) glide to a new spot 
 function step(dt){
   zt+=dt;zr=S.m?A:Math.max(120,A-Math.max(0,zt-20)*14); // storm shrinks after 20s (Showdown only)
   moveSz(dt);
-  if(mod==1){bxT-=dt;if(bxT<=0&&Bx.length<14){bxT=6;spawnBox()}}
+  
   P.forEach((p,i)=>{
     if(p.hp<=0){if(S.m&&(p.dd+=dt)>3){p.dd=0;respawn(p)}return}
     if(p.bot)ai(p,i,dt);const c=CL[p.cl];
@@ -622,17 +601,17 @@ function step(dt){
     // shooting
     p.cd-=dt;
     if(p.f&&p.cd<=0&&!(p.bl>0)){
-      const dm=c.d*(p.bd>0?1.4:1)*(1+.2*p.gb)*(c.ps.k=='stat'&&(p.sn=(p.sn|0)+1)%3==0?1.6:1);p.cd=c.cd;p.rv=.8;p.sc++;
+      const dm=c.d*(p.bd>0?1.4:1)*(c.ps.k=='stat'&&(p.sn=(p.sn|0)+1)%3==0?1.6:1);p.cd=c.cd;p.rv=.8;p.sc++;
       for(let n=0;n<(c.pl||1);n++){const a=p.a+(c.pl>1?(n/(c.pl-1)-.5)*c.sa:(Math.random()-.5)*.1);B.push({x:p.x,y:p.y,vx:Math.cos(a)*c.bs,vy:Math.sin(a)*c.bs,o:i,t:c.bt,d:dm,c:p.cl,e:c.ef,w:c.wv,ph:c.wv&&c.pl>1?n*Math.PI:0})}}
     if(p.aq){p.aq=0;if(p.ac<=0){cast(p,i,c.ab);p.ac=c.ab.cd}}
     if(p.au){p.au=0;if(p.ch>=100){cast(p,i,c.ul);p.ch=0}}
     for(const k of['dh','sl','ac','rv','rl','vl','fz','bl','sk','bd','bv'])p[k]=Math.max(0,p[k]-dt);
-    p.ch=Math.min(100,p.ch+1.2*dt);
+    p.ch=Math.min(100,p.ch+.72*dt);
     // healing: starts at 6 HP/s after 4s unhurt, doubles every 3s (capped at 50% max HP/s)
     if(!p.rl){p.ht+=dt;p.hp=Math.min(c.hp,p.hp+Math.min(c.hp*.5,6*(c.ps.k=='bless'?1.6:1)*Math.pow(2,p.ht/3))*dt)}else p.ht=0;
     // Shadow Cloak: standing still turns Hex invisible
     p.st=Math.hypot(p.mx,p.my)<.1&&!p.f?p.st+dt:0;if(c.ps.k=='cloak'&&p.st>1.5)p.vl=Math.max(p.vl,.2);
-    p.fl=(p.gold?1024:0)+(p.bd>0||p.gb>0?2048:0)+(p.bv>0?4096:0)+(p.vl>0)*2+(p.rv>0)*16+(p.bn>0)*32+(p.fz>0)*64+(p.sl>0)*128+(p.bl>0)*256;
+    p.fl=(p.gold?1024:0)+(p.bd>0?2048:0)+(p.bv>0?4096:0)+(p.vl>0)*2+(p.rv>0)*16+(p.bn>0)*32+(p.fz>0)*64+(p.sl>0)*128+(p.bl>0)*256;
   });
   Bx=Bx.filter(b=>{const q=P.find(p=>p.hp>0&&Math.hypot(p.x-b.x,p.y-b.y)<34);if(!q)return true;power(q);return false});
   zones(dt);
@@ -655,12 +634,12 @@ function step(dt){
   if(done){netT=1;bc({t:'e',w});finish(w)} // netT=1 forces one last snapshot so clients see the final death
   // snapshot to clients (20 Hz)
   netT+=dt;
-  if(netT>.05){netT=0;bc2({t:'u',p:P.map(p=>[p.x|0,p.y|0,+p.a.toFixed(2),Math.ceil(Math.max(0,p.hp)),p.k,p.fl|0,Math.ceil(p.ac),p.ch|0,p.pt|0,p.sc|0]),
+  if(netT>.05){netT=0;if(!P.some(p=>p.conn&&p.conn.open))EV.length=0;else bc2({t:'u',p:P.map(p=>[p.x|0,p.y|0,+p.a.toFixed(2),Math.ceil(Math.max(0,p.hp)),p.k,p.fl|0,Math.ceil(p.ac),p.ch|0,p.pt|0,p.sc|0]),
     h:hz?[hz.x|0,hz.y|0]:0,b:B.map(b=>[b.x|0,b.y|0,b.c|0,Math.round(Math.atan2(b.vy,b.vx)*100)]),z:zr|0,
     zn:Zn.map(z=>[z.x|0,z.y|0,z.r,+(z.t/z.T).toFixed(2),ZK.indexOf(z.k)]),ev:EV.splice(0),sz:Sz.map(z=>[z.x|0,z.y|0]),bx:Bx.map(b=>[b.x|0,b.y|0])})}
 }
 function finish(w){
-  if(st!='play')return;st='over';const p=P[w];if(w==me)sfx('win');
+  if(st!='play')return;st='over';dbg.style.display='none';const p=P[w];if(w==me)sfx('win');
   $('et').textContent=w==me?'VICTORY!':md?'GAME OVER':'ELIMINATED';
   $('es').textContent=(p?'Winner: '+p.n+' · ':'')+'Your kills: '+(P[me]?P[me].k:0);
   $('ba').style.display=host?'':'none';
@@ -773,7 +752,7 @@ function fx(dt){
       if(sn||st!='play'){const col=COLS[p.c&7]; // big burst: two rings, a white flash, a rising skull and 34 sparks
         Q.push({k:'r',x:p.x,y:p.y,R:280,t:.9,l:.9,c:col},{k:'r',x:p.x,y:p.y,R:160,t:.7,l:.7,c:'#fff'},{k:'f',x:p.x,y:p.y,t:.25,l:.25},{k:'t',s:'💀',z:56,x:p.x,y:p.y-20,vy:-65,t:1.8,l:1.8,c:'#fff'});
         for(let n=0;n<34;n++){const a=Math.random()*6.283,v=120+Math.random()*420;Q.push({k:'c',x:p.x,y:p.y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,t:.9,l:.9,c:n%3?col:'#fff',r:5+Math.random()*6})}}
-      sfx('die',p.x,p.y);if(i==me||st!='play')flash=.5;if(i==me)shk=10;if(i==me&&md==0&&st=='play'){dieT=3;dRank=P.filter(q=>q.hp>0).length+1}
+      sfx('die',p.x,p.y);if(i==me||st!='play')flash=.5;if(i==me)shk=10;if(i==me&&md==0&&st=='play'){dieT=3;dRank=P.filter(q=>q.hp>0&&!isG(q)).length+1}
       KF.unshift({s:killer&&killer!==p?killer.n+'  ➜  '+p.n:p.n+' was eliminated',t:5});KF.length=Math.min(KF.length,5)}
     if(i==me&&p.k>p._k){KO=1.3;sfx('ko')}
     if(p.sc>p._s){sfx('shot',p.x,p.y,p.cl);if(sn)spark(p.x+Math.cos(p.a)*(8+c.gl),p.y+Math.sin(p.a)*(8+c.gl),c.sc,3,260,.12,5)}
@@ -795,15 +774,14 @@ const cir=(x,y,r,f)=>{g.fillStyle=f;g.beginPath();g.arc(x,y,r,0,7);g.fill()};
 function zap(x1,y1,x2,y2,c,w){g.strokeStyle=c;g.lineWidth=w;g.lineJoin='round';g.beginPath();g.moveTo(x1,y1);
   for(let i=1;i<6;i++){const t=i/6;g.lineTo(x1+(x2-x1)*t+(Math.random()-.5)*26,y1+(y2-y1)*t+(Math.random()-.5)*26)}g.lineTo(x2,y2);g.stroke()}
 function person(p,isMe){ // top-down cartoon wizard: staff, robe, hands, head, hat/hair, eyes
-  const c=CL[p.cl],b=p.mv?Math.sin(performance.now()/85+p.cl)*.06:0,L=c.gl+12;
+  const c=CL[p.cl],b=p.mv?Math.sin(performance.now()/85+p.cl)*.06:0;
   g.save();g.translate(p.x,p.y);g.scale(1+b,1-b);
   g.fillStyle='rgba(0,0,0,.28)';g.beginPath();g.ellipse(0,6,20,15,0,0,7);g.fill();
   if(isMe){g.strokeStyle='rgba(255,255,255,.75)';g.lineWidth=2.5;g.beginPath();g.arc(0,0,26,0,7);g.stroke()}
   g.rotate(p.a);g.lineCap=g.lineJoin='round';
-  g.strokeStyle=OL;g.lineWidth=10;g.beginPath();g.moveTo(-2,7);g.lineTo(L,7);g.stroke();g.strokeStyle='#c98a4b';g.lineWidth=5;g.beginPath();g.moveTo(-2,7);g.lineTo(L,7);g.stroke();
-  g.fillStyle=c.sc;g.strokeStyle=OL;g.lineWidth=3;g.beginPath();g.arc(L+3,7,8,0,7);g.fill();g.stroke();
+  g.strokeStyle=OL;
   g.lineWidth=4;g.fillStyle=c.oc;g.beginPath();g.ellipse(-2,0,12,19,0,0,7);g.fill();g.stroke();
-  g.fillStyle=c.sk;g.lineWidth=3;for(const h of[[14,-9],[L*.6,7]]){g.beginPath();g.arc(h[0],h[1],5,0,7);g.fill();g.stroke()}
+  g.fillStyle=c.sk;g.lineWidth=3;for(const h of[[14,-9],[0,7]]){g.beginPath();g.arc(h[0],h[1],5,0,7);g.fill();g.stroke()}
   g.lineWidth=3.5;g.beginPath();g.arc(5,0,11,0,7);g.fill();g.stroke();
   g.fillStyle=c.hr;g.beginPath();g.arc(-3,0,13.5,0,7);g.fill();g.stroke();
   const h=c.hs;
@@ -835,7 +813,7 @@ function boxSpr(x,y,s){g.save();g.translate(x,y);g.lineJoin='round';g.fillStyle=
   g.fillStyle=OL;g.fillRect(-s-4,-s-4,s*2+8,s*2+8);g.fillStyle='#b44dff';g.fillRect(-s,-s,s*2,s*2);g.fillStyle='#d9a0ff';g.fillRect(-s,-s,s*2,s*.45);g.fillStyle='#7a2fc0';g.fillRect(-s,s*.55,s*2,s*.45);
   g.strokeStyle=OL;g.lineWidth=3;g.strokeRect(-s,-s,s*2,s*2);g.fillStyle='#ffd23f';g.fillRect(-s*.18,-s,s*.36,s*2);g.fillRect(-s,-s*.18,s*2,s*.36);
   g.fillStyle='#fff';g.beginPath();g.arc(-s*.55,-s*.6,s*.14,0,7);g.fill();g.restore()}
-function drawBoxes(){const T=performance.now()/1000;g.textAlign='center';for(const b of Bx){cir(b.x,b.y,26,'#ffd23f55');boxSpr(b.x,b.y-4+Math.sin(T*3+b.x)*3,13)}}
+function drawBoxes(){const T=performance.now()/1000;g.textAlign='center';for(const b of Bx){cir(b.x,b.y,26,'#ffd23f55');boxSpr(b.x,b.y-4+Math.sin(T*3+b.x)*3,9)}}
 function statusIcons(p){ // icons above the name + a pulsing ring while burning
   const F=p.fl|0,ic=(F&1024?'👑':'')+(F&2048?'⚔️':'')+(F&4096?'💨':'')+(F&32?'🔥':'')+(F&64?'🧊':'')+(F&128?'🐌':'')+(F&256?'💫':'');
   if(ic){g.font='16px sans-serif';g.fillText(ic,p.x,p.y-56)}
@@ -859,9 +837,7 @@ function padsAndZones(pa,za){ // drawn under the roofs, then again over them (so
   for(const z of Sz){const sp=z.k=='spring';g.globalAlpha=pa;g.fillStyle=sp?'#2fbf5a':'#8a5cff';g.strokeStyle=sp?'#b6ffc9':'#e0ccff';g.lineWidth=4;g.beginPath();g.arc(z.x,z.y,z.r,0,7);g.fill();g.stroke();g.globalAlpha=1;
     if(sp)hcross(z.x,z.y,18);else{g.font='26px sans-serif';g.fillStyle='#fff';g.fillText('🔮',z.x,z.y+9)}}
   for(const z of Zn){const fr=z.T?z.t/z.T:z.f;
-    if(z.k=='rock'){const p=1-fr;g.strokeStyle='#8a6a3b';g.lineWidth=6;g.setLineDash([16,10]);g.beginPath();g.arc(z.x,z.y,z.r,0,7);g.stroke();g.setLineDash([]);g.fillStyle='rgba(150,110,60,'+(.15+.3*p)+')';g.beginPath();g.arc(z.x,z.y,z.r*p,0,7);g.fill();
-      for(let j=0;j<5;j++){const an=j*1.257+1,rr=z.r*.55*(j%2?1:.6),rx=z.x+Math.cos(an)*rr,ry=z.y+Math.sin(an)*rr-260*Math.max(0,fr-.1)*(1+j*.15),sz=20+j%3*6;g.fillStyle=OL;g.beginPath();g.moveTo(rx-sz-3,ry+sz*.7);g.lineTo(rx-sz*.6,ry-sz);g.lineTo(rx+sz*.7,ry-sz*.8);g.lineTo(rx+sz+3,ry+sz*.6);g.closePath();g.fill();g.fillStyle=j%2?'#a58455':'#8d6e43';g.beginPath();g.moveTo(rx-sz,ry+sz*.6);g.lineTo(rx-sz*.5,ry-sz*.8);g.lineTo(rx+sz*.6,ry-sz*.7);g.lineTo(rx+sz,ry+sz*.5);g.closePath();g.fill()}}
-    else if(z.k=='met'){const p=1-fr;g.strokeStyle='#ff3b3b';g.lineWidth=5;g.beginPath();g.arc(z.x,z.y,z.r,0,7);g.stroke();g.fillStyle='rgba(255,70,40,'+(.12+.28*p)+')';g.beginPath();g.arc(z.x,z.y,z.r*p,0,7);g.fill();g.font='bold 44px sans-serif';g.fillStyle='#fff';g.fillText('☄️',z.x,z.y-90*fr+14)}
+    if(z.k=='met'){const p=1-fr;g.strokeStyle='#ff3b3b';g.lineWidth=5;g.beginPath();g.arc(z.x,z.y,z.r,0,7);g.stroke();g.fillStyle='rgba(255,70,40,'+(.12+.28*p)+')';g.beginPath();g.arc(z.x,z.y,z.r*p,0,7);g.fill();g.font='bold 44px sans-serif';g.fillStyle='#fff';g.fillText('☄️',z.x,z.y-90*fr+14)}
     else{const c={fire:'255,140,40',frost:'140,220,255',heal:'90,255,140',wind:'190,240,230'}[z.k];g.fillStyle='rgba('+c+','+(za+.06*Math.sin(T*4))+')';g.strokeStyle='rgba('+c+',.85)';g.lineWidth=3;g.beginPath();g.arc(z.x,z.y,z.r*Math.min(1,fr/.15),0,7);g.fill();g.stroke()}}
 }
 function bushes(f){for(const[col,dr,ox,oy,k]of[[OL,4,0,0,1],['#3da048',0,0,0,1],['#56c25f',0,-.25,-.3,.5]])for(const q of Bu){if(f&&!f(q))continue;g.fillStyle=col;g.beginPath();g.arc(q.x+ox*q.r,q.y+oy*q.r,q.r*k+dr,0,7);g.fill()}}
@@ -871,10 +847,6 @@ function walls(){ // outlines first, then fills, so pieces of one wall never sho
   for(const w of Wl){g.fillStyle=w.c||(w.hd?'#2f7d3a':w.st?'#6b7280':'#5a4632');g.fillRect(w.x,w.y,w.w,w.h);
     if(w.hd||w.st||w.c){g.fillStyle=w.hd?'#44b04f':w.st?'#8b93a3':'rgba(255,255,255,.14)';g.fillRect(w.x+5,w.y+5,w.w-10,w.h-10)}}
   for(const r of R)if(!r.w){g.lineWidth=4;g.fillStyle='#6b7280';g.beginPath();g.arc(r.x,r.y,r.r,0,7);g.fill();g.stroke();g.fillStyle='rgba(255,255,255,.2)';g.beginPath();g.arc(r.x-r.r*.3,r.y-r.r*.3,r.r*.35,0,7);g.fill()}
-}
-function roofs(m){ // every house you are not inside is dark from above
-  const mb=bi(m);Bd.forEach((q,k)=>{if(k!=mb)g.drawImage(q.rf,q.x+22,q.y+22,q.w-44,q.h-44)});
-  g.save();g.beginPath();Bd.forEach((q,k)=>{if(k!=mb)g.rect(q.x+22,q.y+22,q.w-44,q.h-44)});g.clip();g.textAlign='center';padsAndZones(.8,.45);g.restore();
 }
 const lc=document.createElement('canvas');let RL=null,lm=null;
 function light(m,w,h){ // low-res soft darkness; wall ray lengths are eased over time so it never flickers
@@ -904,7 +876,7 @@ function aimLane(){ // your attack's real path: one lane per projectile (Frost f
       if(e<L){g.globalAlpha=.5;g.strokeStyle=c.sc;g.lineWidth=2;g.setLineDash([6,6]);g.beginPath();g.arc(e,0,70,0,7);g.stroke();g.globalAlpha=1}}
     g.restore()}
 }
-const PV={pool:['at',300,95,40],quake:['self',170],gust:['self',220],slide:['at',480,170,100],tornado:['at',420,150,60],nova:['self',150],sanct:['self',110],blizzard:['self',200],flare:['self',320],rift:['self',380],storm:['self',520],zap:['line',130],step:['line',260],meteor:['meteor']};
+const PV={pool:['at',300,95,40],quake:['self',170],gust:['self',220],tornado:['at',420,120,60],nova:['self',150],sanct:['self',110],blizzard:['self',200],flare:['self',320],rift:['self',380],storm:['self',440],zap:['line',130],step:['line',260],meteor:['meteor']};
 const mtPos=(p,aim)=>{let t=null,bd=.45;for(const q of P)if(q!==p&&q.hp>0){const d=Math.hypot(q.x-p.x,q.y-p.y),a=Math.atan2(q.y-p.y,q.x-p.x)-aim,n=Math.abs(Math.atan2(Math.sin(a),Math.cos(a)));if(d<650&&n<bd){bd=n;t=q}}return{x:t?t.x:p.x+Math.cos(aim)*380,y:t?t.y:p.y+Math.sin(aim)*380}};
 function aimPreview(){ // while Q / E is held: show where the ability / ultimate will land (white = ready, red = not ready); it fires on release
   const q=P[me];if(st!='play'||!q||q.hp<=0||!(aimQ||aimE))return;
@@ -915,7 +887,7 @@ function aimPreview(){ // while Q / E is held: show where the ability / ultimate
   if(pv[0]=='self')ring(q.x,q.y,pv[1]);
   else if(pv[0]=='at'){const d=Math.max(pv[3]||0,Math.min(pv[1],I.pd||230));ring(q.x+dx*d,q.y+dy*d,pv[2])}
   else if(pv[0]=='meteor'){const m=mtPos({x:q.x,y:q.y,a});ring(m.x,m.y,150)}
-  else{const ma=Math.hypot(I.mx,I.my)>.1?Math.atan2(I.my,I.mx):a;let ex,ey,bad=0;
+  else{const ma=a;let ex,ey,bad=0;
     if(u.k=='step'){const d=stepTo(q.x,q.y,ma);if(d){ex=d.x;ey=d.y}else{ex=q.x;ey=q.y;bad=1}} // exactly where the teleport will land
     else{const t=dashEnd(q.x,q.y,ma,pv[1]);ex=q.x+Math.cos(ma)*t;ey=q.y+Math.sin(ma)*t;bad=t<8} // the dash stops at the first obstacle
     if(bad){g.fillStyle='#ff6b6b22';g.strokeStyle='#ff6b6bcc'}
@@ -932,7 +904,7 @@ function zoneTop(){ // spell zones, springs, wells and boxes are redrawn ABOVE r
     if(z.k=='wind'){g.lineWidth=6;for(let i=0;i<3;i++){g.beginPath();g.arc(z.x,z.y,z.r*(.3+i*.25),T*5+i*2,T*5+i*2+2.4);g.stroke()}}
     if(z.k=='heal'&&Math.random()<.25)Q.push({k:'t',s:'+',z:22,x:z.x+(Math.random()-.5)*z.r*1.5,y:z.y+(Math.random()-.5)*z.r*1.5,vy:-45,t:.8,l:.8,c:'#8dffb0'});
     g.globalAlpha=1}
-  for(const b of Bx)boxSpr(b.x,b.y-4,13)
+  for(const b of Bx)boxSpr(b.x,b.y-4,9)
   g.restore()}
 function drawBolt(b,T){ // every wizard's projectile looks (and moves) differently
   const c=CL[b.c|0],k=c.sc,s=c.bk;g.save();g.translate(b.x,b.y);g.rotate(b.a!=null?b.a:Math.atan2(b.vy,b.vx));g.lineCap=g.lineJoin='round';
@@ -958,13 +930,10 @@ function drawFx(){ // bolts and particles
 }
 function overlay(m,w,h){ // screen space: light, minimap, vignette, bars, kill feed, warnings
   if(m.cl==null)return;light(m,w,h);
-  const ms=Math.min(CFG.map,w*.3,Math.max(90,h-216)),x0=w-ms-10,y0=56,k=ms/2/A,cx=x0+ms/2,cy=y0+ms/2,mp=(x,y)=>[cx+(x-C)*k,cy+(y-C)*k],bt=(y0+ms+12)+'px'; if($('ab').style.top!=bt)$('ab').style.top=$('cx').style.top=bt; // keep the ability buttons under the map,x0=w-ms-10,y0=56,k=ms/2/A,cx=x0+ms/2,cy=y0+ms/2,mp=(x,y)=>[cx+(x-C)*k,cy+(y-C)*k];
+  const ms=Math.min(CFG.map,w*.3,Math.max(90,h-216)),x0=w-ms-10,y0=56,k=ms/2/A,cx=x0+ms/2,cy=y0+ms/2,mp=(x,y)=>[cx+(x-C)*k,cy+(y-C)*k],bt=(y0+ms+12)+'px'; if($('ab').style.top!=bt)$('ab').style.top=$('cx').style.top=bt; // keep the ability buttons under the map
   g.save();g.beginPath();g.arc(cx,cy,ms/2,0,7);g.clip();
   g.fillStyle='#10131ccc';g.fillRect(x0,y0,ms,ms);cir(cx,cy,ms/2,'#cdb877');g.drawImage(MC,x0,y0,ms,ms);
-  for(const z of Sz){const[a,b]=mp(z.x,z.y);cir(a,b,Math.max(2.5,z.r*k),z.k=='spring'?'#00ff55':'#8a5cff')} // live pads
-  g.font='bold 12px sans-serif';g.textAlign='center';g.lineWidth=3;g.strokeStyle='#000';g.fillStyle='#fff';for(const s of BS){const[a,b]=mp(s.x,s.y),n=s.nm||ZN[s.t];g.strokeText(n,a,b);g.fillText(n,a,b)}g.textAlign='left';
   for(const q of Bx){const[a,b]=mp(q.x,q.y);cir(a,b,2.5,'#ffd23f')}
-  for(const z of Zn){const[a,b]=mp(z.x,z.y),rr=Math.max(4,z.r*k),col={fire:'#ff6a00',frost:'#00e5ff',heal:'#00ff55',met:'#ff0033',rock:'#ff0033',wind:'#ffffff'}[z.k]||'#ff00ff';g.fillStyle=col+'66';g.beginPath();g.arc(a,b,rr,0,7);g.fill();g.strokeStyle='#000';g.lineWidth=4;g.beginPath();g.arc(a,b,rr,0,7);g.stroke();g.strokeStyle=col;g.lineWidth=2.5;g.beginPath();g.arc(a,b,rr,0,7);g.stroke()}
   
   
   if(md==0){g.fillStyle='#ff1e1e66';g.beginPath();g.rect(x0,y0,ms,ms);g.moveTo(cx+zr*k,cy);g.arc(cx,cy,zr*k,0,7);g.fill('evenodd')}
@@ -1021,7 +990,7 @@ function draw(){
   for(const k of['m','a']){const j=tch[k];if(!j)continue;g.strokeStyle='#fff6';g.beginPath();g.arc(j.x,j.y,50,0,7);g.stroke();cir(j.x+tch[k+'x']*50,j.y+tch[k+'y']*50,22,'#fff6')}
 }
 function hud(){
-  const p=P[me],al=P.filter(q=>q.hp>0).length,top=Math.max(...P.map(q=>md==2?q.pt|0:q.k));
+  const p=P[me],al=P.filter(q=>q.hp>0&&!isG(q)).length,top=Math.max(...P.map(q=>md==2?q.pt|0:q.k));
   $('b1').textContent=p&&p.ac>0?Math.ceil(p.ac):kn(KB.q);$('b2').textContent=p?(p.ch>=100?kn(KB.e)+'!':(p.ch|0)+'%'):kn(KB.e);
   $('b2').style.outline=p&&p.ch>=100?'4px solid #ff7ac6':'';
   $('lv').style.display=p&&(p.hp<=0||code=='OFFLINE')?'block':'none'; // offline practice: you can always leave
@@ -1120,36 +1089,31 @@ function pvFrame(dt){
 const isG=q=>q.gold||(q.fl&1024);   // Golden Bot (host knows .gold, clients see the crown flag)
 
 // Balance
-Object.assign(CL[1],{hp:150,d:6.5});          // Frost buffed
-CL[2].ab.cd=12;                                // Lumi: Sanctuary cooldown 9 -> 12
-CL[4].d=9.5;                                   // Volt main attack nerf
-Object.assign(CL[6],{d:5.5,cd:.3,bt:.42});     // Zephyr: less damage, slower fire, shorter range
 
-// Damage rules: cubes, weak Golden Bot, slower ult charge from damage, hit = revealed ~1s
-hit=function(p,d,by){
-  if(p.hp<=0)return;const o=P[by];
-  if(o&&o!==p)d*=(o.gold?.6:1)*(1+.1*(o.pc|0));    // Golden Bot hits softer, each cube = +10% damage
-  d*=p.gold?1.8:1/(1+.1*(p.pc|0));                  // Golden Bot is fragile, each cube = tougher
-  if(by!=null){
-    if(CL[p.cl].ps.k=='frost'&&o&&o!==p&&Math.hypot(o.x-p.x,o.y-p.y)<220)o.sl=Math.max(o.sl,.8);
-    p.ch=Math.min(100,p.ch+d*.2);if(o&&o!==p)o.ch=Math.min(100,o.ch+d*.4)}   // was .4 / .8
-  d*=CL[p.cl].ps.k=='skin'?.85:(CL[p.cl].ps.k=='wstep'&&Math.hypot(p.mx,p.my)>.1)?.9:1;p.hp-=d;p.rl=4;
-  if(o&&o!==p&&d>=2)p.rv=Math.max(p.rv,.9);         // got hit: visible ~1s, then hides again
-  if(p.hp<=0&&by!=null&&o&&o!==p){o.k++;if(p.gold){o.gb=(o.gb||0)+1;o.hp=CL[o.cl].hp;ev(4,o.x,o.y,4,0)}if(CL[o.cl].ps.k=='ash')o.hp=Math.min(CL[o.cl].hp,o.hp+30)}
-};
+// Damage rules: cubes, weak Golden Bot, Grit's Fury, ult charge from damage, hit = revealed ~1s, cubes drop on death
+function hit(p,d,by){
+  if(p.hp<=0)return;const o=P[by],a=o&&o!==p?o:null,c=CL[p.cl];
+  if(a)d*=(a.gold?.6:1)*(1+.1*(a.pc|0))*(a.cl==7&&a.hp<CL[7].hp*.5?1.25:1);   // Golden Bot hits softer, each cube +10%, Fury +25%
+  d*=p.gold?1.4:1/(1+.1*(p.pc|0));                                            // Golden Bot is fragile, each cube = tougher
+  if(a){if(c.ps.k=='frost'&&Math.hypot(a.x-p.x,a.y-p.y)<220)a.sl=Math.max(a.sl,.8);a.ch=Math.min(100,a.ch+d*.318)}   // Permafrost; dealing damage charges your ultimate
+  if(by!=null)p.ch=Math.min(100,p.ch+d*.12);                                  // taking damage charges it a little
+  d*=c.ps.k=='skin'?.85:(c.ps.k=='wstep'&&Math.hypot(p.mx,p.my)>.1)?.9:1;p.hp-=d;p.rl=4;
+  if(a&&d>=2)p.rv=Math.max(p.rv,.9);                                          // got hit: visible ~1s
+  if(p.hp>0)return;
+  if(a){a.k++;if(CL[a.cl].ps.k=='ash')a.hp=Math.min(CL[a.cl].hp,a.hp+30);
+    if(p.gold){ev(4,a.x,a.y,4,0);for(let i=0;i<5;i++){const n=i*1.2566+Math.random(),r=40+Math.random()*30;Bx.push({x:p.x+Math.cos(n)*r,y:p.y+Math.sin(n)*r})}}}
+  if((p.pc|0)>0){const n=Math.ceil(p.pc*.3);for(let i=0;i<n;i++){const t=Math.random()*6.283,r=30+Math.random()*50;Bx.push({x:p.x+Math.cos(t)*r,y:p.y+Math.sin(t)*r})}p.pc=0}
+}
 
 // Volt ultimate: 6 damage per strike (was 9), shorter range
-strike=function(p,i){let t=null,bd=440;for(const q of P)if(q!==p&&q.hp>0){const d=Math.hypot(q.x-p.x,q.y-p.y);if(d<bd&&(!hid(q)||d<150)&&los(p.x,p.y,q.x,q.y,1)){bd=d;t=q}}
-  if(t){hit(t,6,i);ev(3,t.x,t.y,0,p.cl)}};
+function strike(p,i){let t=null,bd=440;for(const q of P)if(q!==p&&q.hp>0){const d=Math.hypot(q.x-p.x,q.y-p.y);if(d<bd&&(!hid(q)||d<150)&&los(p.x,p.y,q.x,q.y,1)){bd=d;t=q}}
+  if(t){hit(t,6,i);ev(3,t.x,t.y,0,p.cl);if(p.hp>0)p.hp=Math.min(CL[p.cl].hp,p.hp+4)}}
 
 // Lumi Sanctuary shorter, Zephyr Tornado smaller and shorter
-const cast0=cast;
-cast=function(p,i,u){cast0(p,i,u);const z=Zn[Zn.length-1];
-  if(u.k=='sanct'&&z)z.t=z.T=2.5;
-  if(u.k=='tornado'&&z){z.r=120;z.t=z.T=4}};
+
 
 // Power cubes
-power=function(p){p.pc=Math.min(10,(p.pc|0)+1);p.hp=Math.min(CL[p.cl].hp,p.hp+40);ev(4,p.x,p.y,5,0)};BN[5]='+1 POWER CUBE';
+function power(p){p.pc=Math.min(10,(p.pc|0)+1);p.hp=Math.min(CL[p.cl].hp,p.hp+40);ev(4,p.x,p.y,5,0)}
 const person0=person;
 person=function(p,isMe){person0(p,isMe);
   if(p.pc>0){g.save();g.translate(p.x-34,p.y-31);g.fillStyle='#b44dff';g.strokeStyle=OL;g.lineWidth=3;g.fillRect(-9,-9,18,18);g.strokeRect(-9,-9,18,18);
@@ -1158,8 +1122,7 @@ person=function(p,isMe){person0(p,isMe);
 // Host step: slower ult charging, cube counts to clients, Golden Bot doesn't count as a player
 const step0=step;let pcT=0;
 step=function(dt){
-  const c0=P.map(q=>q.ch);step0(dt);
-  P.forEach((q,i)=>{const d0=q.ch-c0[i];if(d0>0)q.ch=c0[i]+d0*.6});      // every ult gain 40% slower
+  step0(dt);
   if((pcT+=dt)>.25){pcT=0;bc2({t:'pc',v:P.map(q=>q.pc|0)})}
   if(st=='play'&&!S.m&&P.some(q=>q.gold&&q.hp>0)){
     const al=P.filter(q=>q.hp>0&&!q.gold);
@@ -1176,10 +1139,6 @@ const onData0=onData;
 onData=function(m){if(m.t=='ms'){setMap(m.v);return}if(m.t=='pc'){m.v.forEach((v,i)=>{if(P[i])P[i].pc=v});return}onData0(m)};
 
 // HUD / death screen: don't count the Golden Bot as alive
-const hud0=hud;
-hud=function(){hud0();if(md==0&&P.some(isG)){const t=$('hud');t.textContent=t.textContent.replace(/Alive \d+/,'Alive '+P.filter(q=>q.hp>0&&!isG(q)).length)}};
-const fx0=fx;
-fx=function(dt){const d0=dieT;fx0(dt);if(dieT>d0)dRank=P.filter(q=>q.hp>0&&!isG(q)).length+1};
 
 
 // v1.11 patch: unique random zone names, cubes drop on death
@@ -1192,18 +1151,14 @@ const biomes0=biomes;
 biomes=function(r){biomes0(r);const q=rng((BW.p*1e6|0)^0x5eed),used=new Set();
   for(const s of BS){const[a,b]=NP[s.t];let n,k=0;do{n=a[q()*a.length|0]+' '+b[q()*b.length|0]}while(used.has(n)&&++k<60);if(used.has(n))n+=' '+(used.size+1);used.add(n);s.nm=n}};
 const zoneName=(x,y)=>{const wx=x+BW.a*Math.sin(y*.004+BW.p)+BW.b*Math.sin(y*.011+BW.q),wy=y+BW.a*Math.sin(x*.004+BW.q)+BW.b*Math.sin(x*.011+BW.p);let n='',bd=1e12;for(const s of BS){const d=(wx-s.x)*(wx-s.x)+(wy-s.y)*(wy-s.y);if(d<bd){bd=d;n=s.nm}}return n};
-const hit1=hit;
-hit=function(p,d,by){const was=p.hp>0;hit1(p,d,by);
-  if(was&&p.hp<=0&&(p.pc|0)>0){const n=Math.ceil(p.pc*.3);for(let i=0;i<n;i++){const an=Math.random()*6.283,r=30+Math.random()*50;Bx.push({x:p.x+Math.cos(an)*r,y:p.y+Math.sin(an)*r})}p.pc=0}};
+
 
 // Changelog
 LOG.unshift(['v1.10.0',['Power cubes: loot boxes give +1 cube, shown next to your health bar (+10% damage each)','Map size option (Small / Normal / Large)','Ultimates charge slower, much less from damage','Golden Bot is weaker and no longer counts as a player','Hit enemies are revealed for a moment, even in bushes, cloaks and houses','Balance: Volt, Zephyr and Lumi nerfed, Frost buffed, bots weaker']]);
 LOG.unshift(['v1.11.0',['Every area gets a unique random name each match','Power boxes have a drawn sprite; bots grab boxes that are close; dying drops 30% (rounded up) of your cubes; each cube also gives +1.5% speed','Terra buffed (HP, speed, damage, fire rate, Quake cooldown, Stoneskin 15%)','Terra ultimate now shows a rockfall instead of a meteor','Zephyr Gust is a short visible dash with a wind trail','Minimap is 2.5x bigger; ultimate and heal circles are drawn over terrain with sharp colours','Zone names (Dune Village, Frost Keep...) shown on the minimap','Heal ponds are green with a heal cross','House roof chimney fixed (no more stray squares)','Match info text removed from menus']]);
-$('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
+
  // ---- Power boxes: crates must be shot open, spawn only at match start, toggle in the Showdown lobby ----
 let Cr=[];                                   // crates {x,y,hp}; a broken crate drops a normal power cube (Bx)
-spawnBox=function(){};                       // old timed / loot-rush spawning is gone
-MODN[1]='LOOT RUSH: more boxes, shoot them open!';
 function crSend(){bc2({t:'cr',v:Cr.map(c=>[c.x|0,c.y|0,Math.ceil(c.hp)])})}
 function spawnCr(n){Cr=[];for(let t=0;Cr.length<n&&t<800;t++){const q=freePt(C,C,A-250);
   if(!gb(q.x,q.y)&&Cr.every(c=>Math.hypot(c.x-q.x,c.y-q.y)>Math.max(230,A*.14)))Cr.push({x:q.x,y:q.y,hp:100})}}
@@ -1213,17 +1168,13 @@ function crStep(){ // bolts damage crates (Light Beam pierces through)
     c.hp-=b.d;ch=1;if(c.hp<=0){c.hp=0;ev(1,c.x,c.y,55,b.c);Bx.push({x:c.x,y:c.y})}
     if(b.e!='pierce')return false;(b.hb=b.hb||[]).push(c)}return true});
   if(ch){Cr=Cr.filter(c=>c.hp>0);crSend()}}
-function crate(c){const f=c.hp/100,x=c.x,y=c.y;boxSpr0(x,y,16);
+function crate(c){const f=c.hp/100,x=c.x,y=c.y;boxSpr(x,y,16);
   if(f<1){g.strokeStyle=OL;g.lineWidth=3;g.beginPath();g.moveTo(x-6,y-16);g.lineTo(x-1,y-4);g.lineTo(x-10,y+3);
     if(f<.66){g.moveTo(x+9,y+16);g.lineTo(x+3,y+5);g.lineTo(x+12,y-2)}if(f<.33){g.moveTo(x-13,y+13);g.lineTo(x-2,y+8)}g.stroke();
     g.fillStyle='#000a';g.fillRect(x-19,y-29,38,6);g.fillStyle='#ffd23f';g.fillRect(x-19,y-29,38*f,6)}}
-const boxSpr0=boxSpr;boxSpr=function(x,y,s){boxSpr0(x,y,s==13?9:s)};   // loose power cubes are small
 const db0=drawBoxes;drawBoxes=function(){db0();for(const c of Cr)crate(c)};
 const zt0=zoneTop;zoneTop=function(){zt0();for(const c of Cr)crate(c)};
  
-const bl=document.createElement('label');
-bl.innerHTML='Power boxes<select id="s8"><option value="1" selected>On<option value="0">Off</select>';$('set').appendChild(bl);
-$('s2').addEventListener('change',()=>{bl.style.display=$('s2').value=='0'?'':'none'});   // Showdown only
  
 const sg1=startGame;
 startGame=function(){sg1();if(!host||st!='play')return;Cr=[];
@@ -1254,23 +1205,17 @@ function miniExtra(w,h){
     [n[0],n.slice(1).join(' ')].forEach((t,i)=>{if(t){g.strokeText(t,a,b-3+i*12);g.fillText(t,a,b-3+i*12)}})}
   g.restore()}
 const ov0=overlay;
-overlay=function(m,w,h){const sv=[Zn,Sz,BS];Zn=[];Sz=[];BS=[];   // hide them from the old minimap code, redraw ponds + names above
-  try{ov0(m,w,h)}finally{Zn=sv[0];Sz=sv[1];BS=sv[2]}
-  if(m.cl!=null)miniExtra(w,h)};
+overlay=function(m,w,h){ov0(m,w,h);if(m.cl!=null)miniExtra(w,h)};
  
 // ---- Menu fixes: no match HUD text in menus, no countdown offline ----
-setInterval(()=>{if(st=='menu'||st=='lobby')$('hud').textContent=''},100);
-const bs0=$('bs').onclick;
-$('bs').onclick=function(e){if(code=='OFFLINE'&&host&&st=='lobby'&&!cdI){startGame();return}bs0.call(this,e)};
+
  
 LOG.unshift(['v1.12.0',['Power boxes must be shot open to drop a power cube; they spawn once at the start across the whole map',
   'Showdown lobby: Power boxes toggle (on by default, works without modifiers)','Minimap: no spell circles, bigger glowing heal / ultimate ponds, zone names on two lines',
   'Alive / kills text no longer shows in menus','No countdown in offline practice']]);
-$('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
+
 
 // ---- 1. Terra ultimate is now a real temporary STONE WALL (matches its description) ----
-Object.assign(CL[5].ul,{n:'Stone Wall',k:'wall',
-  x:'PLACE a temporary rock wall where you aim: it blocks walking and bolts and slowly crumbles (enemy fire breaks it faster)'});
 PV.wall=['at',300,120,90];                       // aim preview + menu preview
 const twList=()=>Wl.filter(w=>w.tw);
 const twSend=()=>bc2({t:'tw',v:twList().map(w=>[w.x|0,w.y|0,w.w,w.h,Math.round(Math.max(0,w.hp)/w.mx*100)])});
@@ -1308,11 +1253,10 @@ walls=function(){walls0();
     g.fillStyle='#000a';g.fillRect(cx-20,w.y-14,40,6);g.fillStyle=f>.35?'#ffd23f':'#ff6b6b';g.fillRect(cx-20,w.y-14,40*f,6)}};
  
 // ---- 2. Ultimate charges a little more from your attacks (about +35%) ----
-const hit3=hit;
-hit=function(p,d,by){const o=P[by];hit3(p,d,by);if(by!=null&&o&&o!==p)o.ch=Math.min(100,o.ch+d*.09)};
+
  
 // ---- 3. Looking into a house: the roof fades out when you are close, so you see the floor ----
-roofs=function(m){const mb=bi(m);
+function roofs(m){const mb=bi(m);
   Bd.forEach((q,k)=>{if(k==mb)return;
     const dx=Math.max(q.x-m.x,0,m.x-q.x-q.w),dy=Math.max(q.y-m.y,0,m.y-q.y-q.h);
     q.ra=q.ra==null?1:q.ra;q.ra+=((Math.hypot(dx,dy)<170?.2:1)-q.ra)*Math.min(1,DT*8);   // smooth fade
@@ -1322,7 +1266,7 @@ roofs=function(m){const mb=bi(m);
  
 // ---- Changelog ----
 LOG.unshift(['v1.13.0',['Terra ultimate is now Stone Wall: a temporary wall that blocks walking and bolts, crumbles over ~12s and breaks faster under fire','Ultimates charge a bit more from your own attacks','Houses: the roof fades away when you get close, so you can see the floor inside']]);
-$('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
+
 
 // ---- 1. Teleport (Hex Shadow Step) and Thunder Dash go toward your AIM (mouse / aim stick), not your move direction ----
 const cast3=cast;
@@ -1330,8 +1274,6 @@ cast=function(p,i,u){
   if(p.bot||(u.k!='step'&&u.k!='zap'))return cast3(p,i,u);        // bots keep their own logic
   const mx=p.mx,my=p.my;p.mx=p.my=0;cast3(p,i,u);p.mx=mx;p.my=my;  // no move input -> the spell falls back to p.a (your aim)
   if(u.k=='zap')p.dk=p.a};                                          // remember the dash direction
-const aimPreview0=aimPreview;
-aimPreview=function(){const keep=input;input=()=>({...keep(),mx:0,my:0});try{aimPreview0()}finally{input=keep}}; // preview uses aim too
  
 // ---- 2. Knock-backs / pushes slide over ~0.18s instead of teleporting (clients already glide to snapshots) ----
 const push0=push;
@@ -1339,7 +1281,6 @@ push=function(q,ux,uy,d){const x=q.x,y=q.y;push0(q,ux,uy,d);const dx=q.x-x,dy=q.
   if(dx||dy){const v=q.pv||(q.pv={x:0,y:0,t:0});v.x+=dx;v.y+=dy;v.t=.18}};
  
 // ---- 3. Terra's Boulder splits into 3 shards on impact (player, wall or rock): more total damage ----
-CL[5].mn[1]='heavy rock that shoves enemies back, then bursts into 3 shards';
 const shards=(b,x,y,back)=>{const a=Math.atan2(b.vy,b.vx)+(back?3.1416:0);
   for(let n=-1;n<=1;n++){const s=a+n*.5;B.push({x,y,vx:Math.cos(s)*520,vy:Math.sin(s)*520,o:b.o,t:.3,d:b.d*.3,c:b.c,e:'none',sh:1})}};
 const bolt0=bolt;
@@ -1378,24 +1319,16 @@ function weapon(p){const c=CL[p.cl],i=p.cl,T=performance.now()/1000,k=c.sc,y=7+M
   else{g.fillStyle='rgba(255,255,255,.9)';g.beginPath();g.moveTo(x-10,y);g.arc(x-10,y,24,-.8,.8);g.closePath();g.fill();g.stroke();g.strokeStyle=k;g.lineWidth=2;for(const a of[-.4,0,.4]){g.beginPath();g.moveTo(x-10,y);g.lineTo(x-10+Math.cos(a)*22,y+Math.sin(a)*22);g.stroke()}}
   g.restore()}
 const person3=person;
-person=function(p,isMe){const c=CL[p.cl],gl=c.gl;c.gl=-12;       // shrink the old staff so it hides under the body
-  try{person3(p,isMe)}finally{c.gl=gl}weapon(p)};
+person=function(p,isMe){person3(p,isMe);weapon(p)};
  
 // ---- Changelog ----
 LOG.unshift(['v1.14.0',['Shadow Step and Thunder Dash now go toward your aim (mouse / aim stick), not your move direction; their previews match','Knock-backs and pushes slide smoothly instead of teleporting','Terra Boulder bursts into 3 shards when it hits a player, wall or rock','Volt Storm Call shows its range ring while active','Each wizard holds a different weapon: fire orb, ice crystal, holy book, skull, lightning wand, rock, wind fan']]);
-$('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
+
 
 
 // ---- 1. Every wizard now has a movement bonus AND a heal somewhere in its kit ----
 // Ember: Flame Pool speeds you up (heal = Ashes) | Frost: Nova heals, Blizzard speeds you up inside it | Lumi: Sanctuary speeds you up (heal = Sanctuary)
 // Hex: already had both | Volt: Storm Call strikes heal you (dash = movement) | Terra: Quake heals per enemy hit, Stone Wall speeds you up | Zephyr: Gust also heals (sprint = movement)
-CL[0].ab.x+=' · you run faster for 2.5s';
-CL[1].ab.x+=' · heals you 20 HP';CL[1].ul.x+=' · you run faster inside it';
-CL[2].ab.x+=' · you run faster while standing in it';
-CL[4].ul.x+=' · each strike heals you 4 HP';
-CL[5].ab.x+=' · heals 8 HP per enemy hit';CL[5].ul.x+=' · you run faster for 3s';
-CL[6].ab.x+=' · heals 25 HP';
-pick(cls);
 
 // ---- 2. Crates take damage from abilities / ultimates too (area blasts, zones, dash) ----
 let crD=0,crT=0,twS='';
@@ -1413,14 +1346,13 @@ cast=function(p,i,u){const k=u.k,mx=CL[p.cl].hp;let n=0;
   if(k=='gust')p.hp=Math.min(mx,p.hp+25);
   if(k=='quake')p.hp=Math.min(mx,p.hp+8*n)};
 
-const strike4=strike;
-strike=function(p,i){const n=EV.length;strike4(p,i);if(EV.length>n&&p.hp>0)p.hp=Math.min(CL[p.cl].hp,p.hp+4)}; // Storm Call: a landed strike heals
+
 
 const step4=step;
 step=function(dt){
   if(host&&st=='play'){
     for(const z of Zn){const o=P[z.o];
-      if(Cr.length){if(ZD[z.k])crHurt(z.x,z.y,z.r,ZD[z.k]*dt);else if((z.k=='met'||z.k=='rock')&&z.t<=dt)crHurt(z.x,z.y,z.r,z.dm||70)}
+      if(Cr.length){if(ZD[z.k])crHurt(z.x,z.y,z.r,ZD[z.k]*dt);else if(z.k=='met'&&z.t<=dt)crHurt(z.x,z.y,z.r,70)}
       if(o&&o.hp>0&&(z.k=='heal'||z.fw)&&Math.hypot(o.x-z.x,o.y-z.y)<z.r)o.bv=Math.max(o.bv,.3)}   // speed boost inside your own Sanctuary / Blizzard
     if(Cr.length)for(const p of P)if(p.dh>0&&CL[p.cl].ab.k=='zap')crHurt(p.x,p.y,45,150*dt)}      // Thunder Dash smashes crates
   step4(dt);
@@ -1435,8 +1367,8 @@ const dbg=document.createElement('div');dbg.id='dbg';dbg.style.cssText='position
   const b=document.createElement('button');b.className='s';b.style.cssText='padding:6px 10px;font-size:12px';b.textContent='🛠 '+t;
   b.onclick=()=>{const p=P[me];if(code=='OFFLINE'&&p&&p.hp>0)f(p)};dbg.appendChild(b)});
 document.body.appendChild(dbg);
-const hud4=hud;hud=function(){hud4();dbg.style.display=code=='OFFLINE'&&st=='play'?'flex':'none'};
-setInterval(()=>{if(st!='play')dbg.style.display='none'},200);
+const hud4=hud;hud=function(){hud4();dbg.style.display=dbgOn&&code=='OFFLINE'&&st=='play'?'flex':'none'};
+
 
 // ---- 4. Menu preview dummies react like real players: burn, freeze / slow, knock-back, pull, zap, blind ----
 const DS=[{},{},{}];let dI=0,pLt=0;
@@ -1451,7 +1383,7 @@ dummy=function(x,y,h){const j=dI++%3,s=DS[j],T=performance.now()/1000;let X=x,Y=
   else if(k=='zap')zap(X,Y-30,X,Y,'#fff3a0',4);
   else if(k=='blind'){g.font='20px sans-serif';g.textAlign='center';g.fillStyle='#fff';g.fillText('💫',X,Y-26)}};
 
-const KE={pool:['burn',3.5],meteor:['burn',3],nova:['freeze',.8],blizzard:['slow',3],quake:['slow',1.2,90],gust:['push',.7,140],rift:['slow',1.5],storm:['zap',2],slide:['slow',1.5],tornado:['slow',2],flare:['blind',2.5],zap:['zap',.6]};
+const KE={pool:['burn',3.5],meteor:['burn',3],nova:['freeze',.8],blizzard:['slow',3],quake:['slow',1.2,90],gust:['push',.7,140],rift:['slow',1.5],storm:['zap',2],tornado:['slow',2],flare:['blind',2.5],zap:['zap',.6]};
 const ME={burn:['burn',2],slow:['slow',1.2],knock:['push',.7,45],chain:['zap',.3]};
 const dSet=(j,e,px,py)=>{DS[j]={k:e[0],t0:performance.now(),d:e[1]*1000,px:px||0,py:py||0}};
 const pvFrame4=pvFrame;
@@ -1469,12 +1401,10 @@ pvFrame=function(dt){
 
 // ---- Changelog ----
 LOG.unshift(['v1.15.0',['Every wizard now has a movement bonus and a heal in its kit (see each hero card)','Bushes: you are only hidden when about 75% of your body is inside; a foot sticking out reveals you','Crates are damaged by abilities and ultimates too (blasts, fire / frost / wind zones, rockfall, dashes)','Bots rebuild their paths when a Stone Wall appears or crumbles','Offline practice: debug buttons (full ultimate, cubes, full health, reset ability, drop a crate)','Menu preview dummies now react like players: burn, freeze, slow, knock-back, pull, zap, blind']]);
-$('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
+
 // ===== ARCANE RUMBLE v1.16 PATCH =====
 
 // ---- 1. Volt: Arc Bolt chains up to 3 players, damage nerfed, nicer lightning animation ----
-CL[4].d=8.5;                                              // main damage nerf (was 9.5)
-CL[4].mn[1]='lightning jumps to up to 2 more enemies (55%, then 38% dmg)';
 const bolt5=bolt;
 bolt=function(b,q){
   if(b.e!='chain')return bolt5(b,q);
@@ -1492,26 +1422,19 @@ const evFx5=evFx;                                         // sparks at both ends
 evFx=function(t,x,y,a,b){evFx5(t,x,y,a,b);if(t==0){spark(x,y,'#fff3a0',5,200,.2,3);spark(a,b,'#fff3a0',9,280,.28,4)}};
 
 // ---- 2. Golden Bot: tougher, and drops 5 power cubes (old permanent-power reward removed) ----
-MODN[2]='GOLDEN BOT: kill the 👑 for 5 power cubes!';BN[4]='GOLDEN BOT DOWN: 5 CUBES!';
-const hit5=hit;
-hit=function(p,d,by){
-  const o=P[by],g0=o?o.gb:0,h0=o?o.hp:0,was=p.gold&&p.hp>0;
-  if(p.gold)d*=1.4/1.8;                                   // fragile x1.8 -> x1.4 (a bit more HP)
-  hit5(p,d,by);
-  if(was&&p.hp<=0&&o&&o!==p){o.gb=g0;o.hp=h0;             // undo the old reward (gold power + full heal)
-    for(let i=0;i<5;i++){const an=i*1.2566+Math.random(),r=40+Math.random()*30;Bx.push({x:p.x+Math.cos(an)*r,y:p.y+Math.sin(an)*r})}}};
+
+
 
 // ---- 3. Ultimates charge a little more from your attacks (+~45% of the last bonus) ----
-const hit6=hit;
-hit=function(p,d,by){const o=P[by];hit6(p,d,by);if(by!=null&&o&&o!==p)o.ch=Math.min(100,o.ch+d*.04)};
+
 
 // ---- 4. Debug buttons hidden behind a secret code: press ↑ ↑ ↓ ↓ (or tap the version label 7 times) ----
 let dbgOn=0,dbgK=[],dbgTap=0;
-const dbgToggle=()=>{dbgOn^=1;if(typeof num=='function'&&P[me])num(P[me].x,P[me].y-60,dbgOn?'DEBUG ON':'DEBUG OFF','#6ee7ff',18)};
+const dbgToggle=()=>{if(code!='OFFLINE')return;dbgOn^=1;if(typeof num=='function'&&P[me])num(P[me].x,P[me].y-60,dbgOn?'DEBUG ON':'DEBUG OFF','#6ee7ff',18)};
 addEventListener('keydown',e=>{dbgK.push(e.key);dbgK=dbgK.slice(-4);if(dbgK.join()=='ArrowUp,ArrowUp,ArrowDown,ArrowDown'){dbgK=[];dbgToggle()}});
 $('ver').style.pointerEvents='auto';
 $('ver').onclick=()=>{if(++dbgTap>=7){dbgTap=0;dbgToggle()}clearTimeout($('ver')._t);$('ver')._t=setTimeout(()=>dbgTap=0,2000)};
-const hud5=hud;hud=function(){hud5();if(!dbgOn)dbg.style.display='none'};
+
 
 // ---- 5. Leaderboard for Brawl Rush and Hot Zone (top 5, you in blue) ----
 const ov5=overlay;
@@ -1523,9 +1446,8 @@ overlay=function(m,w,h){ov5(m,w,h);if(!md||m.cl==null||st!='play')return;
   g.restore()};
 
 // ---- Changelog ----
-pick(cls);
 LOG.unshift(['v1.16.0',['Volt Arc Bolt now chains through up to 3 players (55% then 38% damage), with a staggered lightning animation and sparks; main damage nerfed','Golden Bot is tougher and drops 5 power cubes when killed (old gold-power reward removed)','Ultimates charge slightly more from your own attacks','Debug buttons are hidden: press Up Up Down Down in offline practice (or tap the version label 7 times)','Leaderboard (top 5) for Brawl Rush and Hot Zone']]);
-$('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
+
 
 // Shallow river across the whole map, 3 bridges. Everyone wades slowly (40% speed). Bots path over bridges.
 // Hook for a future water hero: give a class a water speed multiplier, e.g.  CL[7].wm=1.6  (default is .4)
@@ -1606,15 +1528,14 @@ buildMini=function(){bm0();if(!RV)return;const m=MC.getContext('2d'),k=300/W;
   m.restore()};
  
 // ---- cleanup when leaving a match ----
-const tm7=toMenu;toMenu=function(t){RV=null;RB=[];tm7(t)};
+
  
 // ---- Changelog ----
 LOG.unshift(['v1.17.0',['River across the map with 3 wooden bridges; shows on the minimap','Everyone wades through the shallow water at 40% speed (bridges are normal speed); ripples show who is in the water','Buildings, rocks, bushes and walls never stand in the river; nothing spawns in water','Bots walk to the bridges to cross; Shadow Step cannot land in water','Water speed is a per-hero setting (wm), ready for a water hero']]);
-$('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
+
 
 // (put it AFTER the v1.15 block, and after v1.16 / v1.17 if you use them; it only wraps pvFrame).
  
-PV.storm[1]=440;PV.tornado[2]=120;                 // Storm Call range and Tornado size as they are now in game
  
 let pvFx=[],pvSh=0,pvZt=0;                         // preview effects, Terra shard cooldown, Volt chain cooldown
 const pvAdd=f=>pvFx.push(f);
@@ -1657,10 +1578,10 @@ pvFrame=function(dt){
  
 // ---- Changelog ----
 LOG.unshift(['v1.18.0',['Menu preview now plays the real main attacks: Volt lightning chains through up to 3 dummies, Terra boulder bursts into 3 shards, Ember splash burns neighbours, Hex shows its heal','Preview fire rate matches the game (it was slower), and bolts leave the wizard like in game','Preview Terra ultimate shows the real stone wall; Storm Call (440) and Tornado (smaller) sizes updated']]);
-$('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
+
 
 // ---- 1. The hero: tanky, short-range triple punch (still the projectile system), leap + rampage ----
-CL.push({n:'Grit',t:'Brawler',i:'👊',oc:'#c0392b',hr:'#2b1d14',sk:'#e0a070',hs:1,sc:'#ff7a4a',gl:12,hp:190,sp:235,d:18,cd:.6,pl:3,sa:.8,bs:700,bt:.2,r:90,fl:.2,ef:'melee',bk:7,
+CL.push({n:'Grit',t:'Brawler',oc:'#c0392b',hr:'#2b1d14',sk:'#e0a070',hs:1,sc:'#ff7a4a',gl:12,hp:190,sp:235,d:18,cd:.6,pl:3,sa:.8,bs:700,bt:.2,r:90,fl:.2,ef:'melee',bk:7,
  mn:['Triple Punch','three fast shock arcs, very short range; one hit per target per swing + small knock-back'],
  ab:{n:'Leap Slam',x:'leap toward your aim, slam the ground: damage + slow nearby enemies, heals you 15 HP',k:'leap',cd:7},
  ul:{n:'Rampage',x:'shove nearby enemies away, heal 50 HP, then 6s of +40% damage and +30% speed',k:'rampage'},
@@ -1693,8 +1614,7 @@ const bolt8=bolt;
 bolt=function(b,q){
   if(b.c==7){const o=P[b.o],sw=b.o+':'+(o?o.sc:0);if(q.ms===sw)return;q.ms=sw;push(q,b.vx,b.vy,30)}   // the 3 arcs of one swing never hit the same enemy twice
   bolt8(b,q)};
-const hit8=hit;
-hit=function(p,d,by){const o=P[by];if(o&&o!==p&&o.cl==7&&o.hp<CL[7].hp*.5)d*=1.25;hit8(p,d,by)};
+
 const cast8=cast;
 cast=function(p,i,u){
   if(u.k=='leap'){const a=p.a,ox=p.x,oy=p.y;let L=200,x=ox,y=oy;
@@ -1720,14 +1640,13 @@ pvSet=function(ph,c){pvSet8(ph,c);const R=c.bs*c.bt;
   if(!ph&&R<260)pvD=[[WZ[0]+R*.8,180],[WZ[0]+R*.7,130],[WZ[0]+R*.7,230]]};
  
 // ---- Changelog ----
-pick(cls);
 LOG.unshift(['v1.19.0',['New hero: Grit, the Brawler. 190 HP, triple shock-arc punch with very short range, Leap Slam (jump + slam + small heal), Rampage ultimate (shove, heal, +damage, +speed), Fury passive']]);
-$('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
+
 
 // Works with or without the Grit patch (v1.19): the hero's index is looked up (WI), not hard-coded.
  
 // ---- 1. The hero ----
-const WI=CL.push({n:'Tide',t:'Hydromancer',i:'🌊',oc:'#2a62c9',hr:'#0e2a5a',sk:'#e3b894',hs:1,sc:'#3aa0ff',gl:18,hp:135,sp:232,d:11,cd:.42,bs:760,bt:.65,r:300,fl:.3,ef:'tide',bk:8,wm:1.7,
+const WI=CL.push({n:'Tide',t:'Hydromancer',oc:'#2a62c9',hr:'#0e2a5a',sk:'#e3b894',hs:1,sc:'#3aa0ff',gl:18,hp:135,sp:232,d:11,cd:.42,bs:760,bt:.65,r:300,fl:.3,ef:'tide',bk:8,wm:1.7,
  mn:['Tidal Shot','water bolt: +50% damage to enemies standing in water'],
  ab:{n:'Whirlpool',x:'PLACE a whirlpool that drags enemies in and hurts them for 3s · you run faster for 2.5s and heal 15 HP',k:'whirl',cd:8},
  ul:{n:'Tsunami',x:'a huge wave hurts and slows everyone nearby and throws them back · heals you 40 HP, you run faster for 4s',k:'tsunami'},
@@ -1778,15 +1697,19 @@ ai=function(p,i,dt){ai9(p,i,dt);
   if(d>140&&d<380&&los(p.x,p.y,t.x,t.y,1)&&Math.random()<dt*(.4+p.iq*2))p.aq=1};
  
 // ---- Changelog ----
-pick(cls);
 LOG.unshift(['v1.20.0',['New hero: Tide, the Hydromancer. Swims 70% faster in water (everyone else is slowed) and heals 8 HP/s there; Tidal Shot hits wet enemies for +50%; Whirlpool drags enemies in; Tsunami throws everyone back']]);
-$('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
+
 
 
 
  
  
- // ---------- 14. Main loop ----------
+ pick(cls);
+LOG.unshift(['v1.21.0',['Code cleanup: dead code and patch layers removed; ultimate charge is now one set of numbers','Error messages (room not found, host left, room full) show on the menu again','Zephyr Gust no longer fires a stray lightning strike','Debug cheats only work in offline practice']]);
+function renderLog(){$('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');}
+renderLog();
+
+// ---------- 14. Main loop ----------
 
 function loop(t){
   DT=Math.min(.05,(t-last)/1000||0);last=t;
