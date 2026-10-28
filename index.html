@@ -2888,6 +2888,74 @@ CL[WI].ps.x='in the river you swim 50% FASTER (everyone else crawls), heal 2 HP/
 LOG.unshift(['v1.31.0',['Tide in deep water (deep lakes and the river\'s deep centre) moves at 45% of normal speed, half of its old lake speed; the shallow river is unchanged']]);
 renderLog();pick(cls);
 
+ /* ===== ARCANE RUMBLE v1.32 PATCH =====
+   In this patch:
+    1. Speed-up indicator: anyone who is sped up (Tide in SHALLOW water, Rampage, Gust, Flame Pool, traps...) gets speed streaks behind them
+    2. Bots use Terra's Stone Wall: they put it between themselves and the enemy when low on health, fleeing or being pressed up close, then stop firing into it for 2.5s
+    3. Training is now the full generated map (buildings, bushes, lakes, river with the deep channel) with 19 dummies in different forms:
+       standing, bobbing up/down, patrolling left-right, running in circles, hiding in bushes; each is a different hero
+    4. Hero info: the ultimate line just says "Charges by itself in about 139s" (no parentheses)
+
+   Already done earlier: Tide at half its old deep-water speed and the swim bonus only in the shallow river = v1.31.
+*/
+
+// ---- 4. wording ----
+const pvUIv=pvUI;
+pvUI=function(){pvUIv();
+  document.querySelectorAll('.pxs').forEach(d=>{const t=d.textContent.replace(' (without damage or wells)','');if(t!=d.textContent)d.textContent=t})};
+
+// ---- 1. Speed-up indicator ----
+const personV=person;
+person=function(p,isMe){
+  if(p.hp===undefined||!(p.hp>0)||p.air>0||(st!='play'&&st!='over'))return personV(p,isMe);
+  const dx=p.x-(p._lx==null?p.x:p._lx),dy=p.y-(p._ly==null?p.y:p._ly);p._lx=p.x;p._ly=p.y;
+  p._vx=(p._vx||0)+(dx-(p._vx||0))*.3;p._vy=(p._vy||0)+(dy-(p._vy||0))*.3;                      // smoothed movement direction
+  const wt=p.cl==WI&&!!RV&&inWater(p.x,p.y)&&!inDeep(p.x,p.y),fast=((p.fl|0)&4096)||wt;          // boost status, or Tide swimming in shallow water
+  if(fast&&Math.hypot(p._vx,p._vy)>.7){
+    const T=performance.now()/1000;
+    g.save();g.translate(p.x,p.y);g.rotate(Math.atan2(p._vy,p._vx)+Math.PI);g.lineCap='round';g.strokeStyle=wt?'#9fe4ff':'#ffffff';
+    for(let i=-1;i<=1;i++){const l=22+14*(Math.sin(T*18+i*2)+1)/2+(i?0:10);g.globalAlpha=.55;g.lineWidth=i?3:4;g.beginPath();g.moveTo(16,i*11);g.lineTo(16+l,i*11);g.stroke()}
+    g.restore()}
+  personV(p,isMe)};
+
+// ---- 2 + 3. Bot logic: Terra's wall, and the moving training dummies ----
+const aiN=ai;
+ai=function(p,i,dt){aiN(p,i,dt);
+  if(p.td){                                                                                     // training dummy forms: 1 stand, 2 bob (old code), 3 patrol, 4 circle
+    if(p.hp>0&&p.td>=3){const a=zt*(p.td==3?.8:.6)+i;p.mx=p.td==3?Math.cos(a)*.6:Math.cos(a)*.5;p.my=p.td==3?0:Math.sin(a)*.5}
+    return}
+  if(p.cl!=TE)return;
+  if(p.hp<=0){p.cvr=0;return}
+  if(p.cvr>0){p.cvr-=dt;p.mx=p.my=0;p.f=0}                                                      // behind its own wall: hold fire, natural healing starts
+  const t=P[p.tg],d=t?Math.hypot(t.x-p.x,t.y-p.y):1e9,ok=!!t&&t.hp>0&&!(hid(t)&&d>200)&&los(p.x,p.y,t.x,t.y,1);
+  if(p.ch>=100&&ok&&d<520&&(p.hp<CL[TE].hp*.55||d<260||p.s=='flee')&&Math.random()<dt*(1+p.iq*3)){
+    p.a=Math.atan2(t.y-p.y,t.x-p.x);p.pd=120;p.au=1;p.cvr=2.5}                                  // wall lands 120 px toward the enemy
+  else p.au=0};                                                                                 // never wastes it ON the enemy (the old random cast did)
+
+// ---- 3. Training: the real map + dummies of different forms ----
+const worldQ=world;
+world=function(seed){const t=TR;TR=0;try{worldQ(seed)}finally{TR=t}};                         // skip the old tiny test arena, use the normal generator
+btr.onclick=()=>{
+  TR=1;host=true;code='OFFLINE';lobby=[{n:myName(),c:0,k:cls}];st='lobby';
+  $('s5').value='1';$('s2').value='1';$('s5').parentElement.style.display='none';
+  const sv=[$('s1').value,$('s7').value,$('s9').value],o=new Option('20','20');
+  $('s1').add(o);$('s1').value='20';$('s7').value='2000';$('s9').value='1';                    // 20 players = 19 dummies, normal map size, deep river channel on
+  startGame();
+  $('s1').remove(o.index);$('s1').value=sv[0];$('s7').value=sv[1];$('s9').value=sv[2];
+  if(st!='play'){TR=0;return}
+  dbgOn=1;const m=P[me],q0=freePt(C,C,150);m.x=q0.x;m.y=q0.y;m.a=0;let k=0;
+  P.forEach((p,i)=>{if(i==me)return;
+    const bush=k%5==4&&Bu.length?Bu[(k*7)%Bu.length]:null,near=k<4,q=bush||freePt(near?m.x:C,near?m.y:C,near?320:A-300);   // first 4 close to you, the rest spread over the map, every 5th hides in a bush
+    Object.assign(p,{td:[1,2,3,4,1][k%5],n:'Dummy '+(k+1),cl:k%CL.length,hx:q.x,hy:q.y,x:q.x,y:q.y});p.hp=CL[p.cl].hp;k++})};
+
+// ---- Changelog ----
+LOG.unshift(['v1.32.0',['Speed streaks appear behind anyone who is sped up (Tide in shallow water, Rampage, Gust, Flame Pool, traps)',
+  'Bots use Terra\'s Stone Wall: placed between them and the enemy when hurt, fleeing or pressed, and they stop firing into it for a moment',
+  'Training is the full map (buildings, bushes, lakes, river with deep channel) with 19 dummies: standing, bobbing, patrolling, running in circles, hiding in bushes, each a different hero',
+  'Hero info: ultimate line just says how long it takes to charge by itself']]);
+renderLog();pick(cls);
+
+ 
  
 
 
