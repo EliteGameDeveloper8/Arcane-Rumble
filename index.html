@@ -2376,6 +2376,212 @@ LOG.unshift(['v1.26.0',['Changelog and Settings have a ✕ pinned to the top-lef
   'Bots remember where they last saw an enemy they were attacking and search around that spot for a few seconds, even if the enemy hid (weak enemies are hunted longer)']]);
 renderLog();pick(cls);
 
+ /* ===== ARCANE RUMBLE v1.27 PATCH =====
+   In this patch:
+    1. Debug: God mode button + a ▾ header that collapses the debug buttons
+    2. Name and last hero are remembered (localStorage)
+    3. River animation no longer depends on the camera; currents push swimmers downstream; swimmers are drawn under bridge decks
+    4. Terra Boulder: 7 small short-range shards on walls/rocks; on a player, 4 shards are absorbed by the victim and 4 fly farther around them
+    5. Tide can wade through deep ponds (slowly); everyone else is still blocked
+   NEXT ROUND: Terra wall perpendicular to cursor, more distinct attack patterns, bigger training map, swim-under-bridge layer.
+   (Bots hunting = v1.26, Grit stun + shorter range = v1.22/v1.23: already in your file.)
+*/
+ 
+// ---- 1. Debug: God mode + collapse ----
+let god=0;
+const godB=document.createElement('button');godB.className='s';godB.style.cssText='padding:6px 10px;font-size:12px';godB.textContent='🛠 God mode: off';
+godB.onclick=()=>{if(code=='OFFLINE'){god^=1;godB.textContent='🛠 God mode: '+(god?'ON':'off')}};dbg.appendChild(godB);
+const dbgH=document.createElement('button');dbgH.className='s';dbgH.style.cssText='padding:6px 10px;font-size:12px';dbgH.textContent='🛠 Debug ▾';let dbgC=0;
+dbgH.onclick=()=>{dbgC^=1;dbgH.textContent=dbgC?'🛠 Debug ▸':'🛠 Debug ▾';[...dbg.children].forEach(b=>{if(b!==dbgH)b.style.display=dbgC?'none':''})};dbg.prepend(dbgH);
+const hitG=hit;hit=function(p,d,by){if(god&&code=='OFFLINE'&&p===P[me])return;hitG(p,d,by)};   // you take no damage
+const tmG=toMenu;toMenu=function(t){god=0;godB.textContent='🛠 God mode: off';tmG(t)};
+ 
+// ---- 2. Remember name + last hero ----
+try{const sv=JSON.parse(localStorage.getItem('arcane-me'))||{};if(sv.n)$('nm').value=sv.n;if(sv.h>=0&&sv.h<CL.length)pick(sv.h|0)}catch(e){}
+const svMe=()=>{try{localStorage.setItem('arcane-me',JSON.stringify({n:$('nm').value.slice(0,12),h:cls}))}catch(e){}};
+$('nm').addEventListener('input',svMe);
+const pkM=pick;pick=function(i){pkM(i);svMe()};
+ 
+// ---- 3. River: fixed animation (not tied to the camera), all ripples flow downstream (+x), swimmers go under the bridge deck ----
+const groundR=ground;
+ground=function(m,w,h,s){
+  const rv=RV;RV=null;try{groundR(m,w,h,s)}finally{RV=rv}                // hide the old camera-dependent river drawing
+  if(!RV)return;
+  const T=performance.now()/1000;
+  g.save();g.beginPath();g.arc(C,C,A-30,0,7);g.clip();g.lineCap='butt';g.lineJoin='round';
+  const path=o=>{g.beginPath();for(let x=C-A;x<=C+A+40;x+=40){const y=rvY(x)+o*Math.sqrt(1+rvS(x)**2);x==C-A?g.moveTo(x,y):g.lineTo(x,y)}};
+  for(const[wd,col]of[[RV.w*2+16,'#2f78a8'],[RV.w*2,'#58b8ea'],[RV.w*1.1,'#7fd0f6']]){g.strokeStyle=col;g.lineWidth=wd;path(0);g.stroke()}
+  g.strokeStyle='rgba(255,255,255,.55)';g.lineWidth=4;g.setLineDash([26,40]);
+  for(const o of[-50,0,50]){g.lineDashOffset=-T*(o?40:55);path(o);g.stroke()}g.setLineDash([]);
+  for(const b of RB)bridge(b);
+  g.restore()};
+const personR=person;
+person=function(p,isMe){personR(p,isMe);
+  if(RV&&inWater(p.x,p.y))for(const b of RB)if(Math.hypot(p.x-b,p.y-rvY(b))<170){g.save();g.beginPath();g.arc(p.x,p.y,38,0,7);g.clip();bridge(b);g.restore()}};   // deck covers swimmers next to it
+ 
+// ---- 4 + 5 + current: host step ----
+const shardsN=(b,x,y)=>{const a=Math.atan2(b.vy,b.vx)+3.1416;           // wall / rock hit: 7 small short shards spray back
+  for(let k=0;k<7;k++){const s=a+(k/6-.5)*1.6;SHQ.push({x,y,vx:Math.cos(s)*430,vy:Math.sin(s)*430,o:b.o,t:.22,d:b.d*.3,c:b.c,e:'none',sh:1})}};
+const boltN=bolt;
+bolt=function(b,q){const n=SHQ.length;boltN(b,q);SHQ.length=n;            // throw away the older 3-shard version
+  if(b.e=='knock'&&!b.sh){const a=Math.atan2(b.vy,b.vx),d=b.d*.25,px=-Math.sin(a),py=Math.cos(a);
+    for(let k=0;k<4;k++)hit(q,d,b.o);                                         // half the shards are absorbed by the victim
+    for(const s of[-1,1])for(const f of[.5,1]){const an=a+s*f*.55,o=s*(f>.7?32:22);   // the other half fly on, farther, around them
+      SHQ.push({x:q.x+px*o,y:q.y+py*o,vx:Math.cos(an)*480,vy:Math.sin(an)*480,o:b.o,t:.38,d,c:b.c,e:'none',sh:1})}}};
+const drawBoltN=drawBolt;
+drawBolt=function(b,T){if(!b.sh)return drawBoltN(b,T);g.save();g.translate(b.x,b.y);g.scale(.55,.55);g.translate(-b.x,-b.y);drawBoltN(b,T);g.restore()};   // shards are small
+ 
+const stepN=step;
+step=function(dt){
+  const on=host&&st=='play';
+  if(on)B=B.filter(b=>{if(b.e!='knock'||b.sh)return true;const x=b.x+b.vx*dt,y=b.y+b.vy*dt;
+    if(Wl.some(w=>!w.tw&&x>w.x&&x<w.x+w.w&&y>w.y&&y<w.y+w.h)||R.some(r=>!r.w&&Math.hypot(x-r.x,y-r.y)<r.r)){shardsN(b,b.x,b.y);return false}return true});
+  const ponds=on?R.filter(r=>r.w):[],pre=ponds.length?P.map(p=>[p.x,p.y]):null;
+  if(ponds.length)R=R.filter(r=>!r.w);                                       // ponds don't block during the step; we handle them below
+  try{stepN(dt)}finally{if(ponds.length)R=R.concat(ponds)}
+  if(!on)return;
+  if(pre)P.forEach((p,i)=>{if(p.hp<=0||!pre[i])return;
+    for(const r of ponds){const dx=p.x-r.x,dy=p.y-r.y,d=Math.hypot(dx,dy),m=r.r+18;
+      if(d<m&&d>0){if(p.cl==WI){if(p.dh<=0){p.x=pre[i][0]+(p.x-pre[i][0])*.45;p.y=pre[i][1]+(p.y-pre[i][1])*.45}}   // Tide wades through deep water, slowly
+        else{p.x=r.x+dx/d*m;p.y=r.y+dy/d*m}}}});                              // everyone else is pushed back out
+  if(RV)for(const p of P)if(p.hp>0&&!(p.dh>0)&&inWater(p.x,p.y)){const sl=rvS(p.x),L=Math.sqrt(1+sl*sl);p.x+=40*dt/L;p.y+=40*dt*sl/L}};   // the current carries swimmers downstream
+ 
+// ---- Changelog ----
+LOG.unshift(['v1.27.0',['Debug: God mode button, and a ▾ header that hides / shows the debug buttons',
+  'Your name and last chosen hero are remembered',
+  'River animation is fixed to the map (no more shifting when you move); ripples all flow downstream and the current gently carries swimmers; swimmers next to a bridge are drawn under it',
+  'Terra Boulder: 7 small short-range shards on walls and rocks; on a player 4 shards are absorbed and 4 fly farther around them',
+  'Tide can wade through deep ponds, slowly; other heroes are still blocked']]);
+renderLog();pick(cls);
+
+/* ===== ARCANE RUMBLE v1.28 PATCH ====
+   No edits to older blocks needed.
+   In this patch:
+    1. Debug button "Dummies shoot": training dummies change into different heroes and shoot back at you
+    2. Tide nerf in the river: +50% speed (was +70%), heals 2 HP/s (was 8), and the river current no longer moves Tide
+    3. Tide in deep ponds: moves at 90% of normal speed (10% slower than on land)
+*/
+
+// ---- 1. Dummies that hurt you (debug, offline / training only) ----
+let dHurt=0;
+const dhB=document.createElement('button');dhB.className='s';dhB.style.cssText=godB.style.cssText;dhB.textContent='🛠 Dummies shoot: off';
+dhB.onclick=()=>{if(code!='OFFLINE')return;dHurt^=1;dhB.textContent='🛠 Dummies shoot: '+(dHurt?'ON':'off');
+  P.forEach((p,k)=>{if(!p.td)return;p.cl=dHurt?k%CL.length:(GI>=0?GI:6);p.hp=CL[p.cl].hp})};   // ON: every dummy becomes a different hero
+dbg.appendChild(dhB);
+const aiD=ai;
+ai=function(p,i,dt){aiD(p,i,dt);
+  if(!p.td||!dHurt)return;const m=P[me];if(!m||m.hp<=0){p.f=0;return}
+  const c=CL[p.cl];p.a=Math.atan2(m.y-p.y,m.x-p.x);
+  p.f=Math.hypot(m.x-p.x,m.y-p.y)<c.bs*c.bt*.9&&los(p.x,p.y,m.x,m.y,1)?1:0};          // they aim at you and fire with their hero's main attack
+const tmD=toMenu;toMenu=function(t){dHurt=0;dhB.textContent='🛠 Dummies shoot: off';tmD(t)};
+
+// ---- 2. Tide: weaker Riptide, immune to the current ----
+CL[WI].wm=1.5;                                                       // river speed: +50% (was +70%)
+CL[WI].ps.x='in water you swim 50% FASTER (everyone else crawls), heal 2 HP/s and the current cannot move you · deep ponds: 90% speed';
+HLP.Tide=40;
+{const P2=CanvasRenderingContext2D.prototype;                       // menu passive preview text (you can instead edit these 2 strings in pvPas and delete this block)
+ for(const f of['fillText','strokeText']){const o=P2[f];P2[f]=function(t,...a){return o.call(this,t=='+8 HP/s'?'+2 HP/s':t=='you: +70% speed  ·  others crawl'?'you: +50% speed  ·  others crawl':t,...a)}}}
+
+// ---- 3. Host step: ponds handled here (Tide 90% speed), current + extra heal undone for Tide ----
+const stepW=step;
+step=function(dt){
+  const on=host&&st=='play',ponds=on?R.filter(r=>r.w):[],pre=on?P.map(p=>[p.x,p.y]):null;
+  if(ponds.length)R=R.filter(r=>!r.w);                                // ponds don't block during the step (v1.27 then finds none and skips)
+  try{stepW(dt)}finally{if(ponds.length)R=R.concat(ponds)}
+  if(!on)return;
+  P.forEach((p,i)=>{if(p.hp<=0||!pre[i])return;
+    for(const r of ponds){const dx=p.x-r.x,dy=p.y-r.y,d=Math.hypot(dx,dy),m=r.r+18;
+      if(d<m&&d>0){if(p.cl==WI){if(!(p.dh>0)){p.x=pre[i][0]+(p.x-pre[i][0])*.9;p.y=pre[i][1]+(p.y-pre[i][1])*.9}}   // Tide wades at 90% speed
+        else{p.x=r.x+dx/d*m;p.y=r.y+dy/d*m}}}                          // everyone else is pushed back out
+    if(p.cl==WI&&RV){
+      const sl=rvS(p.x),L=Math.sqrt(1+sl*sl),qx=p.x-40*dt/L,qy=p.y-40*dt*sl/L;
+      if(inWater(qx,qy)){p.x=qx;p.y=qy}                                // undo the river current for Tide
+      if(inWater(p.x,p.y)&&p.hp<CL[WI].hp)p.hp=Math.max(.01,p.hp-6*dt)}})};   // Riptide heal: 8 HP/s - 6 = 2 HP/s
+
+// ---- Changelog ----
+LOG.unshift(['v1.28.0',['Debug: "Dummies shoot" turns every training dummy into a different hero that fires back at you',
+  'Tide Riptide nerfed: +50% speed in the river (was +70%), 2 HP/s heal (was 8), and the river current no longer moves Tide',
+  'Tide walks through deep ponds at 90% speed (10% slower than normal)']]);
+renderLog();pick(cls);
+
+/* ===== ARCANE RUMBLE v1.26 PATCH =====
+  
+   Ember's Meteor is now PLACED anywhere you aim (up to 650 away) instead of locking onto the nearest enemy,
+   and holding the ultimate key shows where it will land. Bots still drop it on their target.
+*/
+const MR=650; // max meteor range
+CL[0].ul.x='a meteor crashes where you aim: place it ANYWHERE within range (hold, aim, release). It lands after about 1s, so enemies can dodge';
+
+// ---- cast: land at the aimed distance (same rule as Flame Pool / Tornado / Stone Wall), kept inside the arena ----
+const castM=cast;
+cast=function(p,i,u){
+  if(u.k!='meteor')return castM(p,i,u);
+  let[x,y]=plc(p,MR,40);const e=Math.hypot(x-C,y-C);
+  if(e>A-40){x=C+(x-C)*(A-40)/e;y=C+(y-C)*(A-40)/e}
+  Zn.push({x,y,r:150,t:1.1,T:1.1,k:'met',o:i})};
+
+// ---- in-game aim preview: range ring, line, and the 150-radius impact circle at the exact landing spot (white = ready, red = not ready) ----
+const aimPreviewM=aimPreview;
+aimPreview=function(){
+  const q=P[me];
+  if(st=='play'&&q&&q.hp>0&&aimE&&!aimQ&&CL[q.cl].ul.k=='meteor'){
+    const I=input(),a=I.a,d=Math.max(40,Math.min(MR,I.pd||230)),x=q.x+Math.cos(a)*d,y=q.y+Math.sin(a)*d,col=q.ch>=100?'#ffffff':'#ff6b6b';
+    g.save();g.lineWidth=2;g.strokeStyle=col+'66';g.setLineDash([6,10]);g.beginPath();g.arc(q.x,q.y,MR,0,7);g.stroke();   // max range
+    g.setLineDash([12,8]);g.lineWidth=3;g.strokeStyle=col+'cc';g.fillStyle=col+'22';
+    g.beginPath();g.moveTo(q.x,q.y);g.lineTo(x,y);g.stroke();
+    g.beginPath();g.arc(x,y,150,0,7);g.fill();g.stroke();g.setLineDash([]);
+    g.font='bold 30px sans-serif';g.textAlign='center';g.fillStyle=col;g.fillText('☄️',x,y+10);g.restore();return}
+  aimPreviewM()};
+
+// ---- Changelog ----
+LOG.unshift(['v1.26.0',['Ember Meteor can now be placed anywhere within 650 range, with an aim preview showing the landing circle (white = ready, red = charging)']]);
+renderLog();pick(cls);
+
+ /* ===== ARCANE RUMBLE v1.27 PATCH =====
+   The last open item from your list: OPTIONAL deep, dark, uncrossable water in the middle of the river.
+   Lobby gets a "Deep water" setting (Off by default). When on, a dark channel runs along the river's centre:
+   nobody can walk into it except over the 3 bridges. Tide can swim through it (water hero).
+*/
+let DEEP=0;
+{const l=document.createElement('label');l.innerHTML='Deep water<select id="s9"><option value="0">Off</option><option value="1">Dark channel</option></select>';$('set').appendChild(l)}
+const inDeep=(x,y)=>!!RV&&!!DEEP&&rvD(x,y)<RV.w*.4&&!onBr(x,y)&&Math.hypot(x-C,y-C)<A-30;
+
+// ---- host sends the setting before the world is built (same way map size works); clients read it ----
+const sgD=startGame;
+startGame=function(){if(!host||st!='lobby')return;DEEP=+$('s9').value||0;bc({t:'dp',v:DEEP});sgD()};
+const onDataD=onData;
+onData=function(m){if(m.t=='dp'){DEEP=m.v|0;return}onDataD(m)};
+
+// ---- host: entering the deep channel is blocked (leaving it is always allowed, so nobody gets stuck); Tide may swim in ----
+const stepD=step;
+step=function(dt){
+  const o=DEEP&&RV&&host&&st=='play'?P.map(p=>[p.x,p.y]):null;
+  stepD(dt);
+  if(o)P.forEach((p,i)=>{if(p.hp>0&&o[i]&&CL[p.cl].n!='Tide'&&inDeep(p.x,p.y)&&!inDeep(o[i][0],o[i][1])){p.x=o[i][0];p.y=o[i][1]}})};
+
+// ---- drawing: dark channel on top of the river, bridges redrawn over it ----
+const groundD=ground;
+ground=function(m,w,h,s){groundD(m,w,h,s);if(!RV||!DEEP)return;
+  const hx=w/2/s+60,x0=Math.max(C-A,m.x-hx),x1=Math.min(C+A,m.x+hx);
+  g.save();g.beginPath();g.arc(C,C,A-30,0,7);g.clip();g.lineCap='butt';g.lineJoin='round';
+  for(const[wd,col]of[[RV.w*.8+10,'#1b4f7e'],[RV.w*.8,'#12355a']]){g.strokeStyle=col;g.lineWidth=wd;g.beginPath();for(let x=x0;x<=x1+40;x+=40){const y=rvY(x);x==x0?g.moveTo(x,y):g.lineTo(x,y)}g.stroke()}
+  for(const b of RB)bridge(b);g.restore()};
+
+// ---- minimap ----
+const bmD=buildMini;
+buildMini=function(){bmD();if(!RV||!DEEP)return;const m=MC.getContext('2d'),k=300/W;
+  m.save();m.beginPath();m.arc(150,150,148,0,7);m.clip();m.lineWidth=Math.max(2,RV.w*.8*k);m.strokeStyle='#1b4f7e';m.beginPath();
+  for(let x=C-A;x<=C+A;x+=40){const y=rvY(x);x==C-A?m.moveTo(x*k,y*k):m.lineTo(x*k,y*k)}m.stroke();
+  m.fillStyle='#8a5a2a';for(const b of RB){m.save();m.translate(b*k,rvY(b)*k);m.rotate(Math.atan(rvS(b)));m.fillRect(-75*k,-(RV.w+25)*k,150*k,(RV.w+25)*2*k);m.restore()}
+  m.restore()};
+
+if(TI>=0)CL[TI].ps.x+=' · only Tide can cross the dark deep channel (lobby setting)';
+
+// ---- Changelog ----
+LOG.unshift(['v1.27.0',['Optional deep water: lobby setting "Deep water" adds a dark channel along the river that nobody can cross except on the bridges (Tide can swim through it); shown on the minimap']]);
+renderLog();pick(cls);
+
+ 
 // ---------- 14. Main loop ----------
 
 function loop(t){
