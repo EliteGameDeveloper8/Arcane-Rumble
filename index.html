@@ -4,6 +4,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>Arcane-Rumble</title>
 <style>
+ #cdn{position:fixed;left:0;right:0;top:42%;transform:translateY(-50%);text-align:center;font:900 140px system-ui,sans-serif;color:#ffd23f;text-shadow:0 6px 0 #b8860b,0 0 40px #000;pointer-events:none;z-index:8}
+button:disabled{opacity:.5;cursor:default}
  .pn>*{flex-shrink:0}
 *{box-sizing:border-box;margin:0;touch-action:none;user-select:none;-webkit-user-select:none}
 body{background:#10131c;color:#fff;font:600 16px system-ui,sans-serif;overflow:hidden}
@@ -100,7 +102,7 @@ canvas.pv{position:static;inset:auto;display:block;width:100%;height:auto;border
 <div id="help">Move: WASD / left stick (keys can be changed above).<br>Aim + shoot: mouse / right stick.<br>Hold your ability key for the ability and your ultimate key for the ultimate: the further you aim, the further placed spells land. Release to cast; Esc / right-click / ✕ cancels.<br>Bushes hide people, houses are dark from outside.<br>💧 Springs heal, 🔮 wells charge your ultimate.</div>
 <button id="cb">Back</button></div>
 
-<div class="pn h" id="log"><h1 style="font-size:34px">CHANGELOG</h1><div id="lg"></div><button id="lb">Back</button></div> <div id="ver"></div>
+<div class="pn h" id="log"><h1 style="font-size:34px">CHANGELOG</h1><div id="lg"></div><button id="lb">Back</button></div> <div id="ver"></div> <div id="cdn"></div>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
 (()=>{
@@ -203,13 +205,14 @@ function pick(i){cls=i;pvT=0;pvPh=-1;mPop=1;for(const el of[$('cs'),$('cs2')])[.
 for(const el of[$('cs'),$('cs2')])CL.forEach((c,i)=>{const d=document.createElement('div');d.className='cc';d.innerHTML='<b>'+logo(i,44)+'</b>'+c.n;d.onclick=()=>pick(i);el.appendChild(d)});pick(0);
 $('rc').value=(new URLSearchParams(location.search).get('room')||'').toUpperCase();
 const myName=()=>($('nm').value.trim()||'Player'+(Math.random()*90+10|0)).slice(0,12);
-function drawLobby(){const l=$('ls');l.textContent='';lobby.forEach(x=>{const d=document.createElement('div');const im=document.createElement('img');im.src=logoURL(x.k|0);im.width=im.height=24;im.style.verticalAlign='middle';d.appendChild(im);d.appendChild(document.createTextNode(' '+x.n+' ('+CL[x.k|0].n+')'));l.appendChild(d)});
+function drawLobby(){const l=$('ls');l.textContent='';lobby.forEach(x=>{const d=document.createElement('div');d.textContent=x.n;l.appendChild(d)});
   $('code').textContent=code;$('bs').style.display=$('set').style.display=host?'':'none'}
 const bc=m=>lobby.forEach(l=>l.conn&&l.conn.open&&l.conn.send(m));        // host -> lobby members
 const bc2=m=>P.forEach(p=>p.conn&&p.conn.open&&p.conn.send(m));           // host -> players in game
-const sendLobby=()=>{drawLobby();bc({t:'l',l:lobby.map(x=>x.n),k:lobby.map(x=>x.k|0)})};
+const sendLobby=()=>{drawLobby();bc({t:'l',l:lobby.map(x=>x.n)})};
 const leave=()=>toMenu();
 function toMenu(text){
+  cdStop();
   const p=peer;st='menu';peer=hc=null;host=false;
   if(p)try{p.destroy()}catch(e){}
   lobby=[];P=[];B=[];Zn=[];EV=[];Q=[];KF=[];Bx=[];mod=modT=0;me=-1;hz=null;md=0;zr=C;zt=0;spec=-1;code='';flash=KO=shk=vg=dieT=0;
@@ -271,7 +274,7 @@ $('bj').onclick=()=>{
 };
 for(const id of['rc','nm'])$(id).addEventListener('keydown',e=>{if(e.key=='Enter'&&st=='menu'&&$('rc').value.trim().length==4)$('bj').click()});
 function onData(m){ // client side
-  if(m.t=='l'){lobby=m.l.map((n,i)=>({n,k:m.k?m.k[i]:0}));if(st!='lobby'){st='lobby';show('lobby')}drawLobby()}
+  if(m.t=='l'){lobby=m.l.map(n=>({n}));if(st!='lobby'){st='lobby';show('lobby')}drawLobby()}
   else if(m.t=='s'){
     world(m.seed);P=m.ps.map(p=>({...mkPlayer(p,0),first:1}));me=m.you;md=m.md;mod=m.mod|0;modT=8;Bx=[];spec=-1;hz=null;B=[];Zn=[];zr=C;st='play';show(null)}
   else if(m.t=='u'&&(st=='play'||st=='over')){
@@ -279,7 +282,9 @@ function onData(m){ // client side
       p.a=a[2];p.hp=a[3];p.k=a[4];p.fl=a[5];p.ac=a[6];p.ch=a[7];p.pt=a[8];p.sc=a[9]});
     B=m.b.map(a=>({x:a[0],y:a[1],c:a[2],a:a[3]/100}));zr=m.z;hz=m.h?{x:m.h[0],y:m.h[1]}:null;
     Zn=m.zn.map(a=>({x:a[0],y:a[1],r:a[2],f:a[3],k:ZK[a[4]]}));m.ev.forEach(e=>evFx(...e));(m.sz||[]).forEach((a,i)=>{if(Sz[i]){Sz[i].gx=a[0];Sz[i].gy=a[1]}});Bx=(m.bx||[]).map(a=>({x:a[0],y:a[1]}));
-  }else if(m.t=='x')msg('Room is full or already started');   else if(m.t=='e')finish(m.w);
+  }else if(m.t=='c')cdShow(m.n); 
+  else if(m.t=='x')msg('Room is full or already started');
+  else if(m.t=='e')finish(m.w);
 }
 
 // ---------- 5. World ----------
@@ -493,10 +498,18 @@ function mkPlayer(l,i){
     s:'search',rt:0,sd:1,aj:0,tg:-1,dest:{x:C,y:C},lk:null,pa:0,pg:[0,0],pr:0,pw:0,
     dh:0,sl:0,ac:0,rv:0,rl:0,ch:0,aq:0,au:0,fl:0,pt:0,dd:0,vl:0,bn:0,bo:-1,fz:0,bl:0,sk:0,sj:0,ht:0,sn:0,st:0,sc:0}
 }
-$('bs').onclick=()=>{
+let cdI=0; // lobby countdown timer
+const cdStop=()=>{clearInterval(cdI);cdI=0;$('bs').disabled=false;$('cdn').textContent=''};
+const cdShow=n=>{$('cdn').textContent=n>0?n:'';if(n>0)sfx('tick')};
+$('bs').onclick=()=>{ // host presses Start: 3, 2, 1, then the game begins
+  if(!host||st!='lobby'||cdI)return;
+  if($('s5').value!='1'&&lobby.length<2){const t=$('lk').textContent;$('lk').textContent='Bots are off: you need at least 2 players.';setTimeout(()=>$('lk').textContent=t,3000);return}
+  let n=3;$('bs').disabled=true;cdShow(n);bc({t:'c',n});
+  cdI=setInterval(()=>{n--;if(n>0){cdShow(n);bc({t:'c',n});return}cdStop();bc({t:'c',n:0});startGame()},1000)};
+function startGame(){
   if(!host||st!='lobby')return;
   const bots=$('s5').value=='1';
-  if(!bots&&lobby.length<2){const t=$('lk').textContent;$('lk').textContent='Bots are off: you need at least 2 players.';setTimeout(()=>$('lk').textContent=t,3000);return}
+  if(!bots&&lobby.length<2)return; // someone left during the countdown
   S={n:bots?Math.max(lobby.length,+$('s1').value):lobby.length,m:+$('s2').value};
   const list=[...lobby],pool=NAMES.map(l=>[...l]);let b=0;
   while(list.length<S.n){const iq=Math.random(),L=pool[iq>.66?2:iq>.33?1:0];
