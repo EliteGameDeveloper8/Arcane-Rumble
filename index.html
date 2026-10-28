@@ -1910,7 +1910,158 @@ pick(cls);
 LOG.unshift(['v1.22.0',['Cog: attack is now a real overhead wrench swing with a trail (no more fist arcs); nerfed (155 HP, 21 damage, slower swing, slightly shorter range)','Grit: Rampage also stuns nearby enemies for 1s; punch range lowered','Tide: attack is a burst of 5 small bolts spiralling around the aim point; Tsunami is now a wide wave that rolls along your aim, hurting, slowing and carrying enemies']]);
 $('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
 
+/* ===== ARCANE RUMBLE v1.23 PATCH =====
+   In this patch:
+    1. Terra Stone Wall: aiming shows the OUTLINE of the wall (in game and in the menu preview), no circle
+    2. The spinning hero on the main menu is always idle: it never plays an attack animation (any hero, now or later)
+    3. Cog turret: explosion when it is shot down, fold-up poof when its time runs out or it is replaced
+    4. Tide: attack is a burst of 8 small bolts fired one after another in a cone; Tsunami hits harder
+    5. Nerfs: Grit melee, Cog wrench, Cog turret
+    
+   Rule for future heroes: if a weapon animates when you attack, key the animation on p.sc (real fights)
+   or on pvPh==0 (menu preview). The spinning menu hero runs with pvPh=-1 and no p.sc, so it stays idle automatically.
+*/
 
+// ---- numbers you can tune ----
+const TE=CL.findIndex(c=>c.ul&&c.ul.k=='wall');                   // Terra
+const TIDE_N=8,TIDE_CONE=.62,TIDE_GAP=.05,TIDE_ULT_BONUS=10;       // Tide: bolts per burst, cone width (radians), seconds between bolts, extra Tsunami damage
+const TU_HP=240,TU_LIFE=10,TU_DMG=6,TU_BT=.6,TU_CD=.17;            // Cog turret after the nerf (was 300 HP, 12s, 9 damage, .75s bolts, .13s between shots)
+const burstOff=n=>{const o=[];for(let k=0;k<n;k++)o.push(((k+.5)/n-.5)*TIDE_CONE);for(let i=o.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[o[i],o[j]]=[o[j],o[i]]}return o}; // angles spread evenly over the cone, in random order
+
+// ---- 1. Terra Stone Wall: outline instead of a circle ----
+PV.wall=['wall',300,120,90];                                       // a type nobody draws a ring for (the old 'at' type drew the circle)
+const aimPreviewT=aimPreview;
+aimPreview=function(){
+  const q=P[me];
+  if(st=='play'&&q&&q.hp>0&&aimE&&!aimQ&&CL[q.cl].ul.k=='wall'){
+    const I=input(),a=I.a,col=q.ch>=100?'#ffffff':'#ff6b6b',d=Math.max(90,Math.min(300,I.pd||230)),   // same distance rule as the cast
+      x=q.x+Math.cos(a)*d,y=q.y+Math.sin(a)*d,vt=Math.abs(Math.cos(a))>Math.abs(Math.sin(a)),w=vt?30:240,h=vt?240:30; // same size / direction as the real wall
+    g.save();g.fillStyle=col+'22';g.strokeStyle=col+'cc';g.lineWidth=3;g.lineJoin='round';g.setLineDash([12,8]);
+    g.fillRect(x-w/2,y-h/2,w,h);g.strokeRect(x-w/2,y-h/2,w,h);g.restore();return}
+  aimPreviewT()};
+
+// menu preview of the wall: dummies stand BEHIND the wall and do not flash as if hit (the wall does no damage)
+let pvNH=0,pvTQ=[];
+const pvSetT=pvSet;
+pvSet=function(ph,c){pvSetT(ph,c);if(ph==2&&c.ul.k=='wall')pvD=[[WZ[0]+350,180],[WZ[0]+350,125],[WZ[0]+350,235]]};
+const dummyT=dummy;
+dummy=function(x,y,h){return dummyT(x,y,pvNH?0:h)};
+
+// ---- 2. The spinning menu hero never attacks ----
+const menuSceneN=menuScene;
+menuScene=function(dt){const k=pvPh;pvPh=-1;try{menuSceneN(dt)}finally{pvPh=k}};
+
+// ---- menu preview additions (Terra wall outline + Tide burst) ----
+const pvFrameN=pvFrame;
+pvFrame=function(dt){
+  pvNH=cls==TE&&pvPh==2?1:0;
+  try{pvFrameN(dt)}finally{pvNH=0}
+  const cs=[...document.querySelectorAll('canvas.pv')].filter(x=>x.offsetParent);
+  if(!cs.length)return;
+  const lt=pvT%3;
+  if(cls==TI&&pvPh==0){ // Tide: every shot in the preview is followed by the rest of the burst
+    const c=CL[TI];
+    for(const b of pvB)if(b.c==TI&&!b.bq9){b.bq9=1;pvTQ=burstOff(TIDE_N-1).map((o,k)=>({d:(k+1)*TIDE_GAP,o}))}
+    for(const e of pvTQ)e.d-=dt;
+    pvTQ=pvTQ.filter(e=>{if(e.d>0)return true;pvB.push({x:WZ[0],y:WZ[1],vx:Math.cos(e.o)*c.bs,vy:Math.sin(e.o)*c.bs,c:TI,t:c.bt,n:1,bq9:1});return false})}
+  else pvTQ=[];
+  if(cls==TE&&pvPh==2&&lt<.8){ // Terra: the wall outline slides to its spot, then the solid wall appears (drawn by the v1.18 code)
+    const x=WZ[0]+90+105*Math.min(1,lt/.8),sg=g;
+    for(const cvs of cs){g=cvs.getContext('2d');const k=cvs.width/654;g.setTransform(k,0,0,k,0,0);
+      g.fillStyle='#ffffff22';g.strokeStyle='#ffffffcc';g.lineWidth=3;g.lineJoin='round';g.setLineDash([12,8]);
+      g.fillRect(x-15,60,30,240);g.strokeRect(x-15,60,30,240);g.setLineDash([]);g.setTransform(1,0,0,1,0,0)}
+    g=sg}};
+
+// ---- 3. Cog turret: destroy / despawn animations (host and clients, by watching the turret list) ----
+let TuP=[],TuG=[],TuL=0;
+function turGhost(z,now){
+  const u=Math.min(1,(now-z.t0)/(z.k?800:550));
+  g.save();g.translate(z.x,z.y);g.lineJoin=g.lineCap='round';
+  if(z.k){ // shot down: scorch mark, flying scrap, smoke
+    g.globalAlpha=.4*(1-u);g.fillStyle='#1a1410';g.beginPath();g.ellipse(0,4,28,20,0,0,7);g.fill();
+    const e=1-(1-u)*(1-u);
+    for(let i=0;i<7;i++){const an=z.s+i*.9,d=e*(46+(i%3)*24),sz=9-u*4;
+      g.save();g.translate(Math.cos(an)*d,Math.sin(an)*d-Math.sin(u*Math.PI)*14);g.rotate(u*(i%2?9:-9)+i);
+      g.globalAlpha=1-u*u;g.fillStyle=i%2?'#6b7280':'#d9822b';g.strokeStyle=OL;g.lineWidth=2.5;
+      g.fillRect(-sz/2,-sz/2,sz,sz*.7);g.strokeRect(-sz/2,-sz/2,sz,sz*.7);g.restore()}
+    for(let j=0;j<3;j++){g.globalAlpha=.45*(1-u);cir((j-1)*11,-u*(34+j*10),9+u*(14+j*3),'#4a4a4a')}
+  }else{ // time ran out / replaced: shrinks and spins away
+    g.globalAlpha=1-u;g.scale(1-u*u,1-u*u);
+    g.fillStyle='#6b7280';g.strokeStyle=OL;g.lineWidth=4;g.beginPath();g.arc(0,0,21,0,7);g.fill();g.stroke();
+    g.fillStyle='#d9822b';g.beginPath();g.arc(0,0,13,0,7);g.fill();g.stroke();
+    g.rotate(z.a+u*9);
+    for(const[col,w]of[[OL,12],['#c8ccd4',6]]){g.strokeStyle=col;g.lineWidth=w;g.beginPath();g.moveTo(4,0);g.lineTo(34*(1-u),0);g.stroke()}}
+  g.restore()}
+const drawFxU=drawFx;
+drawFx=function(){
+  const now=performance.now(),m=cam();
+  if(now-TuL>400){TuP=[];TuG=[]}TuL=now;                            // a gap in drawing (menu, new match) = start fresh, no phantom ghosts
+  for(const p of TuP)if(!Tu.some(z=>z.o==p.o&&Math.abs(z.x-p.x)<3&&Math.abs(z.y-p.y)<3)&&(p.o==me||Math.hypot(p.x-m.x,p.y-m.y)<V+40)){
+    const out=p.life<=.6||Tu.some(z=>z.o==p.o);                      // almost out of time, or its owner placed a new one = folds away; otherwise it was shot down
+    TuG.push({x:p.x,y:p.y,a:p.a,t0:now,k:out?0:1,s:Math.random()*6.28});
+    if(out){Q.push({k:'r',x:p.x,y:p.y,R:70,t:.4,l:.4,c:'#ffd9a0'});spark(p.x,p.y,'#ffd9a0',8,140,.5,4);sfx('whoosh',p.x,p.y)}
+    else{Q.push({k:'r',x:p.x,y:p.y,R:140,t:.5,l:.5,c:'#ffb347'},{k:'r',x:p.x,y:p.y,R:80,t:.35,l:.35,c:'#fff3a0'});
+      spark(p.x,p.y,'#ffb347',18,340,.55,6);spark(p.x,p.y,'#ffe08a',10,220,.4,4);spark(p.x,p.y,'#8b93a3',8,260,.7,5);sfx('boom',p.x,p.y)}}
+  TuP=Tu.map(z=>({x:z.x,y:z.y,o:z.o,a:z.a,life:z.life}));
+  TuG=TuG.filter(z=>now-z.t0<(z.k?800:550));
+  for(const z of TuG)turGhost(z,now);
+  drawFxU()};
+
+// ---- 4. Tide: cone burst + stronger Tsunami ----
+if(TI>=0){
+  Object.assign(CL[TI],{pl:1,sa:0,d:3,cd:.8});delete CL[TI].wv;      // one bolt from the normal shot code, the other 7 follow in the host step below
+  CL[TI].mn=['Water Burst','a quick burst of 8 small water bolts sprayed one after another in a cone; +50% damage to enemies standing in water'];
+  const aimLaneU=aimLane;
+  aimLane=function(){ // Tide shows its cone instead of a single lane
+    const q=P[me];if(!q||q.hp<=0||q.cl!=TI)return aimLaneU();
+    const c=CL[TI],a=input().a,R0=c.bs*c.bt,f=mouse.d||(tch.a&&Math.hypot(tch.ax,tch.ay)>.15),h=TIDE_CONE/2+.03,N=10,pts=[];
+    for(let k=0;k<=N;k++){const an=a-h+2*h*k/N,L=boltLen(q.x,q.y,Math.cos(an),Math.sin(an),R0);pts.push([q.x+Math.cos(an)*L,q.y+Math.sin(an)*L])}
+    g.save();g.lineJoin='round';
+    const gr=g.createRadialGradient(q.x,q.y,24,q.x,q.y,R0);gr.addColorStop(0,c.sc+(f?'88':'55'));gr.addColorStop(1,c.sc+'00');
+    g.fillStyle=gr;g.beginPath();g.moveTo(q.x,q.y);for(const p of pts)g.lineTo(p[0],p[1]);g.closePath();g.fill();
+    g.strokeStyle=c.sc+'aa';g.lineWidth=2;g.setLineDash([10,8]);g.beginPath();g.moveTo(pts[0][0],pts[0][1]);g.lineTo(q.x,q.y);g.lineTo(pts[N][0],pts[N][1]);g.stroke();
+    g.restore()};
+}
+
+// ---- 5. Nerfs ----
+if(GI>=0)Object.assign(CL[GI],{d:15,cd:.66,bt:.14,r:62});            // Grit: was 18 dmg, .60s, reach .16, bot range 70 (Rampage stun + shorter range from v1.22 stay)
+if(CI>=0){
+  Object.assign(CL[CI],{d:17,cd:.66,bt:.19,r:90});                    // Cog wrench: was 21 dmg, .60s, reach .21, bot range 100
+  CL[CI].ul.x='PLACE a turret: 240 HP, 10s, rapid-fire on the nearest enemy up to 500 away. Enemy fire can destroy it';
+}
+const castU=cast;
+cast=function(p,i,u){castU(p,i,u);if(u.k=='turret'){const z=Tu.find(t=>t.o==i);if(z){z.hp=TU_HP;z.life=TU_LIFE}}};   // weaker, shorter-lived turret
+const turSprU=turSpr;
+turSpr=function(z,me){turSprU({...z,hp:Math.min(300,z.hp*300/TU_HP),life:Math.min(12,z.life*12/TU_LIFE)},me)};         // keep its health bar / timer ring looking right
+
+// ---- host step: Tide burst, Tsunami bonus damage, turret shot nerf ----
+const stepU=step;
+step=function(dt){
+  const on=host&&st=='play',ws=on?Wv.slice():null,pre=on?Wv.map(w=>w.h.length):null;
+  stepU(dt);
+  if(!on||st!='play')return;
+  ws.forEach((w,k)=>{for(let j=pre[k];j<w.h.length;j++)hit(w.h[j],TIDE_ULT_BONUS,w.o)});   // everyone the wave touched this frame takes a little extra
+  if(TI>=0){
+    const c=CL[TI];
+    P.forEach((p,i)=>{
+      if(p.cl!=TI)return;
+      if(p.hp<=0||p.bl>0){p.bqO=[];p._tb=p.sc;return}
+      if(p._tb==null)p._tb=0;
+      if(p.sc>p._tb){p._tb=p.sc;p.bqO=burstOff(TIDE_N-1);p.bqT=TIDE_GAP}    // a new shot started: queue the rest of the burst
+      if(p.bqO&&p.bqO.length){p.bqT-=dt;
+        while(p.bqO.length&&p.bqT<=0){p.bqT+=TIDE_GAP;const a=p.a+p.bqO.pop()+(Math.random()-.5)*.04;
+          B.push({x:p.x,y:p.y,vx:Math.cos(a)*c.bs,vy:Math.sin(a)*c.bs,o:i,t:c.bt,d:c.d*(p.bd>0?1.4:1),c:TI,e:c.ef})}}
+    })}
+  for(const b of B)if(!b.tn&&b.d===9&&b.c===2&&b.e==='none'){          // turret bolts (the only bolts with exactly these values)
+    b.tn=1;b.d=TU_DMG;b.t=Math.min(b.t,TU_BT);const z=Tu.find(t=>t.o==b.o);if(z)z.cd=Math.max(z.cd,TU_CD)}};
+
+// ---- Changelog ----
+LOG.unshift(['v1.23.0',['Terra Stone Wall: aiming now shows the outline of the wall instead of a circle (in game and in the menu preview)',
+  'The spinning hero on the main menu never plays attack animations, whatever the hero',
+  'Cog turret: explodes when shot down, folds away when its time runs out or it is replaced',
+  'Tide: attack is a burst of 8 small bolts fired one after another in a cone (aim preview shows the cone); Tsunami hits harder',
+  'Nerfs: Grit (damage, attack speed, reach), Cog wrench (damage, attack speed, reach), Cog turret (240 HP, 10s, weaker and slower shots, shorter reach)']]);
+renderLog();pick(cls);
 
 
 
