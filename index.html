@@ -97,7 +97,7 @@ canvas.pv{position:static;inset:auto;display:block;width:100%;height:auto;border
 <div class="pn h" id="cfg"><h1 style="font-size:34px">SETTINGS</h1>
 <div id="set2" style="display:flex;flex-direction:column;gap:12px;align-items:center">
  <label>Ability / ultimate aiming<select id="c1"><option value="0">Hold to aim, release to cast<option value="1">Quick cast (instant)</select></label>
- <label>On-screen ability / ultimate buttons<select id="c2"><option value="1">Show<option value="0">Hide</select></label>  <label>Minimap size<select id="c3"><option value="130">Small<option value="160">Medium<option value="190">Large<option value="240">Huge</select></label></div>
+ <label>On-screen ability / ultimate buttons<select id="c2"><option value="1">Show<option value="0">Hide</select></label>  <label>Minimap size<select id="c3"><option value="325">Small<option value="400">Medium<option value="475">Large<option value="600">Huge</select></label></div>
 <small>Keybinds: click one, then press the new key (Esc cancels)</small><div id="kbl"></div><button id="kbr" class="s">Reset keys</button>
 <h3 style="color:#ffd23f">How to play</h3>
 <div id="help">Move: WASD / left stick (keys can be changed above).<br>Aim + shoot: mouse / right stick.<br>Hold your ability key for the ability and your ultimate key for the ultimate: the further you aim, the further placed spells land. Release to cast; Esc / right-click / ✕ cancels.<br>Bushes hide people, houses are dark from outside.<br>💧 Springs heal, 🔮 wells charge your ultimate.</div>
@@ -125,11 +125,11 @@ const setMap=a=>{A=a;W=a*2;C=a};
 const OL='#2a1a3a';              // cartoon outline colour
 const COLS=['#ff4d4d','#4dc3ff','#6bff6b','#ffd23f','#c77dff','#ff9f43','#2ee6c5','#ff7ac6'];
 const NAMES=[['Goofball','Noodle','Potato','Derp','Bonkers','Muffin','Doofus','Clumsy'],['Sam','Max','Rex','Dave','Pete','Lou','Gus','Bob'],['Socrates','Einstein','Newton','Tesla','Plato','Curie','Darwin','Hawking']];
-const ZK=['fire','frost','heal','met','wind'];            // zone kinds (index sent over the network)
+const ZK=['fire','frost','heal','met','wind','rock'];            // zone kinds (index sent over the network)
 let cls=0,S={n:10,m:0},peer,host=false,hc=null,me=-1,st='menu',lobby=[],code='',spec=-1;
 let P=[],B=[],R=[],Bu=[],Bd=[],Wl=[],Gp=[],Sz=[],Zn=[],EV=[],hz=null,md=0,zr=C,zt=0,netT=0,inT=0;
 let Bx=[],bxT=0,mod=0,modT=0; // Bx = power boxes, mod = Showdown modifier (0 none, 1 loot boxes, 2 golden bot)
-const BN=['+60 HP','DAMAGE UP!','SPEED UP!','ULTIMATE +60','GOLD POWER!'],MODN=['','LOOT RUSH: grab the 🎁 boxes for power-ups!','GOLDEN BOT: kill the 👑 for permanent power!'];
+const BN=['+60 HP','DAMAGE UP!','SPEED UP!','ULTIMATE +60','GOLD POWER!'],MODN=['','LOOT RUSH: grab the purple power boxes!','GOLDEN BOT: kill the 👑 for permanent power!'];
 let mT=0,mPop=0,pvT=0,pvPh=-1,pvB=[],pvD=[],pvH=[0,0,0],pvCd=0; // menu preview state
 let keys={},mouse={x:0,y:0,d:0},pq=0,pu=0,aimQ=0,aimE=0,aimPid=-1,DT=.016,last=0;
 const tch={m:null,a:null,mx:0,my:0,ax:0,ay:0,on:0};
@@ -152,16 +152,17 @@ const CL=[
 {n:'Volt',t:'Stormcaller',i:'⚡',oc:'#d9b800',hr:'#3a3a55',sk:'#c98f60',hs:4,sc:'#ffe84a',gl:20,hp:126,sp:260,d:11,cd:.33,bs:850,bt:.6,r:300,fl:.3,ef:'chain',bk:4,wv:[8,45],
  mn:['Arc Bolt','lightning jumps to a 2nd enemy (60% dmg)'],ab:{n:'Thunder Dash',x:'dash forward and zap everyone you pass',k:'zap',cd:6},
  ul:{n:'Storm Call',x:'for 3s lightning strikes the nearest enemy',k:'storm'},ps:{n:'Static',x:'every 3rd shot deals +60% damage',k:'stat'}},
-{n:'Terra',t:'Geomancer',i:'🪨',oc:'#8a6a3b',hr:'#5a4a30',sk:'#c99a74',hs:5,sc:'#c9a36a',gl:22,hp:150,sp:190,d:13.5,cd:.75,bs:480,bt:.9,r:300,fl:.2,ef:'knock',bk:5,
- mn:['Boulder','heavy rock that shoves enemies back'],ab:{n:'Quake',x:'shake the ground: damage, knock back and slow nearby enemies',k:'quake',cd:9},
- ul:{n:'Landslide',x:'PLACE a huge rockfall where you aim: heavy damage + slow (never hurts you)',k:'slide'},ps:{n:'Stoneskin',x:'take 10% less damage from everything',k:'skin'}},
+{n:'Terra',t:'Geomancer',i:'🪨',oc:'#8a6a3b',hr:'#5a4a30',sk:'#c99a74',hs:5,sc:'#c9a36a',gl:22,hp:175,sp:205,d:16,cd:.6,bs:540,bt:.9,r:320,fl:.2,ef:'knock',bk:5,
+ mn:['Boulder','heavy rock that shoves enemies back'],ab:{n:'Quake',x:'shake the ground: damage, knock back and slow nearby enemies',k:'quake',cd:7},
+ ul:{n:'Landslide',x:'PLACE a huge rockfall where you aim: boulders crash down for heavy damage + slow (never hurts you)',k:'slide'},ps:{n:'Stoneskin',x:'take 15% less damage from everything',k:'skin'}},
 {n:'Zephyr',t:'Windcaller',i:'🌪️',oc:'#5fd0c0',hr:'#e8fff8',sk:'#e8c4a8',hs:6,sc:'#9ef0e0',gl:22,hp:112,sp:275,d:6.5,cd:.26,pl:2,sa:0,wv:[14,22],bs:950,bt:.5,r:300,fl:.35,ef:'gale',bk:6,
  mn:['Twin Gale','two bolts spiral around each other'],ab:{n:'Gust',x:'blast nearby enemies away and sprint for 2.5s',k:'gust',cd:7},
  ul:{n:'Tornado',x:'PLACE a cyclone that pulls enemies in and shreds them',k:'tornado'},ps:{n:'Windstep',x:'take 10% less damage while moving',k:'wstep'}}];
 
 // ---------- 3. UI ----------
-const CFG=Object.assign({quick:0,btn:1,info:1,map:190},(()=>{try{return JSON.parse(localStorage.getItem('arcane-cfg'))}catch(e){return null}})()); // saved settings
+const CFG=Object.assign({quick:0,btn:1,info:1,map:475},(()=>{try{return JSON.parse(localStorage.getItem('arcane-cfg'))}catch(e){return null}})()); // saved settings
 if(!CFG.mv){CFG.mv=1;CFG.info=0}
+if(!CFG.mm){CFG.mm=1;if(CFG.map<300)CFG.map=Math.round(CFG.map*2.5)}
 const saveCfg=()=>{try{localStorage.setItem('arcane-cfg',JSON.stringify(CFG))}catch(e){}};
 const KD={u:'Move up',l:'Move left',d:'Move down',r:'Move right',q:'Ability',e:'Ultimate'},KDEF={u:'w',l:'a',d:'s',r:'d',q:'e',e:'q'}; // q = ability key, e = ultimate key (defaults: E and Q)
 const KB=Object.assign({},KDEF,CFG.kb);if(!CFG.kbv){CFG.kbv=1;if(KB.q=='q'&&KB.e=='e'){KB.q='e';KB.e='q'}} // old saved defaults follow the swap
@@ -219,7 +220,7 @@ function toMenu(text){
   if(p)try{p.destroy()}catch(e){}
   lobby=[];P=[];B=[];Zn=[];EV=[];Q=[];KF=[];Bx=[];mod=modT=0;me=-1;hz=null;md=0;zr=C;zt=0;spec=-1;code='';flash=KO=shk=vg=dieT=0;
   keys={};aimQ=aimE=0;mouse.d=0;tch.m=tch.a=null;tch.mx=tch.my=tch.ax=tch.ay=0;
-  $('s5').parentElement.style.display='';$('lk').textContent='';$('mg').textContent=text||MENU_MSG;show('menu');
+  $('s5').parentElement.style.display='';$('lk').textContent='';$('mg').textContent='';show('menu');
 }
 $('bl1').onclick=$('bl2').onclick=$('lv').onclick=leave;
 const modVis=()=>{$('s6').parentElement.style.display=$('s2').value=='0'?'':'none'}; // the Modifiers switch only exists for Showdown
@@ -332,7 +333,7 @@ function bpaint(q){ // pre-render each building's floor and roof once per world 
     if(k==0){for(let j=12;j<h;j+=24)L(x,0,j,w,j,d,3);L(x,0,h/2,w,h/2,l,8)}
     else if(k==1){for(let i=10;i<w;i+=20)L(x,i,0,i,h,d,4)}
     else if(k==2){x.fillStyle='rgba(0,0,0,.17)';for(let i=0;i<w/36;i++)for(let j=0;j<h/36;j++)if((i+j)&1)x.fillRect(i*36,j*36,36,36);L(x,0,h/2,w,h/2,l,10);
-      for(const cx of[w*.25,w*.75]){x.fillStyle='#2a2230';x.fillRect(cx-16,h*.18,32,32);x.fillStyle='#5a4d66';x.fillRect(cx-11,h*.18+5,22,22)}}
+      {const cx=w*.72,cy=h*.2;x.fillStyle='rgba(0,0,0,.28)';x.fillRect(cx-14,cy-10,38,38);x.fillStyle='#8a4b3a';x.fillRect(cx-18,cy-18,36,36);x.strokeStyle=OL;x.lineWidth=4;x.strokeRect(cx-18,cy-18,36,36);x.fillStyle='#2a2230';x.fillRect(cx-9,cy-9,18,18)}}
     else{L(x,0,0,w,h,d,5);L(x,w,0,0,h,d,5);x.strokeStyle=d;x.lineWidth=4;for(let n=1;n<4;n++)x.strokeRect(w*n/8,h*n/8,w*(1-n/4),h*(1-n/4));x.fillStyle=l;x.beginPath();x.arc(w/2,h/2,10,0,7);x.fill()}
     x.strokeStyle=OL;x.lineWidth=8;x.strokeRect(0,0,w,h)})}
 function world(seed){
@@ -529,7 +530,7 @@ function hit(p,d,by){
   if(by!=null){
     if(CL[p.cl].ps.k=='frost'&&o&&o!==p&&Math.hypot(o.x-p.x,o.y-p.y)<220)o.sl=Math.max(o.sl,.8); // Permafrost
     p.ch=Math.min(100,p.ch+d*.4);if(o&&o!==p)o.ch=Math.min(100,o.ch+d*.8)} // fighting charges the ultimate
-  d*=CL[p.cl].ps.k=='skin'||(CL[p.cl].ps.k=='wstep'&&Math.hypot(p.mx,p.my)>.1)?.9:1;p.hp-=d;p.rl=4;
+  d*=CL[p.cl].ps.k=='skin'?.85:(CL[p.cl].ps.k=='wstep'&&Math.hypot(p.mx,p.my)>.1)?.9:1;p.hp-=d;p.rl=4;
   if(p.hp<=0&&by!=null&&o&&o!==p){o.k++;if(p.gold){o.gb=(o.gb||0)+1;o.hp=CL[o.cl].hp;ev(4,o.x,o.y,4,0)}if(CL[o.cl].ps.k=='ash')o.hp=Math.min(CL[o.cl].hp,o.hp+30)}
 }
 function respawn(p){const q=freePt(C,C,A-250);
@@ -570,13 +571,13 @@ function cast(p,i,u){
     else if(k=='rift'){near(380).forEach(q=>{if(!los(p.x,p.y,q.x,q.y,1)||wb(p.x,p.y,q.x,q.y))return;const d=Math.hypot(q.x-p.x,q.y-p.y)||1,L=Math.max(0,d-90);q.x-=(q.x-p.x)/d*L;q.y-=(q.y-p.y)/d*L;hit(q,20,i);q.sl=1.5});ev(1,p.x,p.y,380,p.cl)}
   else if(k=='storm'){p.sk=3;p.sj=0}
   else if(k=='quake'){near(170).forEach(q=>{hit(q,14,i);push(q,q.x-p.x,q.y-p.y,90);q.sl=Math.max(q.sl,.8)});ev(1,p.x,p.y,170,p.cl)}
-  else if(k=='gust'){near(220).forEach(q=>push(q,q.x-p.x,q.y-p.y,140));p.bv=2.5;ev(1,p.x,p.y,220,p.cl)}
-  else if(k=='slide'){const[x,y]=plc(p,480,100);Zn.push({x,y,r:170,t:1.2,T:1.2,k:'met',o:i,dm:55})}
+  else if(k=='gust'){near(220).forEach(q=>push(q,q.x-p.x,q.y-p.y,140));p.bv=2.5;p.dh=.22;ev(1,p.x,p.y,220,p.cl);ev(3,p.x,p.y,0,0)}
+  else if(k=='slide'){const[x,y]=plc(p,480,100);Zn.push({x,y,r:170,t:1.2,T:1.2,k:'rock',o:i,dm:55})}
   else if(k=='tornado'){const[x,y]=plc(p,420,60);Zn.push({x,y,r:150,t:5,T:5,k:'wind',o:i})}
 }
 function zones(dt){ // spell zones + springs / wells
   Zn=Zn.filter(z=>{z.t-=dt;const o=P[z.o];if(z.fw&&o){z.x=o.x;z.y=o.y}
-    if(z.k=='met'){if(z.t>0)return true;for(const q of P)if(q.hp>0&&(!z.dm||q!==o)&&Math.hypot(q.x-z.x,q.y-z.y)<z.r){hit(q,z.dm||70,z.o);if(z.dm)q.sl=Math.max(q.sl,1.5);else{q.bn=3;q.bo=z.o}}ev(1,z.x,z.y,z.r,o?o.cl:0);return false}
+    if(z.k=='met'||z.k=='rock'){if(z.t>0)return true;for(const q of P)if(q.hp>0&&(!z.dm||q!==o)&&Math.hypot(q.x-z.x,q.y-z.y)<z.r){hit(q,z.dm||70,z.o);if(z.dm)q.sl=Math.max(q.sl,1.5);else{q.bn=3;q.bo=z.o}}ev(1,z.x,z.y,z.r,o?o.cl:0);return false}
     for(const q of P){if(q.hp<=0||Math.hypot(q.x-z.x,q.y-z.y)>=z.r)continue;
       if(z.k=='heal'){if(q===o)q.hp=Math.min(CL[q.cl].hp,q.hp+24*dt)}
       else if(q!==o){hit(q,(z.k=='fire'?13:z.k=='wind'?12:9)*dt,z.o);if(z.k=='frost')q.sl=Math.max(q.sl,.3);if(z.k=='wind'){const e=Math.hypot(z.x-q.x,z.y-q.y)||1;q.x+=(z.x-q.x)/e*170*dt;q.y+=(z.y-q.y)/e*170*dt}}}
@@ -602,8 +603,9 @@ function step(dt){
     if(p.bot)ai(p,i,dt);const c=CL[p.cl];
     const l=Math.hypot(p.mx,p.my);if(l>1){p.mx/=l;p.my/=l}
     // movement
-    const sp=p.fz>0?0:c.sp*(p.sl>0?.55:1)*(p.bv>0?1.3:1);
+    const sp=p.fz>0?0:c.sp*(p.sl>0?.55:1)*(p.bv>0?1.3:1)*(1+.015*(p.pc|0));
     if(p.dh>0){const da=Math.hypot(p.mx,p.my)>.1?Math.atan2(p.my,p.mx):p.a;p.x+=Math.cos(da)*650*dt;p.y+=Math.sin(da)*650*dt;
+      if(c.ab.k=='gust'&&Math.random()<.9)Q.push({k:'c',x:p.x,y:p.y,vx:-Math.cos(da)*120,vy:-Math.sin(da)*120,t:.35,l:.35,c:'#bff7ee',r:7});
       if(c.ab.k=='zap')for(const q of P)if(q!==p&&q.hp>0&&Math.hypot(q.x-p.x,q.y-p.y)<45)hit(q,150*dt,i)}
     else{p.x+=p.mx*sp*dt;p.y+=p.my*sp*dt}
     // collisions: rocks, walls, arena rim
@@ -667,6 +669,7 @@ $('ba').onclick=()=>{st='lobby';show('lobby');sendLobby()};
 
 // ---------- 8. Bot AI ----------
 // Think a few times per second (slower for dumb bots), act every frame. iq (0..1) scales reaction, aim lead and caution.
+function nearBox(p){let r=null,bd=450;for(const b of Bx){const d=Math.hypot(b.x-p.x,b.y-p.y);if(d<bd){bd=d;r=b}}return r} // bots go for power boxes that are close
 function ai(p,i,dt){
   const c=CL[p.cl],dist=q=>Math.hypot(q.x-p.x,q.y-p.y),dc=Math.hypot(p.x-C,p.y-C),
     vis=q=>q&&q.hp>0&&!(hid(q)&&dist(q)>200)&&los(p.x,p.y,q.x,q.y);
@@ -701,7 +704,7 @@ function ai(p,i,dt){
     [mx,my]=nav(p,p.x+(-Math.cos(b)+Math.cos(b+1.57)*p.sd*.5)*260,p.y+(-Math.sin(b)+Math.sin(b+1.57)*p.sd*.5)*260);
     if(p.iq>.4)aim();else a=Math.atan2(my,mx);
   }else{
-    const dd=p.s=='chase'&&p.lk?p.lk:p.dest,d=Math.hypot(dd.x-p.x,dd.y-p.y);
+    const bxn=(p.s=='search'||p.s=='hide')?nearBox(p):null,dd=bxn||(p.s=='chase'&&p.lk?p.lk:p.dest),d=Math.hypot(dd.x-p.x,dd.y-p.y);
     if(d>5){[mx,my]=nav(p,dd.x,dd.y);a=Math.atan2(my,mx)}
     if(p.s=='hide'&&ok&&p.iq>.5)aim();
   }
@@ -827,7 +830,11 @@ function decor(m,w,h,s){ // only decoration inside the view is drawn
     else{g.strokeStyle='#7aa04a';g.lineWidth=3;g.beginPath();for(const o of[-5,0,5]){g.moveTo(x+o,y+5);g.lineTo(x+o*1.3,y-9)}g.stroke()}} // reeds
   g.globalAlpha=1;
 }
-function drawBoxes(){const T=performance.now()/1000;g.textAlign='center';for(const b of Bx){cir(b.x,b.y,24,'#ffd23f55');g.font='28px sans-serif';g.fillStyle='#fff';g.fillText('🎁',b.x,b.y+10+Math.sin(T*3+b.x)*3)}}
+function boxSpr(x,y,s){g.save();g.translate(x,y);g.lineJoin='round';g.fillStyle='rgba(0,0,0,.25)';g.beginPath();g.ellipse(0,s*.95,s*.9,s*.3,0,0,7);g.fill();
+  g.fillStyle=OL;g.fillRect(-s-4,-s-4,s*2+8,s*2+8);g.fillStyle='#b44dff';g.fillRect(-s,-s,s*2,s*2);g.fillStyle='#d9a0ff';g.fillRect(-s,-s,s*2,s*.45);g.fillStyle='#7a2fc0';g.fillRect(-s,s*.55,s*2,s*.45);
+  g.strokeStyle=OL;g.lineWidth=3;g.strokeRect(-s,-s,s*2,s*2);g.fillStyle='#ffd23f';g.fillRect(-s*.18,-s,s*.36,s*2);g.fillRect(-s,-s*.18,s*2,s*.36);
+  g.fillStyle='#fff';g.beginPath();g.arc(-s*.55,-s*.6,s*.14,0,7);g.fill();g.restore()}
+function drawBoxes(){const T=performance.now()/1000;g.textAlign='center';for(const b of Bx){cir(b.x,b.y,26,'#ffd23f55');boxSpr(b.x,b.y-4+Math.sin(T*3+b.x)*3,13)}}
 function statusIcons(p){ // icons above the name + a pulsing ring while burning
   const F=p.fl|0,ic=(F&1024?'👑':'')+(F&2048?'⚔️':'')+(F&4096?'💨':'')+(F&32?'🔥':'')+(F&64?'🧊':'')+(F&128?'🐌':'')+(F&256?'💫':'');
   if(ic){g.font='16px sans-serif';g.fillText(ic,p.x,p.y-56)}
@@ -845,12 +852,15 @@ function ground(m,w,h,s){ // flat ground layers: biomes, decoration, ponds, spri
   for(const r of R)if(r.w){g.fillStyle='#2f6fb3';g.strokeStyle='#7cc4ff';g.lineWidth=5;g.beginPath();g.arc(r.x,r.y,r.r,0,7);g.fill();g.stroke()}
   padsAndZones(.7,.2);drawBoxes();
 }
+const hcross=(x,y,r)=>{g.save();g.translate(x,y);g.lineJoin='round';for(const[c,w]of[[OL,r*.95],['#ffffff',r*.6]]){g.strokeStyle=c;g.lineWidth=w;g.beginPath();g.moveTo(-r*.8,0);g.lineTo(r*.8,0);g.moveTo(0,-r*.8);g.lineTo(0,r*.8);g.stroke()}g.restore()};
 function padsAndZones(pa,za){ // drawn under the roofs, then again over them (so spells stay visible on dark houses)
   const T=performance.now()/1000;
-  for(const z of Sz){const sp=z.k=='spring';g.globalAlpha=pa;g.fillStyle=sp?'#3fc7e8':'#8a5cff';g.strokeStyle=sp?'#bff4ff':'#e0ccff';g.lineWidth=4;g.beginPath();g.arc(z.x,z.y,z.r,0,7);g.fill();g.stroke();g.globalAlpha=1;
-    g.font='26px sans-serif';g.fillStyle='#fff';g.fillText(sp?'💧':'🔮',z.x,z.y+9)}
+  for(const z of Sz){const sp=z.k=='spring';g.globalAlpha=pa;g.fillStyle=sp?'#2fbf5a':'#8a5cff';g.strokeStyle=sp?'#b6ffc9':'#e0ccff';g.lineWidth=4;g.beginPath();g.arc(z.x,z.y,z.r,0,7);g.fill();g.stroke();g.globalAlpha=1;
+    if(sp)hcross(z.x,z.y,18);else{g.font='26px sans-serif';g.fillStyle='#fff';g.fillText('🔮',z.x,z.y+9)}}
   for(const z of Zn){const fr=z.T?z.t/z.T:z.f;
-    if(z.k=='met'){const p=1-fr;g.strokeStyle='#ff3b3b';g.lineWidth=5;g.beginPath();g.arc(z.x,z.y,z.r,0,7);g.stroke();g.fillStyle='rgba(255,70,40,'+(.12+.28*p)+')';g.beginPath();g.arc(z.x,z.y,z.r*p,0,7);g.fill();g.font='bold 44px sans-serif';g.fillStyle='#fff';g.fillText('☄️',z.x,z.y-90*fr+14)}
+    if(z.k=='rock'){const p=1-fr;g.strokeStyle='#8a6a3b';g.lineWidth=6;g.setLineDash([16,10]);g.beginPath();g.arc(z.x,z.y,z.r,0,7);g.stroke();g.setLineDash([]);g.fillStyle='rgba(150,110,60,'+(.15+.3*p)+')';g.beginPath();g.arc(z.x,z.y,z.r*p,0,7);g.fill();
+      for(let j=0;j<5;j++){const an=j*1.257+1,rr=z.r*.55*(j%2?1:.6),rx=z.x+Math.cos(an)*rr,ry=z.y+Math.sin(an)*rr-260*Math.max(0,fr-.1)*(1+j*.15),sz=20+j%3*6;g.fillStyle=OL;g.beginPath();g.moveTo(rx-sz-3,ry+sz*.7);g.lineTo(rx-sz*.6,ry-sz);g.lineTo(rx+sz*.7,ry-sz*.8);g.lineTo(rx+sz+3,ry+sz*.6);g.closePath();g.fill();g.fillStyle=j%2?'#a58455':'#8d6e43';g.beginPath();g.moveTo(rx-sz,ry+sz*.6);g.lineTo(rx-sz*.5,ry-sz*.8);g.lineTo(rx+sz*.6,ry-sz*.7);g.lineTo(rx+sz,ry+sz*.5);g.closePath();g.fill()}}
+    else if(z.k=='met'){const p=1-fr;g.strokeStyle='#ff3b3b';g.lineWidth=5;g.beginPath();g.arc(z.x,z.y,z.r,0,7);g.stroke();g.fillStyle='rgba(255,70,40,'+(.12+.28*p)+')';g.beginPath();g.arc(z.x,z.y,z.r*p,0,7);g.fill();g.font='bold 44px sans-serif';g.fillStyle='#fff';g.fillText('☄️',z.x,z.y-90*fr+14)}
     else{const c={fire:'255,140,40',frost:'140,220,255',heal:'90,255,140',wind:'190,240,230'}[z.k];g.fillStyle='rgba('+c+','+(za+.06*Math.sin(T*4))+')';g.strokeStyle='rgba('+c+',.85)';g.lineWidth=3;g.beginPath();g.arc(z.x,z.y,z.r*Math.min(1,fr/.15),0,7);g.fill();g.stroke()}}
 }
 function bushes(f){for(const[col,dr,ox,oy,k]of[[OL,4,0,0,1],['#3da048',0,0,0,1],['#56c25f',0,-.25,-.3,.5]])for(const q of Bu){if(f&&!f(q))continue;g.fillStyle=col;g.beginPath();g.arc(q.x+ox*q.r,q.y+oy*q.r,q.r*k+dr,0,7);g.fill()}}
@@ -914,14 +924,14 @@ function aimPreview(){ // while Q / E is held: show where the ability / ultimate
 }
 function zoneTop(){ // spell zones, springs, wells and boxes are redrawn ABOVE roofs and walls, so heal circles etc. are always readable
   const T=performance.now()/1000;g.save();g.textAlign='center';g.lineCap='round';
-  for(const z of Sz){const sp=z.k=='spring';g.strokeStyle=sp?'#7fe8ff':'#c9a8ff';g.lineWidth=5;g.setLineDash([16,10]);g.lineDashOffset=-T*30;g.beginPath();g.arc(z.x,z.y,z.r,0,7);g.stroke();g.setLineDash([]);g.font='26px sans-serif';g.fillStyle='#fff';g.fillText(sp?'💧':'🔮',z.x,z.y+9)}
+  for(const z of Sz){const sp=z.k=='spring';g.strokeStyle=sp?'#7dff9c':'#c9a8ff';g.lineWidth=5;g.setLineDash([16,10]);g.lineDashOffset=-T*30;g.beginPath();g.arc(z.x,z.y,z.r,0,7);g.stroke();g.setLineDash([]);if(sp)hcross(z.x,z.y,18);else{g.font='26px sans-serif';g.fillStyle='#fff';g.fillText('🔮',z.x,z.y+9)}}
   for(const z of Zn){const c={fire:'#ff9a3c',frost:'#9fe4ff',heal:'#6dff9a',met:'#ff4d4d',wind:'#bff5ea'}[z.k]||'#fff';
     g.globalAlpha=.9;g.strokeStyle=g.fillStyle=c;g.lineWidth=5;g.setLineDash([18,10]);g.lineDashOffset=-T*(z.k=='heal'?-40:40);g.beginPath();g.arc(z.x,z.y,z.r,0,7);g.stroke();g.setLineDash([]);
     g.globalAlpha=.12+.05*Math.sin(T*5);g.beginPath();g.arc(z.x,z.y,z.r,0,7);g.fill();g.globalAlpha=.8;
     if(z.k=='wind'){g.lineWidth=6;for(let i=0;i<3;i++){g.beginPath();g.arc(z.x,z.y,z.r*(.3+i*.25),T*5+i*2,T*5+i*2+2.4);g.stroke()}}
     if(z.k=='heal'&&Math.random()<.25)Q.push({k:'t',s:'+',z:22,x:z.x+(Math.random()-.5)*z.r*1.5,y:z.y+(Math.random()-.5)*z.r*1.5,vy:-45,t:.8,l:.8,c:'#8dffb0'});
     g.globalAlpha=1}
-  for(const b of Bx){g.font='28px sans-serif';g.fillStyle='#fff';g.fillText('🎁',b.x,b.y+10)}
+  for(const b of Bx)boxSpr(b.x,b.y-4,13)
   g.restore()}
 function drawBolt(b,T){ // every wizard's projectile looks (and moves) differently
   const c=CL[b.c|0],k=c.sc,s=c.bk;g.save();g.translate(b.x,b.y);g.rotate(b.a!=null?b.a:Math.atan2(b.vy,b.vx));g.lineCap=g.lineJoin='round';
@@ -950,8 +960,10 @@ function overlay(m,w,h){ // screen space: light, minimap, vignette, bars, kill f
   const ms=Math.min(CFG.map,w*.3,Math.max(90,h-216)),x0=w-ms-10,y0=56,k=ms/2/A,cx=x0+ms/2,cy=y0+ms/2,mp=(x,y)=>[cx+(x-C)*k,cy+(y-C)*k],bt=(y0+ms+12)+'px'; if($('ab').style.top!=bt)$('ab').style.top=$('cx').style.top=bt; // keep the ability buttons under the map,x0=w-ms-10,y0=56,k=ms/2/A,cx=x0+ms/2,cy=y0+ms/2,mp=(x,y)=>[cx+(x-C)*k,cy+(y-C)*k];
   g.save();g.beginPath();g.arc(cx,cy,ms/2,0,7);g.clip();
   g.fillStyle='#10131ccc';g.fillRect(x0,y0,ms,ms);cir(cx,cy,ms/2,'#cdb877');g.drawImage(MC,x0,y0,ms,ms);
-  for(const z of Sz){const[a,b]=mp(z.x,z.y);cir(a,b,Math.max(2.5,z.r*k),z.k=='spring'?'#3fc7e8':'#8a5cff')} // live pads
+  for(const z of Sz){const[a,b]=mp(z.x,z.y);cir(a,b,Math.max(2.5,z.r*k),z.k=='spring'?'#00ff55':'#8a5cff')} // live pads
+  g.font='bold 12px sans-serif';g.textAlign='center';g.lineWidth=3;g.strokeStyle='#000';g.fillStyle='#fff';for(const s of BS){const[a,b]=mp(s.x,s.y),n=s.nm||ZN[s.t];g.strokeText(n,a,b);g.fillText(n,a,b)}g.textAlign='left';
   for(const q of Bx){const[a,b]=mp(q.x,q.y);cir(a,b,2.5,'#ffd23f')}
+  for(const z of Zn){const[a,b]=mp(z.x,z.y),rr=Math.max(4,z.r*k),col={fire:'#ff6a00',frost:'#00e5ff',heal:'#00ff55',met:'#ff0033',rock:'#ff0033',wind:'#ffffff'}[z.k]||'#ff00ff';g.fillStyle=col+'66';g.beginPath();g.arc(a,b,rr,0,7);g.fill();g.strokeStyle='#000';g.lineWidth=4;g.beginPath();g.arc(a,b,rr,0,7);g.stroke();g.strokeStyle=col;g.lineWidth=2.5;g.beginPath();g.arc(a,b,rr,0,7);g.stroke()}
   
   
   if(md==0){g.fillStyle='#ff1e1e66';g.beginPath();g.rect(x0,y0,ms,ms);g.moveTo(cx+zr*k,cy);g.arc(cx,cy,zr*k,0,7);g.fill('evenodd')}
@@ -1016,7 +1028,7 @@ function hud(){
   $('sp').style.display=dead?'flex':'none';$('cx').style.display=(aimQ||aimE)&&st=='play'?'block':'none';
   if(dead){if(!P[spec]||P[spec].hp<=0||spec==me)cyc(1);if(P[spec])$('spN').textContent='Watching: '+P[spec].n}
   $('hud').textContent=(modT>0&&mod?MODN[mod]+' · ':'')+(md==0?'Alive '+al+' · ':md==1?'First to 10 kills (best '+top+') · ':'Hold the zone (best '+top+'/100) · ')+'Kills '+(p?p.k:0)+(md==2?' · Points '+(p?p.pt|0:0):'')+
-    ' · '+(p&&p.hp>0?'HP '+Math.ceil(p.hp):md?'Respawning...':'Spectating')+(p&&p.hp>0?' · 📍'+ZN[biomeAt(p.x,p.y)]:'')+(md==0&&zt<20&&host?' · Storm in '+Math.ceil(20-zt)+'s':'');
+    ' · '+(p&&p.hp>0?'HP '+Math.ceil(p.hp):md?'Respawning...':'Spectating')+(p&&p.hp>0?' · 📍'+zoneName(p.x,p.y):'')+(md==0&&zt<20&&host?' · Storm in '+Math.ceil(20-zt)+'s':'');
 }
 
 // ---------- 12. Input (keyboard + mouse, or twin touch sticks) ----------
@@ -1120,7 +1132,7 @@ hit=function(p,d,by){
   if(by!=null){
     if(CL[p.cl].ps.k=='frost'&&o&&o!==p&&Math.hypot(o.x-p.x,o.y-p.y)<220)o.sl=Math.max(o.sl,.8);
     p.ch=Math.min(100,p.ch+d*.2);if(o&&o!==p)o.ch=Math.min(100,o.ch+d*.4)}   // was .4 / .8
-  d*=CL[p.cl].ps.k=='skin'||(CL[p.cl].ps.k=='wstep'&&Math.hypot(p.mx,p.my)>.1)?.9:1;p.hp-=d;p.rl=4;
+  d*=CL[p.cl].ps.k=='skin'?.85:(CL[p.cl].ps.k=='wstep'&&Math.hypot(p.mx,p.my)>.1)?.9:1;p.hp-=d;p.rl=4;
   if(o&&o!==p&&d>=2)p.rv=Math.max(p.rv,.9);         // got hit: visible ~1s, then hides again
   if(p.hp<=0&&by!=null&&o&&o!==p){o.k++;if(p.gold){o.gb=(o.gb||0)+1;o.hp=CL[o.cl].hp;ev(4,o.x,o.y,4,0)}if(CL[o.cl].ps.k=='ash')o.hp=Math.min(CL[o.cl].hp,o.hp+30)}
 };
@@ -1168,8 +1180,24 @@ hud=function(){hud0();if(md==0&&P.some(isG)){const t=$('hud');t.textContent=t.te
 const fx0=fx;
 fx=function(dt){const d0=dieT;fx0(dt);if(dieT>d0)dRank=P.filter(q=>q.hp>0&&!isG(q)).length+1};
 
+
+// v1.11 patch: unique random zone names, cubes drop on death
+const NP=[[['Dune','Sand','Sun','Dust','Amber','Mirage','Scorch','Dry'],['Village','Hollow','Oasis','Crossing','Camp','Flats','Bazaar']],
+ [['Frost','Ice','Snow','Winter','Glacier','Rime','Hail'],['Keep','Hall','Peak','Fort','Spire','Drift','Citadel']],
+ [['Murk','Bog','Mire','Fen','Gloom','Reed','Slime'],['Swamp','Marsh','Hollow','Pit','Thicket','Wetlands','Lagoon']],
+ [['Old','Broken','Lost','Fallen','Ancient','Crumbled','Forgotten'],['Ruins','Walls','Stones','Gate','Bastion','Colonnade','Remains']],
+ [['Town','Market','Grand','Hearth','Central','Royal'],['Centre','Square','Green','Plaza','Commons','Court']]];
+const biomes0=biomes;
+biomes=function(r){biomes0(r);const q=rng((BW.p*1e6|0)^0x5eed),used=new Set();
+  for(const s of BS){const[a,b]=NP[s.t];let n,k=0;do{n=a[q()*a.length|0]+' '+b[q()*b.length|0]}while(used.has(n)&&++k<60);if(used.has(n))n+=' '+(used.size+1);used.add(n);s.nm=n}};
+const zoneName=(x,y)=>{const wx=x+BW.a*Math.sin(y*.004+BW.p)+BW.b*Math.sin(y*.011+BW.q),wy=y+BW.a*Math.sin(x*.004+BW.q)+BW.b*Math.sin(x*.011+BW.p);let n='',bd=1e12;for(const s of BS){const d=(wx-s.x)*(wx-s.x)+(wy-s.y)*(wy-s.y);if(d<bd){bd=d;n=s.nm}}return n};
+const hit1=hit;
+hit=function(p,d,by){const was=p.hp>0;hit1(p,d,by);
+  if(was&&p.hp<=0&&(p.pc|0)>0){const n=Math.ceil(p.pc*.3);for(let i=0;i<n;i++){const an=Math.random()*6.283,r=30+Math.random()*50;Bx.push({x:p.x+Math.cos(an)*r,y:p.y+Math.sin(an)*r})}p.pc=0}};
+
 // Changelog
 LOG.unshift(['v1.10.0',['Power cubes: loot boxes give +1 cube, shown next to your health bar (+10% damage each)','Map size option (Small / Normal / Large)','Ultimates charge slower, much less from damage','Golden Bot is weaker and no longer counts as a player','Hit enemies are revealed for a moment, even in bushes, cloaks and houses','Balance: Volt, Zephyr and Lumi nerfed, Frost buffed, bots weaker']]);
+LOG.unshift(['v1.11.0',['Every area gets a unique random name each match','Power boxes have a drawn sprite; bots grab boxes that are close; dying drops 30% (rounded up) of your cubes; each cube also gives +1.5% speed','Terra buffed (HP, speed, damage, fire rate, Quake cooldown, Stoneskin 15%)','Terra ultimate now shows a rockfall instead of a meteor','Zephyr Gust is a short visible dash with a wind trail','Minimap is 2.5x bigger; ultimate and heal circles are drawn over terrain with sharp colours','Zone names (Dune Village, Frost Keep...) shown on the minimap','Heal ponds are green with a heal cross','House roof chimney fixed (no more stray squares)','Match info text removed from menus']]);
 $('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
  // ---------- 13. Main loop ----------
 function loop(t){
