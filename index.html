@@ -1699,7 +1699,116 @@ ai=function(p,i,dt){ai9(p,i,dt);
 // ---- Changelog ----
 LOG.unshift(['v1.20.0',['New hero: Tide, the Hydromancer. Swims 70% faster in water (everyone else is slowed) and heals 8 HP/s there; Tidal Shot hits wet enemies for +50%; Whirlpool drags enemies in; Tsunami throws everyone back']]);
 
-
+(MI), nothing is hard-coded.
+ 
+// ---- 1. The hero: wrench melee, hidden stun trap, big auto-turret ----
+const MI=CL.push({n:'Cog',t:'Mechanic',i:'🔧',oc:'#d9822b',hr:'#4a3320',sk:'#d9a679',hs:0,sc:'#ffb347',gl:12,hp:165,sp:232,d:24,cd:.55,pl:2,sa:.5,bs:650,bt:.22,r:100,fl:.25,ef:'wrench',bk:9,
+ mn:['Wrench Swing','two heavy short-range arcs; one hit per target per swing, small knock-back, each hit repairs you 5 HP'],
+ ab:{n:'Snare Trap',x:'PLACE a trap (max 3). It turns invisible 1.5s after it lands; anyone who steps in it is stunned 1.2s and hurt. You run faster for 1.5s',k:'trap',cd:9},
+ ul:{n:'Auto-Turret',x:'PLACE a turret: 300 HP, 12s, rapid-fire on the nearest enemy up to 560 away. Enemy fire can destroy it',k:'turret'},
+ ps:{n:'Tinker',x:'wrench hits heal you 5 HP and your traps stay armed for 25s',k:'tinker'}})-1;
+PV.trap=['at',300,34,40];PV.turret=['at',200,50,50];KE.trap=['freeze',1.2];KE.turret=['zap',2];   // aim preview + menu preview
+ 
+// ---- 2. Logo (a wrench) + class card in both pickers ----
+LI.push([x=>{x.beginPath();x.moveTo(-22,22);x.lineTo(6,-6);x.moveTo(14+Math.cos(-.785+.8)*12,-14+Math.sin(-.785+.8)*12);x.arc(14,-14,12,-.785+.8,-.785+6.283-.8)},1]);LC.push('#fff');
+for(const el of[$('cs'),$('cs2')]){const i=MI,c=CL[i],d=document.createElement('div');d.className='cc';d.innerHTML='<b>'+logo(i,44)+'</b>'+c.n;d.onclick=()=>pick(i);el.appendChild(d)}
+ 
+// ---- 3. State: traps (Tp) and turrets (Tu). Host simulates, clients receive a small snapshot ----
+let Tp=[],Tu=[],mtT=0;
+const tAge=z=>z.ts?z.age+(performance.now()-z.ts)/1000:z.age;   // clients extrapolate the trap's age between snapshots
+ 
+const cast11=cast;
+cast=function(p,i,u){
+  if(u.k=='trap'){let[x,y]=plc(p,300,40);if(gb(x,y)){x=p.x;y=p.y}
+    const mine=Tp.filter(z=>z.o==i);if(mine.length>=3)Tp.splice(Tp.indexOf(mine[0]),1);   // oldest trap goes when you place a 4th
+    Tp.push({x,y,o:i,age:0});p.bv=Math.max(p.bv,1.5);return}
+  if(u.k=='turret'){let[x,y]=plc(p,200,50);if(gb(x,y)){x=p.x;y=p.y}
+    Tu=Tu.filter(z=>z.o!=i);Tu.push({x,y,o:i,hp:300,life:12,cd:.5,a:p.a});ev(1,x,y,70,p.cl);return}
+  cast11(p,i,u)};
+ 
+const bolt11=bolt;
+bolt=function(b,q){
+  if(b.c==MI){const o=P[b.o],sw=b.o+':'+(o?o.sc:0);if(q.mw===sw)return;q.mw=sw;push(q,b.vx,b.vy,40);   // one hit per target per swing
+    if(o&&o.hp>0)o.hp=Math.min(CL[MI].hp,o.hp+5)}                                                  // Tinker: repair 5 HP per hit
+  bolt11(b,q)};
+ 
+const step11=step;
+step=function(dt){
+  step11(dt);
+  if(!host||st!='play')return;
+  for(const z of Tp)z.age+=dt;
+  Tp=Tp.filter(z=>{if(z.age>25)return false;if(z.age<.6)return true;                               // armed after 0.6s
+    for(const q of P)if(q.hp>0&&q!==P[z.o]&&Math.hypot(q.x-z.x,q.y-z.y)<30){
+      hit(q,18,z.o);q.fz=Math.max(q.fz,1.2);q.bl=Math.max(q.bl,1.2);ev(1,z.x,z.y,70,P[z.o]?P[z.o].cl:0);return false}   // stun = can't move, can't shoot
+    return true});
+  for(const z of Tu){z.life-=dt;z.cd-=dt;const o=P[z.o];let t=null,bd=560;
+    for(const q of P)if(q!==o&&q.hp>0){const d=Math.hypot(q.x-z.x,q.y-z.y);if(d<bd&&(!hid(q)||d<150)&&los(z.x,z.y,q.x,q.y,1)&&!wb(z.x,z.y,q.x,q.y)){bd=d;t=q}}
+    if(t){const v=CL[t.cl].sp*bd/850,a=Math.atan2(t.y+t.my*v-z.y,t.x+t.mx*v-z.x)+(Math.random()-.5)*.06;z.a=a;   // leads moving targets
+      if(z.cd<=0){z.cd=.13;B.push({x:z.x,y:z.y,vx:Math.cos(a)*850,vy:Math.sin(a)*850,o:z.o,t:.75,d:9,c:2,e:'none'})}}}
+  if(Tu.length)B=B.filter(b=>{for(const z of Tu)if(b.o!=z.o&&Math.hypot(b.x-z.x,b.y-z.y)<26){z.hp-=b.d;return b.e=='pierce'}return true});   // enemy bolts damage turrets
+  for(const z of Tu)if(z.hp<=0)ev(1,z.x,z.y,90,P[z.o]?P[z.o].cl:0);
+  Tu=Tu.filter(z=>z.life>0&&z.hp>0);
+  if((mtT+=dt)>.15){mtT=0;bc2({t:'mt',tp:Tp.map(z=>[z.x|0,z.y|0,z.o,+z.age.toFixed(2)]),tu:Tu.map(z=>[z.x|0,z.y|0,z.o,Math.ceil(z.hp),+z.a.toFixed(2),+z.life.toFixed(1)])})}};
+ 
+const sg11=startGame;startGame=function(){Tp=[];Tu=[];sg11()};
+const tm11=toMenu;toMenu=function(t){Tp=[];Tu=[];tm11(t)};
+const onData11=onData;
+onData=function(m){
+  if(m.t=='mt'){const n=performance.now();Tp=m.tp.map(a=>({x:a[0],y:a[1],o:a[2],age:a[3],ts:n}));Tu=m.tu.map(a=>({x:a[0],y:a[1],o:a[2],hp:a[3],a:a[4],life:a[5]}));return}
+  if(m.t=='s'){Tp=[];Tu=[]}
+  onData11(m)};
+ 
+// ---- 4. Bots: drop traps at medium range ----
+const ai11=ai;
+ai=function(p,i,dt){ai11(p,i,dt);
+  const t=P[p.tg];if(p.cl!=MI||p.ac>0||!t||t.hp<=0)return;const d=Math.hypot(t.x-p.x,t.y-p.y);
+  if(d>120&&d<380&&los(p.x,p.y,t.x,t.y,1)&&Math.random()<dt*(.4+p.iq*2))p.aq=1};
+ 
+// ---- 5. Looks: hard hat, wrench in hand, swing arcs, traps (hidden from enemies after 1.5s), turret ----
+const person11=person;
+person=function(p,isMe){person11(p,isMe);
+  if(p.cl==MI){g.save();g.translate(p.x,p.y);g.rotate(p.a);g.fillStyle='#ffd23f';g.strokeStyle=OL;g.lineWidth=3;g.lineJoin='round';
+    g.beginPath();g.arc(-3,0,14,Math.PI*.55,Math.PI*1.45);g.closePath();g.fill();g.stroke();g.restore()}};
+const weapon11=weapon;
+weapon=function(p){if(p.cl!=MI)return weapon11(p);
+  g.save();g.translate(p.x,p.y);g.rotate(p.a+((p.fl&16)?-.7:.25));g.lineCap='round';        // raised, then swung
+  for(const[col,w]of[[OL,9],['#c8ccd4',5]]){g.strokeStyle=col;g.lineWidth=w;g.beginPath();g.moveTo(10,10);g.lineTo(38,10);g.stroke()}
+  for(const[col,w]of[[OL,11],['#c8ccd4',6]]){g.strokeStyle=col;g.lineWidth=w;g.beginPath();g.arc(45,10,9,.8,6.283-.8);g.stroke()}   // open jaw
+  g.restore()};
+const drawBolt11=drawBolt;
+drawBolt=function(b,T){const c=CL[b.c|0];if(c.bk!=9)return drawBolt11(b,T);
+  g.save();g.translate(b.x,b.y);g.rotate(b.a!=null?b.a:Math.atan2(b.vy,b.vx));g.lineCap='round';
+  for(const[col,w]of[[OL,13],[c.sc,8],['#fff',3]]){g.strokeStyle=col;g.lineWidth=w;g.beginPath();g.arc(-12,0,22,-.55,.55);g.stroke()}g.restore()};
+const shot11=SF.shot;SF.shot=(q,c)=>c==MI?(tone(200,50,.09,'square',q*.15),noise(.05,q*.4,1500)):shot11(q,c);   // own sound (the shot sound is a per-hero lookup)
+ 
+function trapSpr(z,al){g.save();g.translate(z.x,z.y);g.globalAlpha=al;g.lineJoin='round';
+  g.fillStyle='#8b93a3';g.strokeStyle=OL;g.lineWidth=3;g.beginPath();for(let i=0;i<16;i++){const a=i/16*6.283,r=i%2?19:27;i?g.lineTo(Math.cos(a)*r,Math.sin(a)*r):g.moveTo(r,0)}g.closePath();g.fill();g.stroke();
+  g.fillStyle='#4a5160';g.beginPath();g.arc(0,0,13,0,7);g.fill();g.stroke();
+  const arm=tAge(z)>.6;g.fillStyle=arm&&Math.sin(performance.now()/150)>0?'#ff4d4d':'#7a2a2a';g.beginPath();g.arc(0,0,5,0,7);g.fill();g.restore()}
+function turSpr(z,me){const f=Math.max(0,z.hp/300),T=performance.now()/1000;g.save();g.translate(z.x,z.y);g.lineJoin=g.lineCap='round';
+  g.fillStyle='rgba(0,0,0,.3)';g.beginPath();g.ellipse(0,8,24,16,0,0,7);g.fill();
+  g.fillStyle='#6b7280';g.strokeStyle=OL;g.lineWidth=4;g.beginPath();g.arc(0,0,21,0,7);g.fill();g.stroke();
+  g.fillStyle='#d9822b';g.beginPath();g.arc(0,0,13,0,7);g.fill();g.stroke();
+  g.save();g.rotate(z.a);g.strokeStyle=OL;g.lineWidth=12;g.beginPath();g.moveTo(4,0);g.lineTo(34,0);g.stroke();g.strokeStyle='#c8ccd4';g.lineWidth=6;g.beginPath();g.moveTo(4,0);g.lineTo(34,0);g.stroke();g.restore();
+  g.fillStyle='#000a';g.fillRect(-22,-36,44,6);g.fillStyle=f>.35?'#ffd23f':'#ff6b6b';g.fillRect(-22,-36,44*f,6);
+  g.strokeStyle=me?'#6ee7ff':'#ffb347';g.lineWidth=2;g.globalAlpha=.4+.2*Math.sin(T*4);g.setLineDash([8,8]);g.beginPath();g.arc(0,0,28,0,6.283*Math.min(1,z.life/12));g.stroke();g.restore()}
+const ground11=ground;
+ground=function(m,w,h,s){ground11(m,w,h,s);
+  for(const z of Tp){const mine=z.o==me,age=tAge(z);
+    if(mine)trapSpr(z,age<1.5?1:.4);                                                              // you always see your own traps (faded once hidden)
+    else if(age<1.5&&Math.hypot(z.x-m.x,z.y-m.y)<V+40)trapSpr(z,1)}};                              // enemies only see a fresh trap, and only within sight
+const drawFx11=drawFx;
+drawFx=function(){const m=cam();for(const z of Tu)if(z.o==me||Math.hypot(z.x-m.x,z.y-m.y)<V+40)turSpr(z,z.o==me);drawFx11()};
+ 
+// ---- 6. Menu preview: dummies stand in punching range for short-range heroes ----
+const pvSet11=pvSet;
+pvSet=function(ph,c){pvSet11(ph,c);const R=c.bs*c.bt;if(!ph&&R<260)pvD=[[WZ[0]+R*.8,180],[WZ[0]+R*.7,130],[WZ[0]+R*.7,230]]};
+ 
+// ---- Changelog ----
+pick(cls);
+LOG.unshift(['v1.21.0',['New hero: Cog, the Mechanic. Wrench melee (heals 5 HP per hit); Snare Trap: placed traps (max 3) vanish from enemy view after 1.5s, stun 1.2s and hurt whoever steps in; Auto-Turret ultimate: 300 HP, 12s, rapid fire up to 560 range, enemy fire can destroy it']]);
+$('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
+ 
 
 
  
