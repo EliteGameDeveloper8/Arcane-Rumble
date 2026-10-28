@@ -58,7 +58,7 @@ canvas.pv{position:static;inset:auto;display:block;width:100%;height:auto;border
 <div id="sp"><button class="s" id="spL">◀</button><span id="spN"></span><button class="s" id="spR">▶</button></div>
 
 <div class="pn" id="menu">
-<h1>STORM ARENA</h1>
+<h1>ARCANE RUMBLE</h1>
 <input id="nm" maxlength="12" placeholder="Your name">
 <div id="hs"></div>
 <div id="hn"></div>
@@ -104,7 +104,7 @@ canvas.pv{position:static;inset:auto;display:block;width:100%;height:auto;border
 <script>
 (()=>{
 /* =====================================================================
-   STORM ARENA: single-script build
+   ARCANE RUMBLE: single-script build
    Sections: 1 Constants  2 Wizards  3 UI  4 Networking  5 World
              6 Navigation  7 Simulation  8 Bot AI  9 Sound  10 Effects
              11 Rendering  12 Input  13 Main loop
@@ -155,9 +155,9 @@ const CL=[
  ul:{n:'Tornado',x:'PLACE a cyclone that pulls enemies in and shreds them',k:'tornado'},ps:{n:'Windstep',x:'take 10% less damage while moving',k:'wstep'}}];
 
 // ---------- 3. UI ----------
-const CFG=Object.assign({quick:0,btn:1,info:1,map:190},(()=>{try{return JSON.parse(localStorage.getItem('storm-cfg'))}catch(e){return null}})()); // saved settings
+const CFG=Object.assign({quick:0,btn:1,info:1,map:190},(()=>{try{return JSON.parse(localStorage.getItem('arcane-cfg'))}catch(e){return null}})()); // saved settings
 if(!CFG.mv){CFG.mv=1;CFG.info=0}
-const saveCfg=()=>{try{localStorage.setItem('storm-cfg',JSON.stringify(CFG))}catch(e){}};
+const saveCfg=()=>{try{localStorage.setItem('arcane-cfg',JSON.stringify(CFG))}catch(e){}};
 const KD={u:'Move up',l:'Move left',d:'Move down',r:'Move right',q:'Ability',e:'Ultimate'},KDEF={u:'w',l:'a',d:'s',r:'d',q:'e',e:'q'}; // q = ability key, e = ultimate key (defaults: E and Q)
 const KB=Object.assign({},KDEF,CFG.kb);if(!CFG.kbv){CFG.kbv=1;if(KB.q=='q'&&KB.e=='e'){KB.q='e';KB.e='q'}} // old saved defaults follow the swap
 CFG.kb=KB;let lis=null; // lis = the action waiting for a key press
@@ -168,7 +168,7 @@ function kbCap(e,k){if(!lis)return 0;e.preventDefault();if(k!='escape'){const o=
 $('kbr').onclick=()=>{Object.assign(KB,KDEF);lis=null;saveCfg();kbDraw()};
 const dds=[...document.querySelectorAll('.dd')];dds.forEach(d=>{d.open=!!CFG.info;d.addEventListener('toggle',()=>{const o=d.open?1:0;if(CFG.info==o)return;CFG.info=o;dds.forEach(x=>x.open=!!o);saveCfg()})}); // the info dropdown remembers open / closed
 $('bset').onclick=()=>{$('c1').value=CFG.quick;$('c2').value=CFG.btn;$('c3').value=CFG.map;lis=null;kbDraw();show('cfg')};
-$('cb').onclick=()=>{lis=null;CFG.quick=+$('c1').value;CFG.btn=+$('c2').value;CFG.map=+$('c3').value;try{localStorage.setItem('storm-cfg',JSON.stringify(CFG))}catch(e){}show('menu')};
+$('cb').onclick=()=>{lis=null;CFG.quick=+$('c1').value;CFG.btn=+$('c2').value;CFG.map=+$('c3').value;try{localStorage.setItem('arcane-cfg',JSON.stringify(CFG))}catch(e){}show('menu')};
 const show=id=>{['menu','lobby','end','cfg','log'].forEach(x=>$(x).classList.toggle('h',x!=id));$('ab').style.display=id||!CFG.btn?'none':'flex';$('lv').style.display='none';$('sp').style.display='none';$('cx').style.display='none';aimQ=aimE=0};
 const MENU_MSG='',msg=t=>toMenu(t);
 // Hand-drawn class badges (canvas -> image) so the picker never depends on emoji fonts
@@ -242,7 +242,7 @@ $('bo').onclick=()=>{
 function mkRoom(){
  if(m.t=='j'&&(st!='lobby'||lobby.length>=+$('s1').value)){c.send({t:'x'});setTimeout(()=>c.close(),300);return}
   code=Math.random().toString(36).slice(2,6).toUpperCase();
-  peer=new Peer('storm-'+code);
+  peer=new Peer('arcane-'+code);
   peer.on('error',e=>{if(e.type=='unavailable-id')mkRoom();else msg('Network error: '+e.type)});
   peer.on('open',()=>{
     lobby=[{n:myName(),c:0,k:cls}];st='lobby';show('lobby');
@@ -262,7 +262,7 @@ $('bj').onclick=()=>{
   host=false;code=rc;peer=new Peer();
   peer.on('error',e=>msg(e.type=='peer-unavailable'?'Room not found':'Network error: '+e.type));
   peer.on('open',()=>{
-    hc=peer.connect('storm-'+rc,{reliable:true});
+    hc=peer.connect('arcane-'+rc,{reliable:true});
     hc.on('open',()=>{hc.send({t:'j',n:myName(),c:0,k:cls});st='lobby';lobby=[];show('lobby');$('lk').textContent='';drawLobby()});
     hc.on('data',onData);
     hc.on('close',()=>{if(st!='menu')msg('Host left the game')});
