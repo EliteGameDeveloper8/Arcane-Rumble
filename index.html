@@ -82,6 +82,7 @@ canvas.pv{position:static;inset:auto;display:block;width:100%;height:auto;border
  <label>Mode<select id="s2"><option value="0">Showdown (battle royale)<option value="1">Brawl Rush (first to 10 kills)<option value="2">Hot Zone (hold the zone)</select></label>
  <label>Bots<select id="s5"><option value="1">On (fill the room)<option value="0">Off (real players only)</select></label>
  <label>Modifiers<select id="s6"><option value="0">Off<option value="1">On (Showdown only)</select></label>
+  <label>Map size<select id="s7"><option value="1400">Small<option value="2000" selected>Normal<option value="2600">Large</select></label>
 </div>
 <button id="bs">Start game</button>
 <button id="bl1" class="s">Leave</button>
@@ -116,10 +117,11 @@ canvas.pv{position:static;inset:auto;display:block;width:100%;height:auto;border
 
 // ---------- 1. Constants & state ----------
 const $=id=>document.getElementById(id),cv=$('c');let g=cv.getContext('2d');
-const A=2000,W=A*2,C=A;          // arena radius, world size, centre
+let A=2000,W=4000,C=2000;        // arena radius, world size, centre (map size option changes these)
 const STP=520,HC=170;            // town block spacing / half size
 const V=520;                     // vision radius
-const GS=32,GN=125;              // navigation grid cell size / cells per side
+const GS=32,GN=163;              // navigation grid cell size / cells per side (fits the biggest map)
+const setMap=a=>{A=a;W=a*2;C=a};
 const OL='#2a1a3a';              // cartoon outline colour
 const COLS=['#ff4d4d','#4dc3ff','#6bff6b','#ffd23f','#c77dff','#ff9f43','#2ee6c5','#ff7ac6'];
 const NAMES=[['Goofball','Noodle','Potato','Derp','Bonkers','Muffin','Doofus','Clumsy'],['Sam','Max','Rex','Dave','Pete','Lou','Gus','Bob'],['Socrates','Einstein','Newton','Tesla','Plato','Curie','Darwin','Hawking']];
@@ -489,7 +491,7 @@ function los(ax,ay,bx,by,rk){ // line of sight; rk=1 also blocked by rocks (what
   return 1
 }
 // can the viewer m see player p? (range, bushes, buildings, walls)
-const seen=(p,m)=>{if(p===m)return 1;const d=Math.hypot(p.x-m.x,p.y-m.y);return d<V&&!(hid(p)&&d>130)&&!(bi(p)>=0&&bi(p)!=bi(m))&&los(m.x,m.y,p.x,p.y)};
+const seen=(p,m)=>{if(p===m)return 1;const d=Math.hypot(p.x-m.x,p.y-m.y);return d<V&&!(hid(p)&&d>130)&&!(!(p.fl&16)&&bi(p)>=0&&bi(p)!=bi(m))&&los(m.x,m.y,p.x,p.y)};
 const cam=()=>{const m=P[me]||{x:C,y:C,hp:1};if(m.hp>0||dieT>0||md)return m;const t=P[spec];return t&&t.hp>0?t:P.find(p=>p.hp>0)||m}; // dead: follow the spectated player
 
 // ---------- 7. Simulation (host) ----------
@@ -1100,7 +1102,75 @@ function pvFrame(dt){
   const s=Math.max(1.4,Math.min(q.height/95,q.width/130,6.5))*(1+.18*mPop);   
   const bg=g.createRadialGradient(x,y,0,x,y,Math.max(w,h)*.65);bg.addColorStop(0,c.oc+'77');bg.addColorStop(1,'#10131c');g.fillStyle=bg;g.fillRect(0,0,w,h);   g.save();g.translate(x,y);g.lineWidth=3;   
   for(let i=0;i<3;i++){g.strokeStyle=c.sc+(i?'44':'99');g.setLineDash(i==1?[14,12]:[]);g.lineDashOffset=T*(i?-30:20);g.beginPath();g.arc(0,0,s*(36+i*10),0,7);g.stroke()}   g.setLineDash([]);   
-  for(let i=0;i<16;i++){const a=T*.5+i*.39,r=s*(44+10*Math.sin(T*1.7+i*2));cir(Math.cos(a)*r,Math.sin(a)*r*.9,2+s*.4*(i%3==0),i%2?c.sc:'#fff')}   g.scale(s,s);person({x:0,y:0,a:T*.7,cl:cls,mv:0,fl:0},0);g.restore()} 
+  for(let i=0;i<16;i++){const a=T*.5+i*.39,r=s*(44+10*Math.sin(T*1.7+i*2));cir(Math.cos(a)*r,Math.sin(a)*r*.9,2+s*.4*(i%3==0),i%2?c.sc:'#fff')}   g.scale(s,s);person({x:0,y:0,a:T*.7,cl:cls,mv:0,fl:0},0);g.restore()}
+ /* ===== v1.10 PATCH BLOCK ===== */
+const isG=q=>q.gold||(q.fl&1024);   // Golden Bot (host knows .gold, clients see the crown flag)
+
+// Balance
+Object.assign(CL[1],{hp:150,d:6.5});          // Frost buffed
+CL[2].ab.cd=12;                                // Lumi: Sanctuary cooldown 9 -> 12
+CL[4].d=9.5;                                   // Volt main attack nerf
+Object.assign(CL[6],{d:5.5,cd:.3,bt:.42});     // Zephyr: less damage, slower fire, shorter range
+
+// Damage rules: cubes, weak Golden Bot, slower ult charge from damage, hit = revealed ~1s
+hit=function(p,d,by){
+  if(p.hp<=0)return;const o=P[by];
+  if(o&&o!==p)d*=(o.gold?.6:1)*(1+.1*(o.pc|0));    // Golden Bot hits softer, each cube = +10% damage
+  d*=p.gold?1.8:1/(1+.1*(p.pc|0));                  // Golden Bot is fragile, each cube = tougher
+  if(by!=null){
+    if(CL[p.cl].ps.k=='frost'&&o&&o!==p&&Math.hypot(o.x-p.x,o.y-p.y)<220)o.sl=Math.max(o.sl,.8);
+    p.ch=Math.min(100,p.ch+d*.2);if(o&&o!==p)o.ch=Math.min(100,o.ch+d*.4)}   // was .4 / .8
+  d*=CL[p.cl].ps.k=='skin'||(CL[p.cl].ps.k=='wstep'&&Math.hypot(p.mx,p.my)>.1)?.9:1;p.hp-=d;p.rl=4;
+  if(o&&o!==p&&d>=2)p.rv=Math.max(p.rv,.9);         // got hit: visible ~1s, then hides again
+  if(p.hp<=0&&by!=null&&o&&o!==p){o.k++;if(p.gold){o.gb=(o.gb||0)+1;o.hp=CL[o.cl].hp;ev(4,o.x,o.y,4,0)}if(CL[o.cl].ps.k=='ash')o.hp=Math.min(CL[o.cl].hp,o.hp+30)}
+};
+
+// Volt ultimate: 6 damage per strike (was 9), shorter range
+strike=function(p,i){let t=null,bd=440;for(const q of P)if(q!==p&&q.hp>0){const d=Math.hypot(q.x-p.x,q.y-p.y);if(d<bd&&(!hid(q)||d<150)&&los(p.x,p.y,q.x,q.y,1)){bd=d;t=q}}
+  if(t){hit(t,6,i);ev(3,t.x,t.y,0,p.cl)}};
+
+// Lumi Sanctuary shorter, Zephyr Tornado smaller and shorter
+const cast0=cast;
+cast=function(p,i,u){cast0(p,i,u);const z=Zn[Zn.length-1];
+  if(u.k=='sanct'&&z)z.t=z.T=2.5;
+  if(u.k=='tornado'&&z){z.r=120;z.t=z.T=4}};
+
+// Power cubes
+power=function(p){p.pc=Math.min(10,(p.pc|0)+1);p.hp=Math.min(CL[p.cl].hp,p.hp+40);ev(4,p.x,p.y,5,0)};BN[5]='+1 POWER CUBE';
+const person0=person;
+person=function(p,isMe){person0(p,isMe);
+  if(p.pc>0){g.save();g.translate(p.x-34,p.y-31);g.fillStyle='#b44dff';g.strokeStyle=OL;g.lineWidth=3;g.fillRect(-9,-9,18,18);g.strokeRect(-9,-9,18,18);
+    g.fillStyle='#fff';g.font='bold 13px sans-serif';g.textAlign='center';g.fillText(p.pc,0,5);g.restore()}};
+
+// Host step: slower ult charging, cube counts to clients, Golden Bot doesn't count as a player
+const step0=step;let pcT=0;
+step=function(dt){
+  const c0=P.map(q=>q.ch);step0(dt);
+  P.forEach((q,i)=>{const d0=q.ch-c0[i];if(d0>0)q.ch=c0[i]+d0*.6});      // every ult gain 40% slower
+  if((pcT+=dt)>.25){pcT=0;bc2({t:'pc',v:P.map(q=>q.pc|0)})}
+  if(st=='play'&&!S.m&&P.some(q=>q.gold&&q.hp>0)){
+    const al=P.filter(q=>q.hp>0&&!q.gold);
+    if(al.length<=1){const w=P.indexOf(al[0]);netT=1;step0(0);bc({t:'e',w});finish(w)}}
+};
+
+// Game start: map size, weaker bots (genius rarer), weaker Golden Bot
+const sg0=startGame;
+startGame=function(){if(!host||st!='lobby')return;const a=+$('s7').value||2000;bc({t:'ms',v:a});setMap(a);sg0();
+  for(const q of P)if(q.bot)q.iq=q.gold?.5:q.iq*.75};
+
+// Client messages: map size + cube counts
+const onData0=onData;
+onData=function(m){if(m.t=='ms'){setMap(m.v);return}if(m.t=='pc'){m.v.forEach((v,i)=>{if(P[i])P[i].pc=v});return}onData0(m)};
+
+// HUD / death screen: don't count the Golden Bot as alive
+const hud0=hud;
+hud=function(){hud0();if(md==0&&P.some(isG)){const t=$('hud');t.textContent=t.textContent.replace(/Alive \d+/,'Alive '+P.filter(q=>q.hp>0&&!isG(q)).length)}};
+const fx0=fx;
+fx=function(dt){const d0=dieT;fx0(dt);if(dieT>d0)dRank=P.filter(q=>q.hp>0&&!isG(q)).length+1};
+
+// Changelog
+LOG.unshift(['v1.10.0',['Power cubes: loot boxes give +1 cube, shown next to your health bar (+10% damage each)','Map size option (Small / Normal / Large)','Ultimates charge slower, much less from damage','Golden Bot is weaker and no longer counts as a player','Hit enemies are revealed for a moment, even in bushes, cloaks and houses','Balance: Volt, Zephyr and Lumi nerfed, Frost buffed, bots weaker']]);
+$('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
  // ---------- 13. Main loop ----------
 function loop(t){
   DT=Math.min(.05,(t-last)/1000||0);last=t;
