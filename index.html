@@ -1073,8 +1073,7 @@ function pvFrame(dt){
     if(!ph)for(const b of pvB)drawBolt(b,T);
     g.globalAlpha=fa;person({x:WZ[0]+ox,y:WZ[1]+Math.sin(T*3)*2,a:0,cl:cls,mv:0,fl:0},0);g.globalAlpha=1;
     g.setTransform(1,0,0,1,0,0);g.font='bold 14px system-ui';g.textAlign='left';g.lineWidth=4;g.strokeStyle=OL;g.lineJoin='round';
-    const tx=['MAIN ATTACK: '+c.mn[0],'ABILITY: '+c.ab.n,'ULTIMATE: '+c.ul.n][ph];g.strokeText(tx,8,20);g.fillStyle=['#ffd23f','#6ee7ff','#ff7ac6'][ph];g.fillText(tx,8,20);
-    for(let i=0;i<3;i++)cir(cvs.width-16-i*14,14,4,i==2-ph?'#fff':'#ffffff44');g.font='11px system-ui';g.textAlign='right';g.fillStyle='#ffffffbb';g.fillText('tap to switch',cvs.width-8,cvs.height-8)}
+    const tx=['MAIN ATTACK: '+c.mn[0],'ABILITY: '+c.ab.n,'ULTIMATE: '+c.ul.n][ph];g.strokeText(tx,8,20);g.fillStyle=['#ffd23f','#6ee7ff','#ff7ac6'][ph];g.fillText(tx,8,20);}
   g=sg}
 
 // ---------- Menu scene: the chosen hero spins slowly in the middle of the free space ---------- 
@@ -2244,7 +2243,7 @@ function pvPas(cvs,lt){
   else{me(X0,Y);tx(c.ps.n,330,Y,'#fff',22)}
   g.setTransform(1,0,0,1,0,0);g.font='bold 14px system-ui';g.textAlign='left';g.lineWidth=4;g.strokeStyle=OL;g.lineJoin='round';
   const t='PASSIVE: '+c.ps.n;g.strokeText(t,8,20);g.fillStyle='#9dff8a';g.fillText(t,8,20);
-  g.font='11px system-ui';g.textAlign='right';g.fillStyle='#ffffffbb';g.fillText('tap to switch',cvs.width-8,cvs.height-8)}
+ }
 
 // ---- 6. Preview driver: 4 phases x 3s, pause freezes time, timeline bar ----
 const pvFrameP=pvFrame;
@@ -2296,19 +2295,86 @@ const tmTR=toMenu;toMenu=function(t){TR=0;tmTR(t)};
 LOG.unshift(['v1.25.0',['Hero picker: new Range and Healing stats; the explanation sits under the preview and always matches what is playing','Preview now has 4 parts (main, ability, ultimate, passive) with a timeline bar, pause button, and click a segment to jump','Preview dummies stand at the attack\'s real hit range, with a dashed range arc','Cog ability / ultimate previews show the real trap (hides, stuns) and turret (shoots)','Terra boulder shards now really spawn on impact with a player, wall or rock (3 x 40% extra damage)','Training map: test any hero on dummies, a wall, a rock, bushes and the river (menu > Training)','Cog wrench is held beside the head, no longer over the eyes']]);
 renderLog();pick(cls);
 
-/* ===== THE 4 SMALL EDITS (find -> replace, each appears exactly once in the file) =====
- 1. Find:    pvT=((((pvT%9)/3|0)+1)%3)*3;
-    Replace: pvGo(((pvC/3|0)+1)%4);
- 2. Find:    for(let i=0;i<3;i++)cir(cvs.width-16-i*14,14,4,i==2-ph?'#fff':'#ffffff44');
-    Replace: (nothing: delete it, the timeline bar replaces those 3 dots)
- 3. Find:    B.push({x,y,vx:Math.cos(s)*520,vy:Math.sin(s)*520,o:b.o,t:.3,d:b.d*.3,c:b.c,e:'none',sh:1})
-    Replace: SHQ.push({x,y,vx:Math.cos(s)*520,vy:Math.sin(s)*520,o:b.o,t:.3,d:b.d*.4,c:b.c,e:'none',sh:1})
- 4. Find:    ox=(1-s)*12*Math.cos(ang)+s*15,oy=(1-s)*12*Math.sin(ang)-s*26,rot=(1-s)*ang+s*1.5708
-    Replace: ox=(1-s)*12*Math.cos(ang)-s*2,oy=(1-s)*12*Math.sin(ang)-s*25,rot=(1-s)*ang
-    And in the same function: g.arc(15,-9,5.5,0,7)  ->  g.arc(5,-23,5.5,0,7)
+ /* ===== ARCANE RUMBLE v1.26 PATCH =====
+   In this patch:
+    1. Pinned ✕ (top-left) on Changelog and Settings
+    2. Menu layout: Play offline / Host / Join under the name, Training above Hero info, Settings + Changelog as small corner buttons
+    3. Stat bars get divider lines (5 segments); the bars themselves are unchanged
+    4. Terra Boulder shards really spawn (player, wall, rock), 40% damage each
+    5. Cog wrench held beside the head (no longer covers the eyes)
+    6. Bots hunt the last place they saw an enemy they were attacking
 */
 
- 
+// ---- 1. Pinned close button on Changelog + Settings ----
+function topX(id,fn){const x=document.createElement('button');x.textContent='✕';x.setAttribute('aria-label','Close');
+  x.style.cssText='position:fixed;left:12px;top:12px;width:44px;height:44px;padding:0;border-radius:50%;font-size:20px;z-index:30;background:#ff5a5a;color:#fff;box-shadow:0 4px 0 #a02a2a';
+  x.onclick=fn;$(id).appendChild(x)}
+topX('log',()=>$('lb').click());topX('cfg',()=>$('cb').click());   // Settings goes through Back so your settings are saved
+
+// ---- 2. Menu layout ----
+{const mn=$('menu'),mb=mn.querySelectorAll('.mb'),hero=mn.querySelector('.dd'),top=document.createElement('div');
+ $('nm').after(mb[0],mb[1]);                       // Play offline / Host, then Room code / Join, right under the name
+ hero.before(btr);                                  // Training above Hero info
+ top.style.cssText='position:fixed;left:10px;top:10px;display:flex;gap:8px;z-index:6';
+ $('bset').textContent='⚙';$('bset').title='Settings';$('blog').textContent='📜';$('blog').title='Changelog';
+ top.append($('bset'),$('blog'));mn.appendChild(top);mb[2].remove();
+ mn.style.paddingTop='58px'}                        // keeps the title clear of the corner buttons
+
+// ---- 3. Stat bar divider lines ----
+{const s=document.createElement('style');
+ s.textContent='.st u{position:relative;overflow:hidden}.st u::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(90deg,transparent 0,transparent calc(20% - 2px),#10131c calc(20% - 2px),#10131c 20%)}';
+ document.head.appendChild(s)}
+
+// ---- 4. Terra shards (they used to be pushed into the bolt list while it was being filtered, so they vanished) ----
+const boltTS=bolt;
+bolt=function(b,q){const arr=B,n=arr.length;boltTS(b,q);               // player hit: move the freshly made shards into the safe queue
+  const add=arr.slice(n);if(add.length&&add.every(s=>s.sh)){arr.length=n;for(const s of add){s.d=b.d*.4;SHQ.push(s)}}};
+const shardsT=(b,x,y)=>{const a=Math.atan2(b.vy,b.vx)+3.1416;           // wall / rock hit: burst back toward the shooter's side
+  for(let n=-1;n<=1;n++){const s=a+n*.5;SHQ.push({x,y,vx:Math.cos(s)*520,vy:Math.sin(s)*520,o:b.o,t:.3,d:b.d*.4,c:b.c,e:'none',sh:1})}};
+const stepTS=step;
+step=function(dt){
+  if(host&&st=='play')B=B.filter(b=>{if(b.e!='knock'||b.sh)return true;const x=b.x+b.vx*dt,y=b.y+b.vy*dt;
+    if(Wl.some(w=>!w.tw&&x>w.x&&x<w.x+w.w&&y>w.y&&y<w.y+w.h)||R.some(r=>!r.w&&Math.hypot(x-r.x,y-r.y)<r.r)){shardsT(b,b.x,b.y);return false}return true});
+  stepTS(dt)};
+
+// ---- 5. Cog wrench held beside the head ----
+if(CI>=0){const weaponF=weapon;
+  weapon=function(p){if(p.cl!=CI)return weaponF(p);
+    const now=performance.now(),c=CL[CI];
+    if(p.sc!=null){if(p._sw==null)p._sw=p.sc;if(p._sw!==p.sc){p._sw=p.sc;p.swT=now}}
+    const t=p.sc!=null?(now-(p.swT||-1e4))/220:(pvPh==0?(now%(c.cd*1000))/220:9),
+      sw=t<1,ang=sw?-1.2+2.4*(1-(1-t)*(1-t)):1.2,kr=sw?0:Math.min(1,(t-1)/.7),s=kr*kr*(3-2*kr),
+      ox=(1-s)*12*Math.cos(ang)-s*2,oy=(1-s)*12*Math.sin(ang)-s*25,rot=(1-s)*ang;   // resting pose: beside the head, pointing forward
+    g.save();g.translate(p.x,p.y);g.lineCap=g.lineJoin='round';
+    if(sw){g.save();g.rotate(p.a);g.strokeStyle=c.sc;g.globalAlpha=.55*(1-t);g.lineWidth=18;g.beginPath();g.arc(0,0,52,-1.2,ang);g.stroke();
+      g.strokeStyle='#fff';g.lineWidth=4;g.beginPath();g.arc(0,0,52,Math.max(-1.2,ang-.7),ang);g.stroke();g.restore()}
+    g.rotate(p.a);g.translate(ox,oy);g.rotate(rot);
+    for(const[col,w]of[[OL,10],['#c8ccd4',6]]){g.strokeStyle=col;g.lineWidth=w;g.beginPath();g.moveTo(0,0);g.lineTo(38,0);g.stroke()}
+    for(const[col,w]of[[OL,12],['#c8ccd4',7]]){g.strokeStyle=col;g.lineWidth=w;g.beginPath();g.arc(46,0,10,.8,6.283-.8);g.stroke()}
+    g.restore();
+    if(s>0){g.save();g.translate(p.x,p.y);g.rotate(p.a);g.globalAlpha=s;g.fillStyle=c.sk;g.strokeStyle=OL;g.lineWidth=3;g.beginPath();g.arc(5,-23,5.5,0,7);g.fill();g.stroke();g.restore()}}}
+
+// ---- 6. Bots hunt the last known spot of an enemy they were attacking ----
+const aiHu=ai;
+ai=function(p,i,dt){aiHu(p,i,dt);
+  if(p.td||p.hp<=0)return;
+  const h=p.hm,t=P[p.tg],d=t?Math.hypot(t.x-p.x,t.y-p.y):1e9,ok=!!t&&t.hp>0&&!(hid(t)&&d>200)&&los(p.x,p.y,t.x,t.y);
+  if(ok&&p.s=='chase'){p.hm={x:t.x,y:t.y,t:3+p.iq*3+(1-t.hp/CL[t.cl].hp)*5,sw:0,arr:0};return}   // seen: remember the spot (weak targets are hunted longer)
+  if(!h)return;h.t-=dt;
+  if(ok||h.t<=0||p.s=='storm'||p.s=='flee'||p.s=='hide')return;
+  if(!h.arr&&Math.hypot(h.x-p.x,h.y-p.y)<70){h.arr=1;h.sw=0}                                       // arrived: wander around the spot
+  if(h.arr&&((h.sw-=dt)<=0||Math.hypot(h.px-p.x,h.py-p.y)<40)){h.sw=1.2+Math.random();const q=freePt(h.x,h.y,170);h.px=q.x;h.py=q.y}
+  const[mx,my]=nav(p,h.arr?h.px:h.x,h.arr?h.py:h.y);p.mx=mx;p.my=my;p.a=Math.atan2(my,mx);p.f=0};
+const rsH=respawn;respawn=function(p){rsH(p);p.hm=null};
+
+// ---- Changelog ----
+LOG.unshift(['v1.26.0',['Changelog and Settings have a ✕ pinned to the top-left, always reachable even when scrolled',
+  'Main menu: Play offline / Host / Join sit under your name, Training is above Hero info, Settings and Changelog are small buttons in the top-left corner',
+  'Hero stat bars have divider lines (5 segments) so heroes are easier to compare; the bars are unchanged',
+  'Terra Boulder shards really work now: it bursts into 3 shards on a player, wall or rock (each shard 40% damage)',
+  'Cog wrench is held beside the head and no longer covers the eyes',
+  'Bots remember where they last saw an enemy they were attacking and search around that spot for a few seconds, even if the enemy hid (weak enemies are hunted longer)']]);
+renderLog();pick(cls);
 
 // ---------- 14. Main loop ----------
 
