@@ -2063,7 +2063,104 @@ LOG.unshift(['v1.23.0',['Terra Stone Wall: aiming now shows the outline of the w
   'Nerfs: Grit (damage, attack speed, reach), Cog wrench (damage, attack speed, reach), Cog turret (240 HP, 10s, weaker and slower shots, shorter reach)']]);
 renderLog();pick(cls);
 
+/* ===== ARCANE RUMBLE v1.24 PATCH =====
+   
+   It only wraps existing functions, so nothing else in the file has to be edited.
 
+   In this patch:
+    1. Cog wrench is held sideways in the hand when not swinging (the swing and the return to the hand are smooth)
+    2. Cog in-game aim preview is one cone showing where the wrench hits (no more 3 lanes)
+    3. Joining a room whose game already started: a big notice on the menu when you are sent back
+    4. Terra ultimate menu preview: hold the aim outline, the wall is placed, the dummies walk toward you and are blocked
+*/
+
+// ---- 3. Clear notice when you are sent back to the menu (room already started / full, host left, room not found...) ----
+function notice(t){
+  let n=$('ntc');
+  if(!n){n=document.createElement('div');n.id='ntc';
+    n.style.cssText='position:fixed;left:50%;top:14px;transform:translateX(-50%);max-width:min(440px,92vw);z-index:20;background:#ff5a5a;color:#fff;padding:12px 18px;border-radius:12px;box-shadow:0 4px 0 #a02a2a,0 6px 20px #0008;font:700 15px system-ui,sans-serif;text-align:center;pointer-events:none;transition:opacity .4s';
+    document.body.appendChild(n)}
+  n.textContent=t;n.style.opacity=1;clearTimeout(n._t);n._t=setTimeout(()=>n.style.opacity=0,6000)}
+const toMenuN=toMenu;
+toMenu=function(t){
+  if(t=='Room is full or already started')t='That game has already started (or the room is full), so you were sent back to the menu.';
+  toMenuN(t);if(t)notice(t)};
+
+// ---- 2. Cone preview helper (shows the area a short-range attack really covers) ----
+function coneLane(q,c,half,R0,f){
+  const a=input().a,N=12,pts=[];
+  for(let k=0;k<=N;k++){const an=a-half+2*half*k/N,L=boltLen(q.x,q.y,Math.cos(an),Math.sin(an),R0);pts.push([q.x+Math.cos(an)*L,q.y+Math.sin(an)*L])}   // walls and rocks cut it short
+  g.save();g.lineJoin='round';
+  const gr=g.createRadialGradient(q.x,q.y,10,q.x,q.y,R0);gr.addColorStop(0,c.sc+(f?'99':'66'));gr.addColorStop(1,c.sc+(f?'44':'22'));
+  g.fillStyle=gr;g.beginPath();g.moveTo(q.x,q.y);for(const p of pts)g.lineTo(p[0],p[1]);g.closePath();g.fill();
+  g.strokeStyle=c.sc+'cc';g.lineWidth=2;g.setLineDash([10,8]);g.beginPath();g.moveTo(pts[0][0],pts[0][1]);g.lineTo(q.x,q.y);g.lineTo(pts[N][0],pts[N][1]);g.stroke();   // the two side edges
+  g.setLineDash([]);g.lineWidth=3;g.beginPath();pts.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));g.stroke();                                          // the far edge
+  g.restore()}
+
+// ---- 1 + 2. Cog: wrench held sideways in the hand, cone preview ----
+if(CI>=0){
+  CL[CI].pl=5;                                                    // 5 hit lanes instead of 3 so the cone has no gaps (still one hit per target per swing, damage unchanged)
+  const weaponK=weapon;
+  weapon=function(p){
+    if(p.cl!=CI)return weaponK(p);
+    const now=performance.now(),c=CL[CI];
+    if(p.sc!=null){if(p._sw==null)p._sw=p.sc;if(p._sw!==p.sc){p._sw=p.sc;p.swT=now}}              // a new swing starts whenever the shot counter changes
+    const t=p.sc!=null?(now-(p.swT||-1e4))/220:(pvPh==0?(now%(c.cd*1000))/220:9),                   // menu preview swings on a timer; the spinning menu hero stays at rest
+      sw=t<1,ang=sw?-1.2+2.4*(1-(1-t)*(1-t)):1.2,
+      kr=sw?0:Math.min(1,(t-1)/.7),s=kr*kr*(3-2*kr),                                               // s: 0 = swinging, 1 = back in the hand
+      ox=(1-s)*12*Math.cos(ang)+s*15,oy=(1-s)*12*Math.sin(ang)-s*26,rot=(1-s)*ang+s*1.5708;       // wrench origin + angle: swing pose -> held sideways across the body
+    g.save();g.translate(p.x,p.y);g.lineCap=g.lineJoin='round';
+    if(sw){g.save();g.rotate(p.a);g.strokeStyle=c.sc;g.globalAlpha=.55*(1-t);g.lineWidth=18;g.beginPath();g.arc(0,0,52,-1.2,ang);g.stroke();   // swing trail
+      g.strokeStyle='#fff';g.lineWidth=4;g.beginPath();g.arc(0,0,52,Math.max(-1.2,ang-.7),ang);g.stroke();g.restore()}
+    g.rotate(p.a);g.translate(ox,oy);g.rotate(rot);
+    for(const[col,w]of[[OL,10],['#c8ccd4',6]]){g.strokeStyle=col;g.lineWidth=w;g.beginPath();g.moveTo(0,0);g.lineTo(38,0);g.stroke()}               // handle
+    for(const[col,w]of[[OL,12],['#c8ccd4',7]]){g.strokeStyle=col;g.lineWidth=w;g.beginPath();g.arc(46,0,10,.8,6.283-.8);g.stroke()}                 // open jaw
+    g.restore();
+    if(s>0){g.save();g.translate(p.x,p.y);g.rotate(p.a);g.globalAlpha=s;g.fillStyle=c.sk;g.strokeStyle=OL;g.lineWidth=3;g.beginPath();g.arc(15,-9,5.5,0,7);g.fill();g.stroke();g.restore()}   // the hand gripping it
+  };
+  const aimLaneK=aimLane;
+  aimLane=function(){
+    const q=P[me];if(!q||q.hp<=0||q.cl!=CI)return aimLaneK();
+    const c=CL[CI];coneLane(q,c,c.sa/2+.15,c.bs*c.bt+22,mouse.d||(tch.a&&Math.hypot(tch.ax,tch.ay)>.15))};
+}
+
+// ---- 4. Terra ultimate menu preview: hold the outline, wall placed, dummies advance and are blocked ----
+// The old wall drawing (v1.18) is switched off by giving the ultimate a different internal name while the preview draws.
+PV.wallpv=PV.wall;
+function terraPv(lt){   // dummies stand far away, then (after the wall is placed) walk toward the wizard and stop at the wall
+  const adv=Math.max(0,lt-1.6)*150;
+  return[[470,180],[500,125],[500,235]].map((d,j)=>{const x=Math.max(322,d[0]-adv);return[x+(x<=322?Math.sin(lt*70+j*2)*1.6:0),d[1]]})}   // small shake while blocked
+const pvSetW=pvSet;
+pvSet=function(ph,c){pvSetW(ph,c);if(ph==2&&c.ul.k=='wallpv')pvD=terraPv(0)};
+const pvFrameV=pvFrame;
+pvFrame=function(dt){
+  const T=TE>=0&&cls==TE?CL[TE]:null,ul=T&&T.ul;
+  if(T){if(pvPh==2)pvD=terraPv(pvT%3);T.ul={...ul,k:'wallpv'}}
+  try{pvFrameV(dt)}finally{if(T)T.ul=ul}
+  if(!T||pvPh!=2)return;
+  const cs=[...document.querySelectorAll('canvas.pv')].filter(x=>x.offsetParent);
+  if(!cs.length)return;
+  const lt=pvT%3,Tm=performance.now()/1000,cx=WZ[0]+195,sg=g;
+  for(const cvs of cs){g=cvs.getContext('2d');const k=cvs.width/654;g.setTransform(k,0,0,k,0,0);g.lineCap=g.lineJoin='round';
+    if(lt<1.5){ // the player holds the key: aiming ring around the wizard, outline held in place (v1.23 draws the slide-in during the first .8s)
+      g.strokeStyle='#ffffffaa';g.lineWidth=3;g.setLineDash([8,8]);g.lineDashOffset=-Tm*30;g.beginPath();g.arc(WZ[0],WZ[1],30,0,7);g.stroke();g.setLineDash([]);
+      if(lt>=.8){g.globalAlpha=.75+.25*Math.sin(Tm*8);g.fillStyle='#ffffff22';g.strokeStyle='#ffffffcc';g.lineWidth=3;g.setLineDash([12,8]);
+        g.fillRect(cx-15,60,30,240);g.strokeRect(cx-15,60,30,240);g.setLineDash([]);g.globalAlpha=1}}
+    else{ // released: the wall rises out of the ground and stays
+      const u=Math.min(1,(lt-1.5)/.25),h=240*(1-(1-u)*(1-u)),al=lt>2.8?Math.max(0,(3-lt)/.2):1;
+      g.globalAlpha=al;g.fillStyle='#8a6a3b';g.strokeStyle=OL;g.lineWidth=5;g.fillRect(cx-15,180-h/2,30,h);g.strokeRect(cx-15,180-h/2,30,h);
+      g.fillStyle='rgba(255,255,255,.2)';g.fillRect(cx-10,185-h/2,20,Math.max(0,h-10));g.globalAlpha=1}
+    g.setTransform(1,0,0,1,0,0);g.font='bold 12px system-ui';g.textAlign='left';g.lineWidth=4;g.strokeStyle=OL;
+    const cp=lt<1.5?'Hold to aim':lt<2.4?'Release: wall placed':'Enemies are blocked';
+    g.strokeText(cp,8,cvs.height-8);g.fillStyle='#fff';g.fillText(cp,8,cvs.height-8)}
+  g=sg};
+
+// ---- Changelog ----
+LOG.unshift(['v1.24.0',['Cog: the wrench is held sideways in the hand when you are not swinging; the swing and the return to the hand are smooth',
+  'Cog aim preview is one cone showing where the wrench hits (5 hit lanes now, so the cone has no gaps)',
+  'Joining a room whose game already started (or is full) now shows a clear notice on the menu when you are sent back; other connection messages use it too',
+  'Terra ultimate preview: you hold the aim outline in place, the wall is placed, then the dummies walk toward you and are blocked by it']]);
+renderLog();pick(cls);
 
 
 
