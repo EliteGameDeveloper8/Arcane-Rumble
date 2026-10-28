@@ -1199,6 +1199,73 @@ hit=function(p,d,by){const was=p.hp>0;hit1(p,d,by);
 LOG.unshift(['v1.10.0',['Power cubes: loot boxes give +1 cube, shown next to your health bar (+10% damage each)','Map size option (Small / Normal / Large)','Ultimates charge slower, much less from damage','Golden Bot is weaker and no longer counts as a player','Hit enemies are revealed for a moment, even in bushes, cloaks and houses','Balance: Volt, Zephyr and Lumi nerfed, Frost buffed, bots weaker']]);
 LOG.unshift(['v1.11.0',['Every area gets a unique random name each match','Power boxes have a drawn sprite; bots grab boxes that are close; dying drops 30% (rounded up) of your cubes; each cube also gives +1.5% speed','Terra buffed (HP, speed, damage, fire rate, Quake cooldown, Stoneskin 15%)','Terra ultimate now shows a rockfall instead of a meteor','Zephyr Gust is a short visible dash with a wind trail','Minimap is 2.5x bigger; ultimate and heal circles are drawn over terrain with sharp colours','Zone names (Dune Village, Frost Keep...) shown on the minimap','Heal ponds are green with a heal cross','House roof chimney fixed (no more stray squares)','Match info text removed from menus']]);
 $('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
+ // ---- Power boxes: crates must be shot open, spawn only at match start, toggle in the Showdown lobby ----
+let Cr=[];                                   // crates {x,y,hp}; a broken crate drops a normal power cube (Bx)
+spawnBox=function(){};                       // old timed / loot-rush spawning is gone
+MODN[1]='LOOT RUSH: more boxes, shoot them open!';
+function crSend(){bc2({t:'cr',v:Cr.map(c=>[c.x|0,c.y|0,Math.ceil(c.hp)])})}
+function spawnCr(n){Cr=[];for(let t=0;Cr.length<n&&t<800;t++){const q=freePt(C,C,A-250);
+  if(!gb(q.x,q.y)&&Cr.every(c=>Math.hypot(c.x-q.x,c.y-q.y)>Math.max(230,A*.14)))Cr.push({x:q.x,y:q.y,hp:100})}}
+function crStep(){ // bolts damage crates (Light Beam pierces through)
+  if(!Cr.length)return;let ch=0;
+  B=B.filter(b=>{for(const c of Cr)if(c.hp>0&&!(b.hb&&b.hb.includes(c))&&Math.hypot(b.x-c.x,b.y-c.y)<28){
+    c.hp-=b.d;ch=1;if(c.hp<=0){c.hp=0;ev(1,c.x,c.y,55,b.c);Bx.push({x:c.x,y:c.y})}
+    if(b.e!='pierce')return false;(b.hb=b.hb||[]).push(c)}return true});
+  if(ch){Cr=Cr.filter(c=>c.hp>0);crSend()}}
+function crate(c){const f=c.hp/100,x=c.x,y=c.y;boxSpr0(x,y,16);
+  if(f<1){g.strokeStyle=OL;g.lineWidth=3;g.beginPath();g.moveTo(x-6,y-16);g.lineTo(x-1,y-4);g.lineTo(x-10,y+3);
+    if(f<.66){g.moveTo(x+9,y+16);g.lineTo(x+3,y+5);g.lineTo(x+12,y-2)}if(f<.33){g.moveTo(x-13,y+13);g.lineTo(x-2,y+8)}g.stroke();
+    g.fillStyle='#000a';g.fillRect(x-19,y-29,38,6);g.fillStyle='#ffd23f';g.fillRect(x-19,y-29,38*f,6)}}
+const boxSpr0=boxSpr;boxSpr=function(x,y,s){boxSpr0(x,y,s==13?9:s)};   // loose power cubes are small
+const db0=drawBoxes;drawBoxes=function(){db0();for(const c of Cr)crate(c)};
+const zt0=zoneTop;zoneTop=function(){zt0();for(const c of Cr)crate(c)};
+ 
+const bl=document.createElement('label');
+bl.innerHTML='Power boxes<select id="s8"><option value="1" selected>On<option value="0">Off</select>';$('set').appendChild(bl);
+$('s2').addEventListener('change',()=>{bl.style.display=$('s2').value=='0'?'':'none'});   // Showdown only
+ 
+const sg1=startGame;
+startGame=function(){sg1();if(!host||st!='play')return;Cr=[];
+  if(S.m==0&&($('s8').value=='1'||mod==1)){spawnCr(Math.round(22*(A/2000)**2*(mod==1?1.6:1)));crSend()}};
+const step1=step;step=function(dt){if(host&&st=='play')crStep();step1(dt)};
+const onData1=onData;
+onData=function(m){if(m.t=='s')Cr=[];if(m.t=='cr'){Cr=m.v.map(a=>({x:a[0],y:a[1],hp:a[2]}));return}onData1(m)};
+ 
+// bots walk to nearby crates and shoot them open (only when nothing else is going on)
+const ai0=ai;
+ai=function(p,i,dt){ai0(p,i,dt);if(p.f||p.s!='search'||!Cr.length||nearBox(p))return;
+  let c=null,bd=420;for(const q of Cr){const d=Math.hypot(q.x-p.x,q.y-p.y);if(d<bd){bd=d;c=q}}if(!c)return;
+  if(bd<260&&los(p.x,p.y,c.x,c.y,1)){p.a=Math.atan2(c.y-p.y,c.x-p.x);p.f=1;p.mx=p.my=0}
+  else{const[x,y]=nav(p,c.x,c.y);p.mx=x;p.my=y;p.a=Math.atan2(y,x)}};
+ 
+// ---- Minimap: no spell circles, clearer heal / ultimate ponds, zone names on 2 lines ----
+function miniExtra(w,h){
+  const ms=Math.min(CFG.map,w*.3,Math.max(90,h-216)),cx=w-ms/2-10,cy=56+ms/2,k=ms/2/A,T=performance.now()/1000,X=x=>cx+(x-C)*k,Y=y=>cy+(y-C)*k;
+  g.save();g.beginPath();g.arc(cx,cy,ms/2,0,7);g.clip();g.lineJoin='round';
+  for(const z of Sz){const sp=z.k=='spring',a=X(z.x),b=Y(z.y),r=Math.max(8,z.r*k*1.4)*(1+.08*Math.sin(T*4));
+    g.beginPath();g.arc(a,b,r+2.5,0,7);g.fillStyle='#000';g.fill();
+    g.beginPath();g.arc(a,b,r,0,7);g.fillStyle=sp?'#19e65c':'#a15cff';g.fill();g.strokeStyle='#fff';g.lineWidth=2;g.stroke();
+    g.fillStyle='#fff';
+    if(sp){g.fillRect(a-r*.55,b-r*.17,r*1.1,r*.34);g.fillRect(a-r*.17,b-r*.55,r*.34,r*1.1)}
+    else{g.beginPath();g.moveTo(a,b-r*.6);g.lineTo(a+r*.45,b);g.lineTo(a,b+r*.6);g.lineTo(a-r*.45,b);g.fill()}}
+  g.font='bold 11px sans-serif';g.textAlign='center';g.lineWidth=3;g.strokeStyle='#000';g.fillStyle='#fff';
+  for(const s of BS){const n=(s.nm||ZN[s.t]).split(' '),a=X(s.x),b=Y(s.y);
+    [n[0],n.slice(1).join(' ')].forEach((t,i)=>{if(t){g.strokeText(t,a,b-3+i*12);g.fillText(t,a,b-3+i*12)}})}
+  g.restore()}
+const ov0=overlay;
+overlay=function(m,w,h){const sv=[Zn,Sz,BS];Zn=[];Sz=[];BS=[];   // hide them from the old minimap code, redraw ponds + names above
+  try{ov0(m,w,h)}finally{Zn=sv[0];Sz=sv[1];BS=sv[2]}
+  if(m.cl!=null)miniExtra(w,h)};
+ 
+// ---- Menu fixes: no match HUD text in menus, no countdown offline ----
+setInterval(()=>{if(st=='menu'||st=='lobby')$('hud').textContent=''},100);
+const bs0=$('bs').onclick;
+$('bs').onclick=function(e){if(code=='OFFLINE'&&host&&st=='lobby'&&!cdI){startGame();return}bs0.call(this,e)};
+ 
+LOG.unshift(['v1.12.0',['Power boxes must be shot open to drop a power cube; they spawn once at the start across the whole map',
+  'Showdown lobby: Power boxes toggle (on by default, works without modifiers)','Minimap: no spell circles, bigger glowing heal / ultimate ponds, zone names on two lines',
+  'Alive / kills text no longer shows in menus','No countdown in offline practice']]);
+$('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
  // ---------- 13. Main loop ----------
 function loop(t){
   DT=Math.min(.05,(t-last)/1000||0);last=t;
