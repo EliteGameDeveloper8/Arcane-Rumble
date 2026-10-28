@@ -1323,12 +1323,75 @@ roofs=function(m){const mb=bi(m);
 LOG.unshift(['v1.13.0',['Terra ultimate is now Stone Wall: a temporary wall that blocks walking and bolts, crumbles over ~12s and breaks faster under fire','Ultimates charge a bit more from your own attacks','Houses: the roof fades away when you get close, so you can see the floor inside']]);
 $('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
 
+// ---- 1. Teleport (Hex Shadow Step) and Thunder Dash go toward your AIM (mouse / aim stick), not your move direction ----
+const cast3=cast;
+cast=function(p,i,u){
+  if(p.bot||(u.k!='step'&&u.k!='zap'))return cast3(p,i,u);        // bots keep their own logic
+  const mx=p.mx,my=p.my;p.mx=p.my=0;cast3(p,i,u);p.mx=mx;p.my=my;  // no move input -> the spell falls back to p.a (your aim)
+  if(u.k=='zap')p.dk=p.a};                                          // remember the dash direction
+const aimPreview0=aimPreview;
+aimPreview=function(){const keep=input;input=()=>({...keep(),mx:0,my:0});try{aimPreview0()}finally{input=keep}}; // preview uses aim too
+ 
+// ---- 2. Knock-backs / pushes slide over ~0.18s instead of teleporting (clients already glide to snapshots) ----
+const push0=push;
+push=function(q,ux,uy,d){const x=q.x,y=q.y;push0(q,ux,uy,d);const dx=q.x-x,dy=q.y-y;q.x=x;q.y=y;   // push0 checks walls; we keep its result but spread it over time
+  if(dx||dy){const v=q.pv||(q.pv={x:0,y:0,t:0});v.x+=dx;v.y+=dy;v.t=.18}};
+ 
+// ---- 3. Terra's Boulder splits into 3 shards on impact (player, wall or rock): more total damage ----
+CL[5].mn[1]='heavy rock that shoves enemies back, then bursts into 3 shards';
+const shards=(b,x,y,back)=>{const a=Math.atan2(b.vy,b.vx)+(back?3.1416:0);
+  for(let n=-1;n<=1;n++){const s=a+n*.5;B.push({x,y,vx:Math.cos(s)*520,vy:Math.sin(s)*520,o:b.o,t:.3,d:b.d*.3,c:b.c,e:'none',sh:1})}};
+const bolt0=bolt;
+bolt=function(b,q){bolt0(b,q);if(b.e=='knock'&&!b.sh){const a=Math.atan2(b.vy,b.vx);shards(b,q.x-Math.cos(a)*14,q.y-Math.sin(a)*14,0)}}; // spawn just in front of the victim: shards hit them too
+ 
+// ---- 4. Volt Storm Call shows its 440 range while active (host knows p.sk, clients get a small message) ----
+const drawFx3=drawFx;
+drawFx=function(){drawFx3();const T=performance.now()/1000,m=cam();
+  P.forEach((p,i)=>{if(p.hp<=0||!(p.sk>0||p.skOn)||!(i==me||seen(p,m)))return;
+    g.save();g.strokeStyle='#ffe84a';g.lineWidth=5;g.setLineDash([22,14]);g.lineDashOffset=-T*60;g.globalAlpha=.8;g.beginPath();g.arc(p.x,p.y,440,0,7);g.stroke();g.setLineDash([]);
+    g.globalAlpha=.07+.05*Math.sin(T*12);g.fillStyle='#ffe84a';g.beginPath();g.arc(p.x,p.y,440,0,7);g.fill();g.restore()})};
+const onData3=onData;
+onData=function(m){if(m.t=='sk'){m.v.forEach((v,i)=>{if(P[i])P[i].skOn=v});return}onData3(m)};
+ 
+// ---- host step additions (dash direction, push tween, terra shards on walls/rocks, storm sync) ----
+const step3=step;let skT=0;
+step=function(dt){
+  if(host&&st=='play'){
+    for(const p of P){
+      if(p.dh>0&&p.dk!=null){p.mx=Math.cos(p.dk);p.my=Math.sin(p.dk)}                    // Thunder Dash keeps its aimed direction
+      if(p.pv){const f=Math.min(1,dt/Math.max(.001,p.pv.t));p.x+=p.pv.x*f;p.y+=p.pv.y*f;p.pv.x*=1-f;p.pv.y*=1-f;p.pv.t-=dt;if(p.pv.t<=0)p.pv=null}}
+    B=B.filter(b=>{if(b.e!='knock'||b.sh)return true;const x=b.x+b.vx*dt,y=b.y+b.vy*dt;
+      if(Wl.some(w=>!w.tw&&x>w.x&&x<w.x+w.w&&y>w.y&&y<w.y+w.h)||R.some(r=>!r.w&&Math.hypot(x-r.x,y-r.y)<r.r)){shards(b,b.x,b.y,1);return false}return true});
+    if((skT-=dt)<=0){skT=.25;bc2({t:'sk',v:P.map(q=>q.sk>0?1:0)})}}
+  step3(dt)};
+ 
+// ---- 5. Every wizard holds a different weapon (no more rods): fire orb, ice crystal, holy book, skull, lightning wand, rock, wind fan ----
+function weapon(p){const c=CL[p.cl],i=p.cl,T=performance.now()/1000,k=c.sc,y=7+Math.sin(T*3+i)*1.5,x=30,a0=g.globalAlpha;
+  g.save();g.translate(p.x,p.y);g.rotate(p.a);g.lineJoin=g.lineCap='round';g.strokeStyle=OL;g.lineWidth=3;
+  if(i==0){for(let j=3;j>0;j--){g.globalAlpha=a0*.4;cir(x-j*6,y+Math.sin(T*20+j)*2,9-j*2,'#ff4d2e')}g.globalAlpha=a0;cir(x,y,11,k);g.beginPath();g.arc(x,y,11,0,7);g.stroke();cir(x,y,5,'#fff3b0')}
+  else if(i==1){g.fillStyle=k;g.beginPath();g.moveTo(x+16,y);g.lineTo(x,y-9);g.lineTo(x-10,y);g.lineTo(x,y+9);g.closePath();g.fill();g.stroke();g.strokeStyle='#fff';g.lineWidth=2;g.beginPath();g.moveTo(x-6,y);g.lineTo(x+10,y);g.stroke()}
+  else if(i==2){g.fillStyle=c.hr;g.fillRect(x-10,y-11,22,22);g.strokeRect(x-10,y-11,22,22);g.strokeStyle='#fff';g.lineWidth=3;g.beginPath();g.moveTo(x+1,y-6);g.lineTo(x+1,y+6);g.moveTo(x-4,y);g.lineTo(x+6,y);g.stroke()}
+  else if(i==3){cir(x,y,13,k+'55');cir(x,y,9,'#e8e0f0');g.beginPath();g.arc(x,y,9,0,7);g.stroke();cir(x+2,y-3.5,2.5,'#1b0f2e');cir(x+2,y+3.5,2.5,'#1b0f2e')}
+  else if(i==4){for(const[col,w]of[[OL,9],[k,5]]){g.strokeStyle=col;g.lineWidth=w;g.beginPath();g.moveTo(14,y);g.lineTo(22,y-6);g.lineTo(28,y+5);g.lineTo(36,y-4);g.lineTo(44,y+2);g.stroke()}}
+  else if(i==5){g.fillStyle='#9b7b4d';g.beginPath();for(let j=0;j<7;j++){const q=j*.8976,r=14+(j%2)*4;j?g.lineTo(x+Math.cos(q)*r,y+Math.sin(q)*r):g.moveTo(x+r,y)}g.closePath();g.fill();g.stroke();cir(x-3,y-3,4,'#c9a36a')}
+  else{g.fillStyle='rgba(255,255,255,.9)';g.beginPath();g.moveTo(x-10,y);g.arc(x-10,y,24,-.8,.8);g.closePath();g.fill();g.stroke();g.strokeStyle=k;g.lineWidth=2;for(const a of[-.4,0,.4]){g.beginPath();g.moveTo(x-10,y);g.lineTo(x-10+Math.cos(a)*22,y+Math.sin(a)*22);g.stroke()}}
+  g.restore()}
+const person3=person;
+person=function(p,isMe){const c=CL[p.cl],gl=c.gl;c.gl=-12;       // shrink the old staff so it hides under the body
+  try{person3(p,isMe)}finally{c.gl=gl}weapon(p)};
+ 
+// ---- Changelog ----
+LOG.unshift(['v1.14.0',['Shadow Step and Thunder Dash now go toward your aim (mouse / aim stick), not your move direction; their previews match','Knock-backs and pushes slide smoothly instead of teleporting','Terra Boulder bursts into 3 shards when it hits a player, wall or rock','Volt Storm Call shows its range ring while active','Each wizard holds a different weapon: fire orb, ice crystal, holy book, skull, lightning wand, rock, wind fan']]);
+$('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
+
+
+
+
+
 
  
  // ---------- 14. Main loop ----------
 
-
- 
 function loop(t){
   DT=Math.min(.05,(t-last)/1000||0);last=t;
   if(st=='play'){
