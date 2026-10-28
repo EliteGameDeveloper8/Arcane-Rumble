@@ -1658,6 +1658,78 @@ pvFrame=function(dt){
 // ---- Changelog ----
 LOG.unshift(['v1.18.0',['Menu preview now plays the real main attacks: Volt lightning chains through up to 3 dummies, Terra boulder bursts into 3 shards, Ember splash burns neighbours, Hex shows its heal','Preview fire rate matches the game (it was slower), and bolts leave the wizard like in game','Preview Terra ultimate shows the real stone wall; Storm Call (440) and Tornado (smaller) sizes updated']]);
 $('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
+
+ // Put it after the v1.15 block (and after v1.16-v1.18 if you use them). It adds hero #8; bots pick it automatically.
+ 
+// ---- 1. The hero: tanky, short-range triple punch (still the projectile system), leap + rampage ----
+CL.push({n:'Grit',t:'Brawler',i:'👊',oc:'#c0392b',hr:'#2b1d14',sk:'#e0a070',hs:1,sc:'#ff7a4a',gl:12,hp:190,sp:235,d:18,cd:.6,pl:3,sa:.8,bs:700,bt:.2,r:90,fl:.2,ef:'melee',bk:7,
+ mn:['Triple Punch','three fast shock arcs, very short range; one hit per target per swing + small knock-back'],
+ ab:{n:'Leap Slam',x:'leap toward your aim, slam the ground: damage + slow nearby enemies, heals you 15 HP',k:'leap',cd:7},
+ ul:{n:'Rampage',x:'shove nearby enemies away, heal 50 HP, then 6s of +40% damage and +30% speed',k:'rampage'},
+ ps:{n:'Fury',x:'deal 25% more damage while below half health',k:'fury'}});
+PV.leap=['line',200];PV.rampage=['self',220];                 // aim preview + menu preview
+KE.leap=['slow',1.2];KE.rampage=['push',.7,100];              // menu dummies react like real players
+ 
+// ---- 2. Logo (a fist) + class card in both pickers ----
+LI.push([x=>{x.beginPath();x.moveTo(-20,24);x.lineTo(-20,-6);for(const cx of[-15,-5,5,15])x.arc(cx,-6,5,Math.PI,0);x.lineTo(20,24);x.closePath()},0]);LC.push('#fff');
+for(const el of[$('cs'),$('cs2')]){const i=7,c=CL[i],d=document.createElement('div');d.className='cc';d.innerHTML='<b>'+logo(i,44)+'</b>'+c.n;d.onclick=()=>pick(i);el.appendChild(d)}
+ 
+// ---- 3. Looks: red headband, boxing gloves that thrust forward when punching, shock-arc projectile ----
+const person8=person;
+person=function(p,isMe){person8(p,isMe);
+  if(p.cl==7){g.save();g.translate(p.x,p.y);g.rotate(p.a);g.lineCap='round';
+    for(const[col,w]of[[OL,8],['#e03030',4.5]]){g.strokeStyle=col;g.lineWidth=w;g.beginPath();g.moveTo(-1,-12);g.lineTo(-1,12);g.stroke()}g.restore()}};
+const weapon0=weapon;
+weapon=function(p){if(p.cl!=7)return weapon0(p);
+  const k=(p.fl&16)?36:24;g.save();g.translate(p.x,p.y);g.rotate(p.a);g.lineWidth=3;g.strokeStyle=OL;
+  for(const s of[-1,1]){const x=k+(s>0?-4:0),y=s*11;cir(x,y,10,'#c0392b');g.beginPath();g.arc(x,y,10,0,7);g.stroke();cir(x+3,y-3,3.5,'rgba(255,255,255,.4)')}
+  g.restore()};
+const drawBolt8=drawBolt;
+drawBolt=function(b,T){const c=CL[b.c|0];if(c.bk!=7)return drawBolt8(b,T);
+  g.save();g.translate(b.x,b.y);g.rotate(b.a!=null?b.a:Math.atan2(b.vy,b.vx));g.lineCap='round';
+  for(const[col,w]of[[OL,13],[c.sc,8],['#fff',3]]){g.strokeStyle=col;g.lineWidth=w;g.beginPath();g.arc(-14,0,24,-.5,.5);g.stroke()}g.restore()};
+const shot0=SF.shot;SF.shot=(q,c)=>shot0(q,c==7?240:c);        // the shot sound is a lookup per hero: without this it would break
+ 
+// ---- 4. Rules: one hit per swing, small knock-back, Fury passive, Leap Slam, Rampage ----
+const bolt8=bolt;
+bolt=function(b,q){
+  if(b.c==7){const o=P[b.o],sw=b.o+':'+(o?o.sc:0);if(q.ms===sw)return;q.ms=sw;push(q,b.vx,b.vy,30)}   // the 3 arcs of one swing never hit the same enemy twice
+  bolt8(b,q)};
+const hit8=hit;
+hit=function(p,d,by){const o=P[by];if(o&&o!==p&&o.cl==7&&o.hp<CL[7].hp*.5)d*=1.25;hit8(p,d,by)};
+const cast8=cast;
+cast=function(p,i,u){
+  if(u.k=='leap'){const a=p.a,ox=p.x,oy=p.y;let L=200,x=ox,y=oy;
+    for(;L>0;L-=20){x=ox+Math.cos(a)*L;y=oy+Math.sin(a)*L;if(!gb(x,y)&&los(ox,oy,x,y,1)&&!wb(ox,oy,x,y))break}   // never into walls, rocks or water
+    if(L<=0){x=ox;y=oy}
+    p.x=x;p.y=y;
+    for(const q of P)if(q!==p&&q.hp>0&&Math.hypot(q.x-x,q.y-y)<110){hit(q,25,i);q.sl=Math.max(q.sl,1.2)}
+    crHurt(x,y,110,25);p.hp=Math.min(CL[7].hp,p.hp+15);ev(2,ox,oy,x,y);ev(1,x,y,110,p.cl);return}
+  if(u.k=='rampage'){p.bd=Math.max(p.bd,6);p.bv=Math.max(p.bv,6);p.hp=Math.min(CL[7].hp,p.hp+50);
+    for(const q of P)if(q!==p&&q.hp>0&&Math.hypot(q.x-p.x,q.y-p.y)<220){hit(q,25,i);push(q,q.x-p.x,q.y-p.y,100)}
+    crHurt(p.x,p.y,220,25);ev(1,p.x,p.y,220,p.cl);return}
+  cast8(p,i,u)};
+ 
+// ---- 5. Bots: use Leap Slam to close the gap ----
+const ai8=ai;
+ai=function(p,i,dt){ai8(p,i,dt);
+  const t=P[p.tg];if(p.cl!=7||p.ac>0||!t||t.hp<=0)return;const d=Math.hypot(t.x-p.x,t.y-p.y);
+  if(d>130&&d<300&&los(p.x,p.y,t.x,t.y,1)&&Math.random()<dt*(.5+p.iq*2))p.aq=1};
+ 
+// ---- 6. Menu preview: the main-attack dummies stand within punching range for short-range heroes ----
+const pvSet8=pvSet;
+pvSet=function(ph,c){pvSet8(ph,c);const R=c.bs*c.bt;
+  if(!ph&&R<260)pvD=[[WZ[0]+R*.8,180],[WZ[0]+R*.7,130],[WZ[0]+R*.7,230]]};
+ 
+// ---- Changelog ----
+pick(cls);
+LOG.unshift(['v1.19.0',['New hero: Grit, the Brawler. 190 HP, triple shock-arc punch with very short range, Leap Slam (jump + slam + small heal), Rampage ultimate (shove, heal, +damage, +speed), Fury passive']]);
+$('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
+
+
+
+
+
  
  // ---------- 14. Main loop ----------
 
