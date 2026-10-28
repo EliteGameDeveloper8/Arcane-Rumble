@@ -1470,9 +1470,147 @@ pvFrame=function(dt){
 // ---- Changelog ----
 LOG.unshift(['v1.15.0',['Every wizard now has a movement bonus and a heal in its kit (see each hero card)','Bushes: you are only hidden when about 75% of your body is inside; a foot sticking out reveals you','Crates are damaged by abilities and ultimates too (blasts, fire / frost / wind zones, rockfall, dashes)','Bots rebuild their paths when a Stone Wall appears or crumbles','Offline practice: debug buttons (full ultimate, cubes, full health, reset ability, drop a crate)','Menu preview dummies now react like players: burn, freeze, slow, knock-back, pull, zap, blind']]);
 $('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
+// ===== ARCANE RUMBLE v1.16 PATCH =====
 
+// ---- 1. Volt: Arc Bolt chains up to 3 players, damage nerfed, nicer lightning animation ----
+CL[4].d=8.5;                                              // main damage nerf (was 9.5)
+CL[4].mn[1]='lightning jumps to up to 2 more enemies (55%, then 38% dmg)';
+const bolt5=bolt;
+bolt=function(b,q){
+  if(b.e!='chain')return bolt5(b,q);
+  bolt5({...b,e:'none'},q);                               // normal hit, without the old single jump
+  const used=[q,P[b.o]];let from=q,d=b.d*.55;
+  for(let n=0;n<2;n++){
+    let t=null,bd=230;
+    for(const r of P)if(!used.includes(r)&&r.hp>0){const dd=Math.hypot(r.x-from.x,r.y-from.y);if(dd<bd&&los(from.x,from.y,r.x,r.y,1)){bd=dd;t=r}}
+    if(!t)break;
+    used.push(t);hit(t,d,b.o);
+    const fx_=from.x,fy_=from.y,tx_=t.x,ty_=t.y;
+    if(n==0)ev(0,fx_,fy_,tx_,ty_);else setTimeout(()=>{if(st=='play')ev(0,fx_,fy_,tx_,ty_)},110); // 2nd jump follows a moment later
+    from=t;d*=.7}};
+const evFx5=evFx;                                         // sparks at both ends of every lightning link
+evFx=function(t,x,y,a,b){evFx5(t,x,y,a,b);if(t==0){spark(x,y,'#fff3a0',5,200,.2,3);spark(a,b,'#fff3a0',9,280,.28,4)}};
 
+// ---- 2. Golden Bot: tougher, and drops 5 power cubes (old permanent-power reward removed) ----
+MODN[2]='GOLDEN BOT: kill the 👑 for 5 power cubes!';BN[4]='GOLDEN BOT DOWN: 5 CUBES!';
+const hit5=hit;
+hit=function(p,d,by){
+  const o=P[by],g0=o?o.gb:0,h0=o?o.hp:0,was=p.gold&&p.hp>0;
+  if(p.gold)d*=1.4/1.8;                                   // fragile x1.8 -> x1.4 (a bit more HP)
+  hit5(p,d,by);
+  if(was&&p.hp<=0&&o&&o!==p){o.gb=g0;o.hp=h0;             // undo the old reward (gold power + full heal)
+    for(let i=0;i<5;i++){const an=i*1.2566+Math.random(),r=40+Math.random()*30;Bx.push({x:p.x+Math.cos(an)*r,y:p.y+Math.sin(an)*r})}}};
 
+// ---- 3. Ultimates charge a little more from your attacks (+~45% of the last bonus) ----
+const hit6=hit;
+hit=function(p,d,by){const o=P[by];hit6(p,d,by);if(by!=null&&o&&o!==p)o.ch=Math.min(100,o.ch+d*.04)};
+
+// ---- 4. Debug buttons hidden behind a secret code: press ↑ ↑ ↓ ↓ (or tap the version label 7 times) ----
+let dbgOn=0,dbgK=[],dbgTap=0;
+const dbgToggle=()=>{dbgOn^=1;if(typeof num=='function'&&P[me])num(P[me].x,P[me].y-60,dbgOn?'DEBUG ON':'DEBUG OFF','#6ee7ff',18)};
+addEventListener('keydown',e=>{dbgK.push(e.key);dbgK=dbgK.slice(-4);if(dbgK.join()=='ArrowUp,ArrowUp,ArrowDown,ArrowDown'){dbgK=[];dbgToggle()}});
+$('ver').style.pointerEvents='auto';
+$('ver').onclick=()=>{if(++dbgTap>=7){dbgTap=0;dbgToggle()}clearTimeout($('ver')._t);$('ver')._t=setTimeout(()=>dbgTap=0,2000)};
+const hud5=hud;hud=function(){hud5();if(!dbgOn)dbg.style.display='none'};
+
+// ---- 5. Leaderboard for Brawl Rush and Hot Zone (top 5, you in blue) ----
+const ov5=overlay;
+overlay=function(m,w,h){ov5(m,w,h);if(!md||m.cl==null||st!='play')return;
+  const L=P.map((p,i)=>({n:p.n,v:md==2?p.pt|0:p.k,me:i==me})).sort((a,b)=>b.v-a.v).slice(0,5);
+  g.save();g.font='bold 13px sans-serif';g.textAlign='left';g.lineWidth=3;g.strokeStyle='#000';
+  const T=md==2?'HOT ZONE':'BRAWL RUSH';g.fillStyle='#ffd23f';g.strokeText(T,10,200);g.fillText(T,10,200);
+  L.forEach((r,i)=>{const t=(i+1)+'. '+r.n+'  '+r.v;g.fillStyle=r.me?'#6ee7ff':'#fff';g.strokeText(t,10,218+i*17);g.fillText(t,10,218+i*17)});
+  g.restore()};
+
+// ---- Changelog ----
+pick(cls);
+LOG.unshift(['v1.16.0',['Volt Arc Bolt now chains through up to 3 players (55% then 38% damage), with a staggered lightning animation and sparks; main damage nerfed','Golden Bot is tougher and drops 5 power cubes when killed (old gold-power reward removed)','Ultimates charge slightly more from your own attacks','Debug buttons are hidden: press Up Up Down Down in offline practice (or tap the version label 7 times)','Leaderboard (top 5) for Brawl Rush and Hot Zone']]);
+$('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
+
+// Shallow river across the whole map, 3 bridges. Everyone wades slowly (40% speed). Bots path over bridges.
+// Hook for a future water hero: give a class a water speed multiplier, e.g.  CL[7].wm=1.6  (default is .4)
+ 
+let RV=null,RB=[];                                            // RV = river shape, RB = bridge x positions
+const rvY=x=>RV.o+RV.a*Math.sin(x*RV.f+RV.p)+RV.b*Math.sin(x*RV.g+RV.q);   // centre line height at x
+const rvS=x=>(rvY(x+4)-rvY(x-4))/8;                           // its slope
+const rvD=(x,y)=>Math.abs(y-rvY(x))/Math.sqrt(1+rvS(x)**2);   // distance to the centre line (perpendicular, approx.)
+const onBr=(x,y)=>RB.some(b=>{const s=rvS(b),L=Math.sqrt(1+s*s),dx=x-b,dy=y-rvY(b);return Math.abs((dx+dy*s)/L)<75&&Math.abs((-dx*s+dy)/L)<RV.w+25});
+const inWater=(x,y)=>!!RV&&rvD(x,y)<RV.w&&!onBr(x,y)&&Math.hypot(x-C,y-C)<A-30;
+ 
+// ---- world: build the river after the normal map, clear everything that stands in it ----
+const world0=world;
+world=function(seed){
+  RV=null;RB=[];world0(seed);
+  const r=rng(seed^0x51ed);                                   // own seeded random: host and clients get the same river
+  RV={o:C+(r()*2-1)*A*.25,a:110+r()*50,f:.0032+r()*.001,p:r()*6.283,b:40+r()*25,g:.0085,q:r()*6.283,w:100};
+  RB=[-.6,-.05,.5].map(k=>C+A*(k+r()*.2));
+  const near=(x,y,m)=>rvD(x,y)<RV.w+m,
+    rectNear=(x,y,w,h,m)=>[[0,0],[1,0],[0,1],[1,1],[.5,.5],[.5,0],[.5,1],[0,.5],[1,.5]].some(([a,b])=>near(x+w*a,y+h*b,m));
+  const dead=Bd.filter(q=>rectNear(q.x,q.y,q.w,q.h,70));      // buildings that touch the river are removed with their walls / windows
+  Bd=Bd.filter(q=>!dead.includes(q));
+  const inDead=(x,y)=>dead.some(q=>x>q.x-2&&x<q.x+q.w+2&&y>q.y-2&&y<q.y+q.h+2);
+  Wl=Wl.filter(w=>!inDead(w.x+w.w/2,w.y+w.h/2)&&!rectNear(w.x,w.y,w.w,w.h,40));
+  Wn=Wn.filter(w=>!inDead(w.x+w.w/2,w.y+w.h/2)&&!rectNear(w.x,w.y,w.w,w.h,40));
+  R=R.filter(q=>!near(q.x,q.y,q.r+40));Bu=Bu.filter(q=>!near(q.x,q.y,q.r));Dc=Dc.filter(d=>!near(d.x,d.y,20));
+  Wc=Wl.concat(Wn);grid();
+  for(const z of Sz)if(gb(z.x,z.y)){const q=freePt(C,C,A-420);z.x=q.x;z.y=q.y}   // springs / wells never start in water
+  buildMini();winSetup()};
+ 
+// ---- bots + spawning: water cells count as blocked for navigation, so bots walk to the bridges and nothing spawns in water ----
+const grid0=grid;
+grid=function(){grid0();if(!RV)return;for(let j=0;j<GN;j++)for(let i=0;i<GN;i++)if(inWater((i+.5)*GS,(j+.5)*GS))Gb[j*GN+i]=1};
+const sg7=startGame;
+startGame=function(){sg7();if(!host||st!='play'||!RV)return;
+  for(const p of P)if(inWater(p.x,p.y)){const s=p.y>=rvY(p.x)?1:-1;p.y=rvY(p.x)+s*(RV.w+60)*Math.sqrt(1+rvS(p.x)**2)}};   // rim spawn inside the river: step out of it
+ 
+// ---- host: wading slows everyone (dashes and teleports are not slowed) ----
+const step7=step;
+step=function(dt){
+  const o=RV&&host&&st=='play'?P.map(p=>[p.x,p.y]):null;
+  step7(dt);
+  if(!o)return;
+  P.forEach((p,i)=>{if(p.hp<=0||!o[i]||p.dh>0)return;
+    const dx=p.x-o[i][0],dy=p.y-o[i][1],l=Math.hypot(dx,dy);
+    if(l>0&&l<100&&inWater(p.x,p.y)){const k=CL[p.cl].wm==null?.4:CL[p.cl].wm;p.x=o[i][0]+dx*k;p.y=o[i][1]+dy*k}})};
+ 
+// ---- drawing: water, ripples, wooden bridges (drawn under players; springs / zones are redrawn above by zoneTop) ----
+function bridge(b){const y=rvY(b),s=rvS(b),hl=RV.w+25;
+  g.save();g.translate(b,y);g.rotate(Math.atan(s));g.lineJoin='round';
+  g.fillStyle=OL;g.fillRect(-83,-hl-8,166,hl*2+16);g.fillStyle='#a8763c';g.fillRect(-75,-hl,150,hl*2);
+  g.strokeStyle='rgba(0,0,0,.28)';g.lineWidth=3;g.beginPath();for(let v=-hl+16;v<hl;v+=22){g.moveTo(-75,v);g.lineTo(75,v)}g.stroke();
+  g.fillStyle='#5a3d24';g.fillRect(-75,-hl,10,hl*2);g.fillRect(65,-hl,10,hl*2);g.restore()}
+const ground0=ground;
+ground=function(m,w,h,s){ground0(m,w,h,s);if(!RV)return;
+  const T=performance.now()/1000,hx=w/2/s+60,x0=Math.max(C-A,m.x-hx),x1=Math.min(C+A,m.x+hx);
+  g.save();g.beginPath();g.arc(C,C,A-30,0,7);g.clip();g.lineCap='butt';g.lineJoin='round';
+  const path=off=>{g.beginPath();for(let x=x0;x<=x1+40;x+=40){const y=rvY(x)+off*Math.sqrt(1+rvS(x)**2);x==x0?g.moveTo(x,y):g.lineTo(x,y)}};
+  for(const[wd,col]of[[RV.w*2+16,'#2f78a8'],[RV.w*2,'#58b8ea'],[RV.w*1.1,'#7fd0f6']]){g.strokeStyle=col;g.lineWidth=wd;path(0);g.stroke()}
+  g.strokeStyle='rgba(255,255,255,.55)';g.lineWidth=4;g.setLineDash([26,40]);   // flowing ripple lines
+  for(const o of[-50,0,50]){g.lineDashOffset=-T*40*(o?1:-1);path(o);g.stroke()}g.setLineDash([]);
+  for(const b of RB)bridge(b);
+  g.restore()};
+const person7=person;
+person=function(p,isMe){
+  if(RV&&(st=='play'||st=='over')&&inWater(p.x,p.y)){const T=performance.now()/1000;g.save();g.strokeStyle='rgba(255,255,255,.75)';g.lineWidth=3;
+    for(let i=0;i<2;i++){const k=(T*1.4+i*.5)%1;g.globalAlpha=(1-k)*.8;g.beginPath();g.ellipse(p.x,p.y+8,20+k*18,12+k*9,0,0,7);g.stroke()}g.restore()}
+  person7(p,isMe)};
+ 
+// ---- minimap: river + bridges ----
+const bm0=buildMini;
+buildMini=function(){bm0();if(!RV)return;const m=MC.getContext('2d'),k=300/W;
+  m.save();m.beginPath();m.arc(150,150,148,0,7);m.clip();
+  m.lineWidth=Math.max(3,RV.w*2*k);m.strokeStyle='#5db8ee';m.beginPath();
+  for(let x=C-A;x<=C+A;x+=40){const y=rvY(x);x==C-A?m.moveTo(x*k,y*k):m.lineTo(x*k,y*k)}m.stroke();
+  m.fillStyle='#8a5a2a';
+  for(const b of RB){m.save();m.translate(b*k,rvY(b)*k);m.rotate(Math.atan(rvS(b)));m.fillRect(-75*k,-(RV.w+25)*k,150*k,(RV.w+25)*2*k);m.restore()}
+  m.restore()};
+ 
+// ---- cleanup when leaving a match ----
+const tm7=toMenu;toMenu=function(t){RV=null;RB=[];tm7(t)};
+ 
+// ---- Changelog ----
+LOG.unshift(['v1.17.0',['River across the map with 3 wooden bridges; shows on the minimap','Everyone wades through the shallow water at 40% speed (bridges are normal speed); ripples show who is in the water','Buildings, rocks, bushes and walls never stand in the river; nothing spawns in water','Bots walk to the bridges to cross; Shadow Step cannot land in water','Water speed is a per-hero setting (wm), ready for a water hero']]);
+$('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
 
 
  
