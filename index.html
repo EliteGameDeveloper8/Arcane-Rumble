@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
+ <link rel="icon" href="data:,">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>Arcane-Rumble</title>
 <style>
@@ -240,7 +241,6 @@ $('bo').onclick=()=>{
   show('lobby');drawLobby();
 };
 function mkRoom(){
- if(m.t=='j'&&(st!='lobby'||lobby.length>=+$('s1').value)){c.send({t:'x'});setTimeout(()=>c.close(),300);return}
   code=Math.random().toString(36).slice(2,6).toUpperCase();
   peer=new Peer('arcane-'+code);
   peer.on('error',e=>{if(e.type=='unavailable-id')mkRoom();else msg('Network error: '+e.type)});
@@ -249,6 +249,8 @@ function mkRoom(){
     $('lk').textContent=location.origin+location.pathname+'?room='+code;drawLobby();
     peer.on('connection',c=>{
       c.on('data',m=>{
+             c.on('data',m=>{
+        if(m.t=='j'&&(st!='lobby'||lobby.length>=+$('s1').value)){c.send({t:'x'});setTimeout(()=>c.close(),300);return}
         if(m.t=='j'&&st=='lobby'&&lobby.length<+$('s1').value){lobby.push({n:String(m.n).slice(0,12),c:m.c&7,k:m.k>=0&&m.k<CL.length?m.k|0:0,conn:c});sendLobby()}
         else if(m.t=='k'){const l=lobby.find(x=>x.conn==c);if(l&&st=='lobby'&&m.k>=0&&m.k<CL.length){l.k=m.k|0;sendLobby()}}
         else if(m.t=='i'&&c.pi!=null&&P[c.pi]){const p=P[c.pi];p.mx=+m.mx||0;p.my=+m.my||0;p.a=+m.a||0;p.f=m.f?1:0;p.pd=+m.pd||230;if(m.q)p.aq=1;if(m.u)p.au=1}
