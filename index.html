@@ -1659,8 +1659,6 @@ pvFrame=function(dt){
 LOG.unshift(['v1.18.0',['Menu preview now plays the real main attacks: Volt lightning chains through up to 3 dummies, Terra boulder bursts into 3 shards, Ember splash burns neighbours, Hex shows its heal','Preview fire rate matches the game (it was slower), and bolts leave the wizard like in game','Preview Terra ultimate shows the real stone wall; Storm Call (440) and Tornado (smaller) sizes updated']]);
 $('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
 
- // Put it after the v1.15 block (and after v1.16-v1.18 if you use them). It adds hero #8; bots pick it automatically.
- 
 // ---- 1. The hero: tanky, short-range triple punch (still the projectile system), leap + rampage ----
 CL.push({n:'Grit',t:'Brawler',i:'👊',oc:'#c0392b',hr:'#2b1d14',sk:'#e0a070',hs:1,sc:'#ff7a4a',gl:12,hp:190,sp:235,d:18,cd:.6,pl:3,sa:.8,bs:700,bt:.2,r:90,fl:.2,ef:'melee',bk:7,
  mn:['Triple Punch','three fast shock arcs, very short range; one hit per target per swing + small knock-back'],
@@ -1688,7 +1686,7 @@ const drawBolt8=drawBolt;
 drawBolt=function(b,T){const c=CL[b.c|0];if(c.bk!=7)return drawBolt8(b,T);
   g.save();g.translate(b.x,b.y);g.rotate(b.a!=null?b.a:Math.atan2(b.vy,b.vx));g.lineCap='round';
   for(const[col,w]of[[OL,13],[c.sc,8],['#fff',3]]){g.strokeStyle=col;g.lineWidth=w;g.beginPath();g.arc(-14,0,24,-.5,.5);g.stroke()}g.restore()};
-const shot0=SF.shot;SF.shot=(q,c)=>shot0(q,c==7?240:c);        // the shot sound is a lookup per hero: without this it would break
+const shot0=SF.shot;SF.shot=(q,c)=>c==7?(tone(240,60,.1,'square',q*.15),noise(.06,q*.4,1800)):shot0(q,c);        // the shot sound is a lookup per hero: without this it would break
  
 // ---- 4. Rules: one hit per swing, small knock-back, Fury passive, Leap Slam, Rampage ----
 const bolt8=bolt;
@@ -1726,10 +1724,67 @@ pick(cls);
 LOG.unshift(['v1.19.0',['New hero: Grit, the Brawler. 190 HP, triple shock-arc punch with very short range, Leap Slam (jump + slam + small heal), Rampage ultimate (shove, heal, +damage, +speed), Fury passive']]);
 $('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
 
+// Works with or without the Grit patch (v1.19): the hero's index is looked up (WI), not hard-coded.
+ 
+// ---- 1. The hero ----
+const WI=CL.push({n:'Tide',t:'Hydromancer',i:'🌊',oc:'#2a62c9',hr:'#0e2a5a',sk:'#e3b894',hs:1,sc:'#3aa0ff',gl:18,hp:135,sp:232,d:11,cd:.42,bs:760,bt:.65,r:300,fl:.3,ef:'tide',bk:8,wm:1.7,
+ mn:['Tidal Shot','water bolt: +50% damage to enemies standing in water'],
+ ab:{n:'Whirlpool',x:'PLACE a whirlpool that drags enemies in and hurts them for 3s · you run faster for 2.5s and heal 15 HP',k:'whirl',cd:8},
+ ul:{n:'Tsunami',x:'a huge wave hurts and slows everyone nearby and throws them back · heals you 40 HP, you run faster for 4s',k:'tsunami'},
+ ps:{n:'Riptide',x:'in water you swim 70% FASTER (everyone else crawls) and heal 8 HP/s',k:'riptide'}})-1;
+PV.whirl=['at',300,100,40];PV.tsunami=['self',400];KE.whirl=['slow',2];KE.tsunami=['push',.7,160];   // aim preview + menu preview
+ 
+// ---- 2. Logo (a water drop) + class card in both pickers ----
+LI.push([x=>{x.beginPath();x.moveTo(0,-32);x.bezierCurveTo(8,-16,22,-4,22,10);x.arc(0,10,22,0,Math.PI,false);x.bezierCurveTo(-22,-4,-8,-16,0,-32);x.closePath()},0]);LC.push('#fff');
+for(const el of[$('cs'),$('cs2')]){const i=WI,c=CL[i],d=document.createElement('div');d.className='cc';d.innerHTML='<b>'+logo(i,44)+'</b>'+c.n;d.onclick=()=>pick(i);el.appendChild(d)}
+ 
+// ---- 3. Looks: side fins, floating water orb, droplet projectile, shot sound ----
+const person9=person;
+person=function(p,isMe){person9(p,isMe);
+  if(p.cl==WI){g.save();g.translate(p.x,p.y);g.rotate(p.a);g.lineJoin='round';g.fillStyle='#7fd8ff';g.strokeStyle=OL;g.lineWidth=2.5;
+    for(const s of[-1,1]){g.beginPath();g.moveTo(-6,s*12);g.lineTo(2,s*21);g.lineTo(5,s*11);g.closePath();g.fill();g.stroke()}g.restore()}};
+const weapon9=weapon;
+weapon=function(p){if(p.cl!=WI)return weapon9(p);
+  const T=performance.now()/1000,y=7+Math.sin(T*3)*2;g.save();g.translate(p.x,p.y);g.rotate(p.a);g.lineWidth=3;g.strokeStyle=OL;
+  cir(30,y,13,'rgba(58,160,255,.35)');cir(30,y,10,'#3aa0ff');g.beginPath();g.arc(30,y,10,0,7);g.stroke();cir(27,y-3,3,'#fff');
+  g.strokeStyle='rgba(255,255,255,.7)';g.lineWidth=2;g.beginPath();g.arc(30,y,13+Math.sin(T*5)*1.5,0,7);g.stroke();g.restore()};
+const drawBolt9=drawBolt;
+drawBolt=function(b,T){const c=CL[b.c|0];if(c.bk!=8)return drawBolt9(b,T);
+  g.save();g.translate(b.x,b.y);g.rotate(b.a!=null?b.a:Math.atan2(b.vy,b.vx));
+  for(let i=3;i>0;i--){g.globalAlpha=.45-i*.1;cir(-i*8,Math.sin(T*18+i)*3,9-i*1.5,c.sc)}g.globalAlpha=1;
+  g.fillStyle=c.sc;g.strokeStyle='#fff';g.lineWidth=2.5;g.lineJoin='round';g.beginPath();g.moveTo(19,0);g.bezierCurveTo(8,-10,-2,-10,-4,0);g.bezierCurveTo(-2,10,8,10,19,0);g.closePath();g.fill();g.stroke();
+  cir(3,-2,2.5,'#fff');g.restore()};
+const shot9=SF.shot;SF.shot=(q,c)=>c==WI?(tone(420,105,.1,'sine',q*.15),noise(.06,q*.3,2600)):shot9(q,c);       // the shot sound is a lookup per hero
+ 
+// ---- 4. Rules: wet targets take extra damage, Whirlpool, Tsunami, healing while swimming ----
+const bolt9=bolt;
+bolt=function(b,q){bolt9(b,q);
+  if(b.c==WI&&q.hp>0&&typeof inWater=='function'&&inWater(q.x,q.y))hit(q,b.d*.5,b.o)};
+const cast9=cast;
+cast=function(p,i,u){
+  if(u.k=='whirl'){const[x,y]=plc(p,300,40);Zn.push({x,y,r:100,t:3,T:3,k:'wind',o:i});    // 'wind' zone = pulls + damages
+    p.bv=Math.max(p.bv,2.5);p.hp=Math.min(CL[WI].hp,p.hp+15);ev(1,p.x,p.y,60,p.cl);return}
+  if(u.k=='tsunami'){for(const q of P)if(q!==p&&q.hp>0&&Math.hypot(q.x-p.x,q.y-p.y)<400&&los(p.x,p.y,q.x,q.y)&&!wb(p.x,p.y,q.x,q.y)){hit(q,30,i);push(q,q.x-p.x,q.y-p.y,220);q.sl=Math.max(q.sl,1.5)}
+    p.bv=Math.max(p.bv,4);p.hp=Math.min(CL[WI].hp,p.hp+40);crHurt(p.x,p.y,400,30);ev(1,p.x,p.y,400,p.cl);return}
+  cast9(p,i,u)};
+const step9=step;
+step=function(dt){step9(dt);
+  if(host&&st=='play'&&typeof inWater=='function')for(const p of P)if(p.cl==WI&&p.hp>0&&inWater(p.x,p.y))p.hp=Math.min(CL[WI].hp,p.hp+8*dt)};   // Riptide heal (speed comes from wm in the river patch)
+ 
+// ---- 5. Bots: throw Whirlpool at enemies at medium range ----
+const ai9=ai;
+ai=function(p,i,dt){ai9(p,i,dt);
+  const t=P[p.tg];if(p.cl!=WI||p.ac>0||!t||t.hp<=0)return;const d=Math.hypot(t.x-p.x,t.y-p.y);
+  if(d>140&&d<380&&los(p.x,p.y,t.x,t.y,1)&&Math.random()<dt*(.4+p.iq*2))p.aq=1};
+ 
+// ---- Changelog ----
+pick(cls);
+LOG.unshift(['v1.20.0',['New hero: Tide, the Hydromancer. Swims 70% faster in water (everyone else is slowed) and heals 8 HP/s there; Tidal Shot hits wet enemies for +50%; Whirlpool drags enemies in; Tsunami throws everyone back']]);
+$('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
 
 
 
-
+ 
  
  // ---------- 14. Main loop ----------
 
