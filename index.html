@@ -3283,7 +3283,114 @@ onData=function(m){
 const sgFN=startGame;startGame=function(){Lb=[];Lz=[];sgFN()};
 const tmFN=toMenu;toMenu=function(t){Lb=[];Lz=[];tmFN(t)};
 
+/* ===== ARCANE RUMBLE v1.40 PATCH ====
+
+   In this patch:
+    1. Under a bridge you can only leave through the SIDES (up / down the river). The bridge ENDS are solid stone walls for
+       anyone under the deck, and bolts shot from under the bridge stop at them too.
+    2. Health bar, name and status icons follow the player's height: someone under a bridge is hidden together with
+       his bar (people under the same bridge still see them).
+    3. Healing springs and ultimate wells (and spell zones) are drawn ON TOP of the river and the bridges.
+    4. Ultimates never affect their caster or the caster's teammates: Tornado pull, Meteor burn, Blizzard slow,
+       Storm Call strikes and the Tsunami wave all skip them.
+    5. Throwing an ultimate has its own animation (like the attack one): the weapon winds back, snaps forward with a
+       swoosh and a burst flies from the tip.
+
+   Tune: BR_WALL = thickness of the bridge end walls, UT_MS = length of the ultimate throw animation.
+*/
+
+// ---- 1. Bridge ends are walls for people UNDER the deck (movement + bolts) ----
+const BR_WALL=12;                                                   // thickness of an end wall (px)
+const brAt=(x,y)=>{if(!RV)return-1;for(let k=0;k<RB.length;k++){const c=brIn(x,y,RB[k]);if(Math.abs(c[0])<75&&Math.abs(c[1])<RV.w+25)return k}return-1}; // index of the bridge area a point is in (or -1)
+const brLim=()=>RV.w+25-BR_WALL-18;                                 // how far from the middle an UNDER player's centre may go (his body then touches the wall)
+
+const stepB40=step;
+step=function(dt){
+  const on=host&&st=='play'&&RV&&RB.length>0,lim=on?brLim():0;
+  const pre=on?P.map(p=>{                                           // who is under a bridge (and inside its water part) before this step
+    if(!(p.hp>0)||p.lp||!p.zb||(p.hz|0))return-1;
+    const k=brAt(p.x,p.y);return k>=0&&Math.abs(brIn(p.x,p.y,RB[k])[1])<=lim?k:-1}):null;
+  stepB40(dt);
+  if(!on||st!='play')return;
+  P.forEach((p,i)=>{const k=pre[i];if(k<0||!(p.hp>0)||p.lp)return;
+    const b=RB[k],c=brIn(p.x,p.y,b),u=c[0],v=c[1],s=c[2],L=c[3];
+    if(Math.abs(u)<89&&Math.abs(v)>lim){const q=v>0?lim:-lim;p.x=b+(u-q*s)/L;p.y=rvY(b)+(u*s+q)/L}}); // tried to cross an end wall: stays at the wall (leaving through a side is still free)
+  // bolts shot from under the bridge are stopped by the end walls (once they fly out through a side they are normal bolts again)
+  for(const b of B)if(b.ub==null){const q=P[b.o],k=!b.tn&&q&&q.hp>0&&q.zb&&!(q.hz|0)?brAt(q.x,q.y):-1;
+    b.ub=k>=0&&Math.abs(brIn(q.x,q.y,RB[k])[1])<=lim?1:0}
+  const hl=RV.w+25;
+  B=B.filter(b=>{if(!b.ub)return true;
+    for(const bx of RB){const c=brIn(b.x,b.y,bx);if(Math.abs(c[0])<75&&Math.abs(c[1])<hl+40)return Math.abs(c[1])<hl-BR_WALL}  // still under the deck: flies on; reached an end wall: gone
+    b.ub=0;return true})};
+
+// the end walls are visible in the underside view (when the deck fades because you are under it)
+const bridgeB40=bridge;
+bridge=function(b){bridgeB40(b);
+  const i=RB.indexOf(b),a=BA[i]==null?1:BA[i];if(a>.98)return;
+  const hl=RV.w+25;g.save();g.translate(b,rvY(b));g.rotate(Math.atan(rvS(b)));g.globalAlpha*=1-a;g.lineJoin='round';
+  for(const e of[-1,1]){const y=e>0?hl-BR_WALL:-hl;
+    g.fillStyle='#6b5a48';g.strokeStyle=OL;g.lineWidth=3;g.fillRect(-75,y,150,BR_WALL);g.strokeRect(-75,y,150,BR_WALL);
+    g.strokeStyle='rgba(0,0,0,.35)';g.lineWidth=2;g.beginPath();for(let x=-45;x<75;x+=30){g.moveTo(x,y);g.lineTo(x,y+BR_WALL)}g.stroke()}
+  g.restore()};
+
+// ---- 2. Health bar / name / status icons are tied to the player's height ----
+// The bar is drawn right after the player, so a hidden-under-the-deck player simply draws it with zero opacity.
+const personH40=person;
+person=function(p,isMe){
+  personH40(p,isMe);
+  if(!RV||!(p.hp>0)||(st!='play'&&st!='over')||(p.hz|0)||!brLoc(p.x,p.y))return;   // only people UNDER a bridge
+  const m=cam();if(!(m.hz|0)&&brLoc(m.x,m.y))return;                                 // you are under a bridge too: you can see them
+  p.hf=0;g.globalAlpha=0};                                                           // covered by the deck: no hit flash, bar, name or icons (draw() resets the opacity)
+
+// ---- 3. Springs, wells and spell zones are drawn above the river and the bridges ----
+const groundP40=ground;
+ground=function(m,w,h,s){
+  const sz=Sz,zn=Zn;Sz=[];Zn=[];                                    // the old code draws them too early (the river and bridges cover them): skip them there ...
+  try{groundP40(m,w,h,s)}finally{Sz=sz;Zn=zn}
+  g.save();g.textAlign='center';padsAndZones(.7,.2);g.restore()};   // ... and draw them once, after the river and the bridges
+
+// ---- 4. Ultimates never affect the caster or the caster's teammates ----
+const mates40=(a,b)=>!!a&&!!b&&a!==b&&!!TMon&&a.tm>=0&&a.tm===b.tm;
+zones=function(dt){ // spell zones + springs / wells (same as before, but a zone skips its caster and the caster's team)
+  Zn=Zn.filter(z=>{z.t-=dt;const o=P[z.o];if(z.fw&&o){z.x=o.x;z.y=o.y}
+    if(z.k=='met'){if(z.t>0)return true;for(const q of P)if(q.hp>0&&q!==o&&!mates40(o,q)&&Math.hypot(q.x-z.x,q.y-z.y)<z.r){hit(q,70,z.o);q.bn=3;q.bo=z.o}ev(1,z.x,z.y,z.r,o?o.cl:0);return false}
+    for(const q of P){if(q.hp<=0||Math.hypot(q.x-z.x,q.y-z.y)>=z.r)continue;
+      if(z.k=='heal'){if(q===o)q.hp=Math.min(CL[q.cl].hp,q.hp+24*dt)}
+      else if(q!==o&&!mates40(o,q)){hit(q,(z.k=='fire'?13:z.k=='wind'?12:9)*dt,z.o);if(z.k=='frost')q.sl=Math.max(q.sl,.3);if(z.k=='wind'){const e=Math.hypot(z.x-q.x,z.y-q.y)||1;q.x+=(z.x-q.x)/e*170*dt;q.y+=(z.y-q.y)/e*170*dt}}}
+    return z.t>0});
+  for(const q of P)if(q.hp>0)for(const z of Sz)if(Math.hypot(q.x-z.x,q.y-z.y)<z.r){if(z.k=='spring')q.hp=Math.min(CL[q.cl].hp,q.hp+12*dt);else q.ch=Math.min(100,q.ch+6*dt)}};
+strike=function(p,i){ // Volt's Storm Call never strikes a teammate (and so never heals Volt for it)
+  let t=null,bd=440;for(const q of P)if(q!==p&&q.hp>0&&!mates40(p,q)){const d=Math.hypot(q.x-p.x,q.y-p.y);if(d<bd&&(!hid(q)||d<150)&&los(p.x,p.y,q.x,q.y,1)){bd=d;t=q}}
+  if(t){hit(t,6,i);ev(3,t.x,t.y,0,p.cl);if(p.hp>0)p.hp=Math.min(CL[p.cl].hp,p.hp+4)}};
+const castU40=cast;
+cast=function(p,i,u){castU40(p,i,u);
+  if(TMon&&p.tm>=0)for(const w of Wv)if(w.o==i&&!w.tm40){w.tm40=1;for(const q of P)if(mates40(p,q))w.h.push(q)}}; // Tide's Tsunami wave counts teammates as "already hit"
+
+// ---- 5. Throwing an ultimate: wind-up, throw with a swoosh, burst from the tip (host and clients: it follows the ultimate charge dropping) ----
+const UT_MS=480;
+const fxU40=fx;
+fx=function(dt){
+  for(const p of P)if(p._c!=null&&p._h>0&&p.hp>0&&p._c-p.ch>50){p.ulT=performance.now();p.ulB=0}   // same trigger the ultimate sound uses
+  fxU40(dt)};
+const weaponU40=weapon;
+weapon=function(p){
+  const u=p.ulT?(performance.now()-p.ulT)/UT_MS:2;
+  if(!(u>=0&&u<1)||!(p.hp>0))return weaponU40(p);
+  const a=p.a,c=CL[p.cl],W0=.2,v=u<W0?0:(u-W0)/(1-W0),ox=p.x,oy=p.y,
+    th=u<W0?-10*(u/W0):-10*(1-v)+30*Math.sin(Math.PI*v);              // pulls back 10px, snaps forward 20px, comes home
+  if(u>=W0&&!p.ulB){p.ulB=1;const tx=ox+Math.cos(a)*44,ty=oy+Math.sin(a)*44;
+    spark(tx,ty,c.sc,10,320,.4,6);spark(tx,ty,'#ff7ac6',8,240,.5,5);Q.push({k:'r',x:tx,y:ty,R:80,t:.35,l:.35,c:'#ff7ac6'})}
+  if(v>0){g.save();g.translate(ox,oy);g.rotate(a);g.lineCap='round';g.globalAlpha*=.6*(1-v);   // swoosh arc in front of the hero
+    for(const[col,w]of[['#ff7ac6',16],['#ffffff',4]]){g.strokeStyle=col;g.lineWidth=w;g.beginPath();g.arc(0,0,40+22*v,-.7,.7);g.stroke()}g.restore()}
+  p.x=ox+Math.cos(a)*th;p.y=oy+Math.sin(a)*th;
+  try{weaponU40(p)}finally{p.x=ox;p.y=oy}};                           // the weapon is drawn a little further out / in, then the position is restored
+
 // ---- Changelog ----
+LOG.unshift(['v1.40.0',['Under a bridge you can only leave through the sides (up / down the river): the bridge ends are now solid stone walls for anyone under the deck, and bolts shot from under the bridge stop at them too',
+  'Health bars, names and status icons follow the player\'s height: someone under a bridge has his bar hidden together with him (people under the same bridge still see it)',
+  'Healing springs and ultimate wells are drawn on top of the river and the bridges',
+  'Ultimates never affect their caster or the caster\'s teammates: Tornado pull, Meteor burn, Blizzard slow, Storm Call strikes and the Tsunami wave all skip them',
+  'Throwing an ultimate has its own animation: the weapon winds back, snaps forward with a swoosh, and a burst flies from the tip']]);
 
 
 
