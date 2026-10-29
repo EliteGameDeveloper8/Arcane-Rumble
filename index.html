@@ -1049,7 +1049,7 @@ function draw(){
   for(const q of Bd)g.drawImage(q.fr,q.x,q.y);
   bushes();walls();wins();roofs(m);
   g.textAlign='center';
-  P.forEach((p,i)=>{
+  P.map((p,i)=>i).sort((a,b)=>drawZ(P[a])-drawZ(P[b])).forEach(i=>{const p=P[i];
     if(p.hp<=0||i!=me&&!seen(p,m))return;
     if(p.fl&2)g.globalAlpha=.4;
     if(p.hl>0)healAura(p);person(p,i==me);
@@ -1862,7 +1862,145 @@ const pvSet11=pvSet;
 pvSet=function(ph,c){pvSet11(ph,c);const R=c.bs*c.bt;if(!ph&&R<260)pvD=[[WZ[0]+R*.8,180],[WZ[0]+R*.7,130],[WZ[0]+R*.7,230]]};
  
 // ---- Changelog ----
- 
+
+/* ===== ARCANE RUMBLE v1.41 PATCH =====
+   1. Under a bridge you can no longer walk out through the end walls (even if you waded in right next to an end)
+   2. The river current also pushes swimmers who are under a bridge (Tide stays immune)
+   3. Draw order: deck players are drawn after under-bridge players; no fake-deck patch or beams drawn over you while you are under
+   4. Fern's Nature's Grasp is a thrown vine pod (arc, shadow, landing circle), the effect happens when it lands, never on Fern or teammates
+   5. Fern hero-info preview rebuilt from the real attacks
+   6. Springs, wells and zones are drawn over buildings (walls, roofs, floors) too
+*/
+
+// ---- 3. draw order helper (used by the edit in draw()) ----
+const drawZ=p=>RV&&(p.hz|0)&&brLoc(p.x,p.y)?1:0;
+
+// ---- 1 + 2. under the bridge: current + end walls that really hold ----
+const stepV41=step;
+step=function(dt){
+  stepV41(dt);
+  if(!host||st!='play'||!RV||!RB.length)return;
+  const lim=brLim();
+  for(const p of P){
+    if(!(p.hp>0)||p.lp||!p.zb||(p.hz|0))continue;                         // only people UNDER a deck
+    let k=brAt(p.x,p.y);if(k<0)continue;
+    if(p.cl!=WI&&!(p.dh>0)&&rvD(p.x,p.y)<RV.w){                           // the river current also works under the bridge (Tide is immune)
+      const sl=rvS(p.x),L=Math.sqrt(1+sl*sl);p.x+=40*dt/L;p.y+=40*dt*sl/L;k=brAt(p.x,p.y);if(k<0)continue}
+    const b=RB[k],c=brIn(p.x,p.y,b),u=c[0],v=c[1],s=c[2],L=c[3];
+    if(Math.abs(u)<89&&Math.abs(v)>lim){const q=v>0?lim:-lim;p.x=b+(u-q*s)/L;p.y=rvY(b)+(u*s+q)/L}}};   // checked every frame, not only if you were inside before
+
+// ---- 3. while YOU are under a bridge, no deck patch / beams are drawn over players ----
+const personV41=person;
+person=function(p,isMe){
+  const m=cam();
+  if(!RV||(m.hz|0)||!brLoc(m.x,m.y))return personV41(p,isMe);
+  const bs=bridge;bridge=function(){};
+  try{personV41(p,isMe)}finally{bridge=bs}};
+
+// ---- 6. springs / wells / zones above buildings (walls, roofs, floors) ----
+const roofsV41=roofs;
+roofs=function(m){roofsV41(m);g.save();g.textAlign='center';padsAndZones(.55,.3);g.restore()};
+
+// ---- 4. Fern ultimate: thrown vine pod ----
+let Gl=[],glT=0,glS=0;
+const castV41=cast;
+cast=function(p,i,u){
+  if(u.k!='grasp'||p.cl!=FI)return castV41(p,i,u);
+  let[x,y]=plc({x:p.x,y:p.y,a:p.a,pd:p.pd},GRM,60);const e=Math.hypot(x-C,y-C);
+  if(e>A-40){x=C+(x-C)*(A-40)/e;y=C+(y-C)*(A-40)/e}
+  Gl.push({sx:p.x,sy:p.y,tx:x,ty:y,t:-.1,T:.5+Math.hypot(x-p.x,y-p.y)/900,o:i})};   // leaves the hand just after the wind-up
+function graspLand(l){
+  const p=P[l.o];if(!p)return;let n=0;
+  for(const q of P)if(q!==p&&q.hp>0&&!sameTm(p,q)&&Math.hypot(q.x-l.tx,q.y-l.ty)<GRR&&Bu.some(b=>Math.hypot(b.x-q.x,b.y-q.y)<b.r+25)){   // never Fern, never teammates
+    hit(q,20,l.o);q.fz=Math.max(q.fz,1.8);q.ro=1.8;n++;ev(1,q.x,q.y,70,FI)}
+  if(p.hp>0)p.hp=Math.min(CL[FI].hp,p.hp+15*n);ev(1,l.tx,l.ty,GRR,FI)}
+const stepGl=step;
+step=function(dt){
+  stepGl(dt);
+  if(!host||st!='play')return;
+  for(const l of Gl){l.t+=dt;if(l.t>=l.T)graspLand(l)}
+  Gl=Gl.filter(l=>l.t<l.T);
+  if((glT+=dt)>.08){glT=0;if(Gl.length||glS){bc2({t:'gl',v:Gl.map(l=>[l.sx|0,l.sy|0,l.tx|0,l.ty|0,+l.t.toFixed(2),+l.T.toFixed(2),l.o])});glS=Gl.length}}};
+const onDataGl=onData;
+onData=function(m){
+  if(m.t=='gl'){const n=performance.now();Gl=m.v.map(a=>({sx:a[0],sy:a[1],tx:a[2],ty:a[3],t:a[4],T:a[5],o:a[6],ts:n}));return}
+  if(m.t=='s')Gl=[];
+  onDataGl(m)};
+const sgGl=startGame;startGame=function(){Gl=[];sgGl()};
+const tmGl=toMenu;toMenu=function(t){Gl=[];tmGl(t)};
+function drawGl(){
+  const m=cam(),T=performance.now()/1000,now=performance.now();g.save();g.lineCap='round';
+  for(const l of Gl){
+    const t=Math.max(0,l.t+(l.ts?(now-l.ts)/1000:0)),u=Math.min(1,t/l.T),s=Math.sin(Math.PI*u),gx=l.sx+(l.tx-l.sx)*u,gy=l.sy+(l.ty-l.sy)*u,h=s*(80+Math.hypot(l.tx-l.sx,l.ty-l.sy)*.3);
+    if(Math.hypot(l.tx-m.x,l.ty-m.y)>V+GRR&&Math.hypot(gx-m.x,gy-m.y)>V+150)continue;
+    g.globalAlpha=.4+.25*Math.sin(T*14);g.fillStyle='rgba(255,154,213,.08)';g.strokeStyle='#ff9ad5';g.lineWidth=3;g.setLineDash([14,10]);
+    g.beginPath();g.arc(l.tx,l.ty,GRR,0,7);g.fill();g.stroke();g.setLineDash([]);g.globalAlpha=1;           // where the vines will land
+    g.fillStyle='rgba(0,0,0,'+(.32-.14*s)+')';g.beginPath();g.ellipse(gx,gy+4,14*(1-.35*s),9*(1-.35*s),0,0,7);g.fill();
+    g.save();g.translate(gx,gy-h);cir(0,0,20+8*s,'rgba(255,122,198,.3)');seedSpr(1.5+.5*s,T*12);g.restore()}
+  g.restore()}
+const drawFxV41=drawFx;
+drawFx=function(){drawGl();drawFxV41()};
+
+// ---- 5. Fern preview built from the real attacks (pure function of the preview clock, so pause / jump work) ----
+function fernPv(cvs,ph,lt){
+  const c=CL[FI],X0=WZ[0],Y=180,T=performance.now()/1000,now=performance.now();
+  g=cvs.getContext('2d');const k=cvs.width/654;g.setTransform(k,0,0,k,0,0);g.lineCap=g.lineJoin='round';g.globalAlpha=1;g.setLineDash([]);
+  g.fillStyle='#3c5a3c';g.fillRect(0,0,654,364);g.strokeStyle='#ffffff14';g.lineWidth=2;for(let x=0;x<654;x+=60){g.beginPath();g.moveTo(x,0);g.lineTo(x,364);g.stroke()}
+  const tx=(t,x,y,col,z)=>{g.font='bold '+(z||16)+'px sans-serif';g.textAlign='center';g.lineWidth=4;g.strokeStyle=OL;g.strokeText(t,x,y);g.fillStyle=col;g.fillText(t,x,y)},
+    ring=(x,y,r,col,w,dash)=>{g.strokeStyle=col;g.lineWidth=w;g.setLineDash(dash||[]);g.beginPath();g.arc(x,y,r,0,7);g.stroke();g.setLineDash([])},
+    bush=(x,y,r,a)=>{g.globalAlpha=a;for(const[col,dr,ox,oy,kk]of[[OL,4,0,0,1],['#3da048',0,0,0,1],['#56c25f',0,-.25,-.3,.5]]){g.fillStyle=col;g.beginPath();g.arc(x+ox*r,y+oy*r,r*kk+dr,0,7);g.fill()}g.globalAlpha=1},
+    fd=(x,y,h)=>{g.save();g.translate(x,y);g.fillStyle='rgba(0,0,0,.3)';g.beginPath();g.ellipse(0,6,18,12,0,0,7);g.fill();g.strokeStyle=OL;g.lineWidth=4;g.fillStyle=h>0?'#fff':'#c9a26b';g.beginPath();g.arc(0,0,20,0,7);g.fill();g.stroke();g.strokeStyle='#d33';g.beginPath();g.arc(0,0,12,0,7);g.stroke();cir(0,0,4,'#d33');g.restore()},
+    hero=(x,fl,ulT)=>person({x,y:Y,a:0,cl:FI,mv:0,fl,hp:1,ulT,ulB:1},0),
+    shadow=(x,y,s)=>{g.fillStyle='rgba(0,0,0,'+(.32-.14*s)+')';g.beginPath();g.ellipse(x,y+4,12*(1-.35*s),8*(1-.35*s),0,0,7);g.fill()},
+    thorn=(x,y,r)=>{g.fillStyle='rgba(110,210,80,'+(.2+.06*Math.sin(T*6))+')';g.strokeStyle='rgba(60,150,50,.9)';g.lineWidth=3;g.setLineDash([10,8]);g.beginPath();g.arc(x,y,r,0,7);g.fill();g.stroke();g.setLineDash([]);
+      g.strokeStyle='#2f7a3a';for(let i=0;i<9;i++){const a=i*.698+x,rr=r*(.3+.5*((i*37)%10)/10),px=x+Math.cos(a)*rr,py=y+Math.sin(a)*rr;g.beginPath();g.moveTo(px-4,py+4);g.lineTo(px,py-7);g.lineTo(px+4,py+4);g.stroke()}};
+  if(ph==0){ // Seed Bomb: lobbed, lands at the cursor distance, blast 18 + thorn patch, fires every c.cd
+    const TX=420,d=TX-X0,TT=.45+d/1000,CD=c.cd,D=[[TX,180],[TX+50,130],[TX+40,230]],air=[],land=[];let fl=0,pt=0;
+    for(let n=0;n<4;n++){const a=lt-n*CD;if(a<0)continue;if(a<TT)air.push(a/TT);else{const b=a-TT;if(b<.15)fl=1;if(b<.4)land.push(b);if(b<2)pt=1}}
+    if(pt)thorn(TX,180,70);
+    if(air.length)ring(TX,180,FLR,'#8dff6a',3,[10,8]);
+    D.forEach(p=>fd(p[0],p[1],fl));
+    if(fl)D.forEach(p=>tx('18',p[0],p[1]-32,'#ffe066',17));
+    land.forEach(b=>{g.globalAlpha=1-b/.4;ring(TX,180,FLR*(b/.4)+8,'#8dff6a',2+5*(1-b/.4));g.globalAlpha=1});
+    hero(X0,(lt%CD)<.15?16:0,0);
+    air.forEach(u=>{const s=Math.sin(Math.PI*u),gx=X0+(TX-X0)*u;shadow(gx,Y,s);g.save();g.translate(gx,Y-s*(60+d*.28));seedSpr(1+.55*s,T*9);g.restore()})}
+  else if(ph==1){ // Thicket: aim, 3 real bushes pop up, Fern walks in (hidden, faster, heals)
+    const BX=[[320,180],[372,192],[268,192]],pop=Math.max(0,Math.min(1,(lt-.8)/.25)),hx=X0+Math.min(230,Math.max(0,lt-1.3)*150),inb=lt>1.3&&hx>=235;
+    if(lt<.8)ring(X0+230*Math.min(1,lt/.8),180,85,'#ffffffcc',3,[12,8]);
+    else BX.forEach(b=>bush(b[0],b[1],58*(1-(1-pop)*(1-pop)),1));
+    hero(lt>1.3?hx:X0,0,0);
+    if(lt>=.8&&inb)BX.forEach(b=>bush(b[0],b[1],58,.35));
+    if(inb){tx('hidden · +30% speed · +3 HP/s',330,320,'#bff',15);if(Math.sin(lt*12)>0)tx('+',hx+(Math.sin(lt*9)*14),Y-40-(lt*40)%20,'#8dffb0',20)}
+    else if(lt>=.8)tx('3 bushes for 9s',330,320,'#bff',15)}
+  else{ // Nature's Grasp: wind-up, pod lobbed to the cursor, roots enemies in / next to ANY bush (not the one far from bushes)
+    const t0=.5,TT=.5+250/900,la=t0+TT,LX=X0+250,b=lt-la,B2=[[390,100,55],[480,265,55]],D=[[430,150,1],[520,230,1],[330,320,0]];
+    B2.forEach(q=>bush(q[0],q[1],q[2],1));
+    if(lt<t0)ring(X0+250*Math.min(1,lt/.4),180,GRR,'#ff9ad5aa',3,[14,10]);else if(b<.4)ring(LX,180,GRR,'#ff9ad5',3,[14,10]);
+    D.forEach(q=>{fd(q[0],q[1],q[2]&&b>=0&&b<.15?1:0);if(q[2]&&b>=0&&b<1.7)vines({x:q[0],y:q[1]})});
+    if(b>=0&&b<.9)D.forEach(q=>q[2]&&tx('20',q[0],q[1]-34-b*25,'#ffe066',17));
+    hero(X0,0,lt>=t0?now-(lt-t0)*1000:0);                                    // the real ultimate throw animation
+    if(b>=.1&&b<1.1)tx('+30',X0,Y-46-(b-.1)*25,'#8dffb0',17);
+    if(lt>=t0&&lt<la){const u=(lt-t0)/TT,s=Math.sin(Math.PI*u),gx=X0+(LX-X0)*u;shadow(gx,Y,s);g.save();g.translate(gx,Y-s*(90+75));cir(0,0,20+8*s,'rgba(255,122,198,.3)');seedSpr(1.5+.5*s,T*12);g.restore()}
+    if(b>=0&&b<.5){g.globalAlpha=1-b/.5;ring(LX,180,120*(b/.5)+10,'#ff9ad5',2+6*(1-b/.5));g.globalAlpha=1}
+    if(b>=.3)tx('in / next to a bush = rooted 1.8s',380,345,'#ff9ad5',13)}
+  g.setTransform(1,0,0,1,0,0);g.font='bold 14px system-ui';g.textAlign='left';g.lineWidth=4;g.strokeStyle=OL;g.lineJoin='round';
+  const t=['MAIN ATTACK: '+c.mn[0],'ABILITY: '+c.ab.n,'ULTIMATE: '+c.ul.n][ph];g.strokeText(t,8,20);g.fillStyle=['#ffd23f','#6ee7ff','#ff7ac6'][ph];g.fillText(t,8,20)}
+const pvFrameV41=pvFrame;
+pvFrame=function(dt){
+  pvFrameV41(dt);
+  if(cls!=FI||pvC>=9)return;                                                  // the passive phase keeps its own drawing
+  const cs=[...document.querySelectorAll('canvas.pv')].filter(x=>x.offsetParent);if(!cs.length)return;
+  const sg=g,ph=pvC/3|0,lt=pvC%3;
+  try{for(const cvs of cs)fernPv(cvs,ph,lt)}finally{g=sg}};
+AD.grasp='20 dmg · roots 1.8s · heals 15 per enemy caught · thrown as a pod (lands after about 0.8s)';
+
+LOG.unshift(['v1.41.0',['Under a bridge the end walls now really hold: you can no longer walk out through them (bullets and players behave the same)',
+  'The river current also pushes swimmers under a bridge (Tide is still immune)',
+  'Draw order fixed: people on the deck are drawn over people under it, and no fake deck patch or beams are drawn over you while you are under the bridge',
+  'Fern Nature\'s Grasp is thrown like the attack: wind-up, a vine pod flies in an arc, and the roots happen when it lands (never on Fern or teammates)',
+  'Fern hero-info preview now shows the real attacks: lobbed seed with blast + thorn patch, thicket bushes, vine pod rooting enemies near bushes',
+  'Healing springs, wells and spell zones are drawn over buildings too']]);
+   
 function renderLog(){$('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');}
 renderLog();
 
