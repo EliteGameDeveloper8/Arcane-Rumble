@@ -3052,7 +3052,148 @@ LOG.unshift(['v1.33.0',['Removed the deep river centre option and feature (deep 
   'Training: 28 dummies (3 groups of 4, 8 alone, some in bushes) plus 8 immovable bullseye targets (a range row + lone ones) that cannot die and show the damage you deal, with a running total that resets after 3s']]);
 renderLog();pick(cls);
  
+/* ===== ARCANE RUMBLE v1.35 PATCH: TEAMS =====
+   Lobby gets a "Teams" setting (Off / Blue vs Red). Works in all 3 modes, online and offline:
+    - Showdown: last team standing wins        - Brawl Rush: first team to 10 combined kills
+    - Hot Zone: team points add up (teammates standing in the zone together score 4/s as one), first team to 100
+   Teammates: no damage between them, bolts fly through them, bots never target them, a coloured ring marks the teams,
+   and allies always show on your minimap. Humans are split evenly first, bots fill the rest. Not used in Training.
+*/
+let TMon=0,TMsel=0;const TCOL=['#4dc3ff','#ff6b6b'],TMN=['Blue','Red'];
+{const l=document.createElement('label');l.innerHTML='Teams<select id="s11"><option value="0">Off (everyone for themselves)</option><option value="1">Blue vs Red</option></select>';$('set').appendChild(l)}
 
+// ---- start: assign teams (host) and tell the clients ----
+const sgTm=startGame;
+startGame=function(){
+  TMsel=+$('s11').value|0;TMon=0;sgTm();
+  if(!host||st!='play'||!TMsel||TR)return;
+  const hu=[],bt=[];P.forEach((p,i)=>(p.bot?bt:hu).push(i));let k=0;
+  [...hu,...bt].forEach(i=>{P[i].tm=P[i].gold?-1:k++%2});              // humans alternate first, then bots; the Golden Bot is on nobody's team
+  TMon=1;bc2({t:'tm',v:P.map(p=>p.tm)})};
+const onDataTm=onData;
+onData=function(m){
+  if(m.t=='tm'){TMon=1;m.v.forEach((v,i)=>{if(P[i])P[i].tm=v});return}
+  if(m.t=='s')TMon=0;
+  onDataTm(m)};
+const tmTm=toMenu;toMenu=function(t){TMon=0;tmTm(t)};
+
+// ---- no friendly fire; bolts fly through teammates ----
+const hitTm=hit;
+hit=function(p,d,by){const a=P[by];if(TMon&&a&&a!==p&&a.tm>=0&&a.tm===p.tm)return;hitTm(p,d,by)};
+// bots ignore teammates, and instant area abilities skip them (done by briefly "hiding" them: a teammate with 0 HP is not a valid target)
+const ally=p=>P.filter(q=>q!==p&&q.hp>0&&q.tm>=0&&q.tm===p.tm);
+const aiTm=ai;
+ai=function(p,i,dt){if(!TMon||p.tm<0)return aiTm(p,i,dt);
+  const al=ally(p),sv=al.map(q=>q.hp);al.forEach(q=>q.hp=0);
+  try{aiTm(p,i,dt)}finally{al.forEach((q,j)=>q.hp=sv[j])}};
+const castTm=cast;
+cast=function(p,i,u){if(!TMon||p.tm<0)return castTm(p,i,u);
+  const al=ally(p),sv=al.map(q=>q.hp);al.forEach(q=>q.hp=0);
+  try{castTm(p,i,u)}finally{al.forEach((q,j)=>q.hp=sv[j])}};
+
+// ---- host step: bolt pass-through, Hot Zone team points, team win conditions ----
+const stepTm=step;
+step=function(dt){
+  const on=host&&st=='play'&&TMon;
+  if(on&&md==2&&hz){const ins=P.filter(q=>q.hp>0&&Math.hypot(q.x-hz.x,q.y-hz.y)<170);
+    if(ins.length>1&&ins.every(q=>q.tm>=0&&q.tm===ins[0].tm))ins[0].pt+=4*dt}   // several teammates in the zone together = one scorer
+  stepTm(dt);
+  if(!on||st!='play')return;
+  for(const b of B)if(!b.ft){b.ft=1;const o=P[b.o];if(o&&o.tm>=0){const al=[];P.forEach((q,j)=>{if(j!=b.o&&q.tm===o.tm)al.push(j)});b.h=(b.h||[]).concat(al)}}   // teammates count as "already hit"
+  let w=-1;
+  if(!md){const al=P.filter(q=>q.hp>0&&!q.gold);if(al.length>1&&al.every(q=>q.tm===al[0].tm))w=P.indexOf(al[0])}   // one team left (one player left is handled by the old code)
+  else{const sc=[0,0],v=q=>md==1?q.k:q.pt|0;P.forEach(q=>{if(q.tm>=0)sc[q.tm]+=v(q)});
+    const g2=md==1?10:100,t=sc[0]>=g2?0:sc[1]>=g2?1:-1;
+    if(t>=0)P.forEach((q,j)=>{if(q.tm==t&&(w<0||v(q)>v(P[w])))w=j})}
+  if(w>=0){netT=1;stepTm(0);bc({t:'e',w});finish(w)}};
+
+// ---- end screen: the whole team wins ----
+const finTm=finish;
+finish=function(w){finTm(w);
+  if(TMon&&P[w]&&P[w].tm>=0&&P[me]){const t=P[w].tm;
+    $('et').textContent=P[me].tm==t?'VICTORY!':md?'GAME OVER':'ELIMINATED';
+    $('es').textContent=TMN[t]+' team wins · Your kills: '+P[me].k}};
+
+// ---- visuals: team ring, allies on the minimap, scores in the top bar ----
+const personTm=person;
+person=function(p,isMe){
+  if(TMon&&p.tm>=0&&p.hp>0){g.save();g.strokeStyle=TCOL[p.tm];g.lineWidth=4;g.globalAlpha=.9;g.beginPath();g.arc(p.x,p.y,28,0,7);g.stroke();g.restore()}
+  personTm(p,isMe)};
+const ovTm=overlay;
+overlay=function(m,w,h){ovTm(m,w,h);const q=P[me];if(!TMon||!q||q.tm<0||m.cl==null)return;
+  const ms=Math.min(CFG.map,w*.3,Math.max(90,h-216)),k=ms/2/A,cx=w-ms/2-10,cy=56+ms/2;
+  g.save();g.beginPath();g.arc(cx,cy,ms/2,0,7);g.clip();
+  for(const p of P)if(p!==q&&p.hp>0&&p.tm===q.tm){g.fillStyle=TCOL[p.tm];g.strokeStyle='#fff';g.lineWidth=1.5;g.beginPath();g.arc(cx+(p.x-C)*k,cy+(p.y-C)*k,4.5,0,7);g.fill();g.stroke()}
+  g.restore()};
+const hudTm=hud;
+hud=function(){hudTm();const q=P[me];if(!TMon||!q||st!='play'||q.tm<0)return;
+  const s=[0,0];P.forEach(p=>{if(p.tm>=0)s[p.tm]+=md==0?(p.hp>0?1:0):md==1?p.k:(p.pt|0)});
+  $('hud').textContent+=' · '+TMN[q.tm]+' team: '+s[q.tm]+(md==0?' alive':'')+' vs '+s[1-q.tm]+(md==0?' alive':' (goal '+(md==1?10:100)+')')};
+
+// ---- Changelog ----
+LOG.unshift(['v1.35.0',['Teams (lobby setting): Blue vs Red in every mode. Showdown = last team standing, Brawl Rush = first team to 10 combined kills, Hot Zone = team points to 100',
+  'No friendly fire, bolts fly through teammates, bots never target teammates, area abilities skip them; coloured team rings, allies always on your minimap, team score in the top bar']]);
+renderLog();pick(cls);
+
+ /* ===== ARCANE RUMBLE v1.36 PATCH: BRIDGE HEIGHTS =====
+   Every player has a height (p.hz): 0 = ground / river level, 1 = on a bridge deck. It only matters inside a bridge's area.
+    - Walk onto a bridge from its land ENDS = you are ON the deck (hz 1).
+      Wade into it from the river SIDES = you are UNDER it (hz 0, still wading slowly like in the river).
+      Leaving the bridge area always puts you back at ground level.
+    - Every bolt remembers the height of whoever fired it. Inside a bridge area a bolt only hits players at its own height:
+      deck fire never touches people under the bridge, and fire from below or from the banks passes under people on the deck.
+      Outside the bridge area nothing changes.
+    - While you are under a bridge the deck above you turns see-through (30%). Other players under a bridge are covered by the deck
+      for everyone who is not under it (their name and health bar still show). Your height is shown in the top bar.
+   Known limits: spell zones, area abilities, traps and waves do not check height yet.
+*/
+
+const brLoc=(x,y)=>{if(!RV)return null;                                   // local coordinates inside a bridge area (u across the river flow, v along the bridge), or null
+  for(const b of RB){const s=rvS(b),L=Math.sqrt(1+s*s),dx=x-b,dy=y-rvY(b),u=(dx+dy*s)/L,v=(-dx*s+dy)/L;if(Math.abs(u)<75&&Math.abs(v)<RV.w+25)return[u,v]}return null};
+let hzT=0;
+
+// ---- host step: skip hits at the wrong height, update heights, wade under the deck, tag new bolts, sync ----
+const stepBH=step;
+step=function(dt){
+  const on=host&&st=='play'&&RV,o=on?P.map(p=>[p.x,p.y]):null;
+  if(on){const zs=[];P.forEach((p,j)=>{if(p.zb&&p.hp>0)zs.push(j)});
+    if(zs.length)for(const b of B)for(const j of zs)if((P[j].hz|0)!=(b.hz|0)&&!(b.h&&b.h.includes(j)))(b.h=b.h||[]).push(j)}   // wrong height = "already hit" = the bolt passes through
+  stepBH(dt);
+  if(!on||st!='play')return;
+  P.forEach((p,i)=>{
+    const l=p.hp>0?brLoc(p.x,p.y):null;
+    if(!l)p.hz=0;
+    else if(!p.zb)p.hz=Math.abs(l[1])/(RV.w+25)>Math.abs(l[0])/75?1:0;      // entered through an end (deck) or through a side (under)
+    p.zb=!!l;
+    if(l&&!p.hz&&!(p.dh>0)&&rvD(p.x,p.y)<RV.w){                              // under the deck you still wade in the river (the river code treats the bridge area as dry)
+      const k=CL[p.cl].wm==null?.4:CL[p.cl].wm,dx=p.x-o[i][0],dy=p.y-o[i][1];
+      if(Math.hypot(dx,dy)<100){p.x=o[i][0]+dx*k;p.y=o[i][1]+dy*k}}});
+  for(const b of B)if(!b.hb5){b.hb5=1;const q=P[b.o];b.hz=q&&q.zb?q.hz|0:0}   // a bolt keeps its shooter's height
+  if((hzT+=dt)>.15){hzT=0;bc2({t:'hz',v:P.map(p=>p.hz|0)})}};
+
+const onDataBH=onData;
+onData=function(m){if(m.t=='hz'){m.v.forEach((v,i)=>{if(P[i])P[i].hz=v});return}onDataBH(m)};
+
+// ---- drawing: people under a bridge are covered by the deck (see-through for you if you are under too) ----
+const personBH=person;
+person=function(p,isMe){
+  personBH(p,isMe);
+  if(!RV||!(p.hp>0)||(st!='play'&&st!='over')||(p.hz|0)||!brLoc(p.x,p.y))return;
+  const m=cam(),al=!(m.hz|0)&&brLoc(m.x,m.y)?.3:1;
+  for(const b of RB)if(Math.hypot(p.x-b,p.y-rvY(b))<170){g.save();g.globalAlpha=al;g.beginPath();g.arc(p.x,p.y,40,0,7);g.clip();bridge(b);g.restore()}};
+
+// ---- top bar ----
+const hudBH=hud;
+hud=function(){hudBH();const q=P[me];
+  if(st=='play'&&RV&&q&&q.hp>0&&brLoc(q.x,q.y))$('hud').textContent+=(q.hz|0)?' · 🌉 on the bridge':' · 🌉 under the bridge'};
+
+// ---- Changelog ----
+LOG.unshift(['v1.36.0',['Bridge heights: enter a bridge from its land ends to stand ON the deck, wade in from the river sides to go UNDER it (you still wade slowly there)',
+  'Bolts remember their shooter\'s height: inside a bridge area they only hit players at the same height, so deck fire cannot hit people under it and fire from below passes under people on the deck',
+  'The deck turns see-through for you while you are under it; players under a bridge are covered by the deck for everyone else; the top bar shows if you are on or under a bridge']]);
+renderLog();pick(cls);
+
+ 
 
  
 
