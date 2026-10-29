@@ -3193,6 +3193,184 @@ LOG.unshift(['v1.36.0',['Bridge heights: enter a bridge from its land ends to st
   'The deck turns see-through for you while you are under it; players under a bridge are covered by the deck for everyone else; the top bar shows if you are on or under a bridge']]);
 renderLog();pick(cls);
 
+ /* ===== ARCANE RUMBLE v1.37 PATCH =====
+   1. The bridge deck fades like a house roof when you are UNDER it (smooth, about 20% opacity) and shows its underside:
+      beams and posts. Other players under the bridge become visible, the same way a faded roof shows the floor.
+   2. Rails: players ON the deck can no longer step off its sides (they used to walk through the rails). They leave through the ends.
+      Players UNDER the bridge are not affected: they shoot normally and swim out through the sides.
+   Tune: BR_FADE = deck opacity while you are under it, BR_RAILS = 0 turns the rails off.
+*/
+const BR_FADE=.2,BR_RAILS=1;
+const brIn=(x,y,b)=>{const s=rvS(b),L=Math.sqrt(1+s*s),dx=x-b,dy=y-rvY(b);return[(dx+dy*s)/L,(-dx*s+dy)/L,s,L]};   // [u across the flow, v along the bridge, slope, length] relative to bridge b
+
+// ---- deck opacity: eased toward BR_FADE while the camera player is under that bridge ----
+const BA=[],BAf=[];
+const bridgeF=bridge;
+bridge=function(b){
+  const i=RB.indexOf(b);
+  if(BAf[i]!==last){BAf[i]=last;                                                  // once per frame per bridge
+    const m=cam(),c=brIn(m.x,m.y,b),t=!(m.hz|0)&&Math.abs(c[0])<75&&Math.abs(c[1])<RV.w+25?BR_FADE:1,a=BA[i]==null?1:BA[i];
+    BA[i]=a+(t-a)*Math.min(1,DT*8)}
+  const a=BA[i];
+  if(a>.98)return bridgeF(b);
+  g.save();g.globalAlpha*=a;bridgeF(b);g.restore();
+  const hl=RV.w+25;                                                              // underside showing through the see-through deck
+  g.save();g.translate(b,rvY(b));g.rotate(Math.atan(rvS(b)));g.globalAlpha*=1-a;g.lineCap='round';g.strokeStyle='#2c1c10';
+  g.lineWidth=7;for(const u of[-48,0,48]){g.beginPath();g.moveTo(u,-hl);g.lineTo(u,hl);g.stroke()}
+  g.lineWidth=5;for(let v=-hl+14;v<hl;v+=26){g.beginPath();g.moveTo(-70,v);g.lineTo(70,v);g.stroke()}
+  g.fillStyle='#1a0f08';for(const sx of[-1,1])for(const sy of[-1,1]){g.beginPath();g.arc(sx*62,sy*(RV.w-12),9,0,7);g.fill()}
+  g.restore()};
+
+// ---- rails: a player standing ON the deck is held inside its side rails ----
+const stepRl=step;
+step=function(dt){
+  stepRl(dt);
+  if(!BR_RAILS||!host||st!='play'||!RV)return;
+  for(const p of P){
+    if(p.hp<=0||!(p.hz|0)||!p.zb||p.lp)continue;                                  // only people on a deck (a flying Grit jumps over the rails)
+    for(const b of RB){const[u,v,s,L]=brIn(p.x,p.y,b);
+      if(Math.abs(v)<RV.w+25&&Math.abs(u)<75){
+        if(Math.abs(u)>52){const q=u>0?52:-52;p.x=b+(q-v*s)/L;p.y=rvY(b)+(q*s+v)/L}
+        break}}}};
+
+LOG.unshift(['v1.37.0',['Bridge: the deck fades like a house roof while you are under it, showing beams and posts and anyone else under the bridge',
+  'Bridge rails: players on the deck cannot walk off its sides any more; players under the bridge shoot normally and swim out through the sides']]);
+renderLog();pick(cls);
+
+/* ===== ARCANE RUMBLE v1.37 PATCH: NEW HERO "FERN" (Druid) =====
+   Fern is green and nature themed:
+    - Seed Bomb (main): a LOBBED seed. It flies in a real arc (shadow on the ground, seed rises and falls), goes over walls, rocks and
+      water, and only hurts where it LANDS, at the distance of your cursor: a blast (18 dmg, radius 75) plus a thorn patch (8 dmg/s for 2s),
+      like Barley / Dynamike. Slow fire rate (0.95s).
+    - Thicket (ability): PLACE 3 real bushes for 9s. They hide anyone inside (a hiding spot you create, shown to everyone online).
+    - Nature's Grasp (ultimate): every enemy within 450 who is standing in or beside ANY bush (map bushes or your Thickets) is rooted
+      for 1.8s by vines, takes 20 damage and heals you 15 HP each.
+    - Wild Growth (passive): inside any bush Fern gets +30% speed and heals 6 HP/s.
+   Menu preview note: the hero-info preview shows the seed flying straight (the real arc is only in matches).
+*/
+
+// ---- 1. The hero ----
+const FI=CL.push({n:'Fern',t:'Druid',oc:'#3f9b3a',hr:'#2f7a3a',sk:'#e6c19a',hs:0,sc:'#8dff6a',gl:20,hp:140,sp:228,d:18,cd:.95,bs:700,bt:.57,r:300,fl:.3,ef:'lob',bk:10,
+ mn:['Seed Bomb','LOBBED seed: flies over everything and only hurts where it LANDS (at your cursor, up to 400): blast + thorn patch'],
+ ab:{n:'Thicket',x:'PLACE a thicket of 3 real bushes for 9s: hide inside them (anyone can) · Fern runs faster and heals there',k:'thicket',cd:9},
+ ul:{n:'Nature\'s Grasp',x:'vines root every enemy within 450 standing in or next to ANY bush for 1.8s: 20 damage each, heals you 15 HP per enemy caught',k:'grasp'},
+ ps:{n:'Wild Growth',x:'inside any bush: +30% speed and heal 6 HP/s',k:'wild'}})-1;
+const FLR=75;                                                          // blast radius
+let Lb=[],Lz=[];                                                       // lobbed seeds in the air, thorn patches on the ground
+PV.thicket=['at',300,85,60];PV.grasp=['self',450];KE.grasp=['freeze',1.8];HLP.Fern=50;
+AD.thicket='3 bushes for 9s · Fern +30% speed and heals inside';AD.grasp='20 dmg · roots 1.8s · heals 15 per enemy caught';
+
+// ---- 2. Logo (a leaf) + class card in both pickers + shot sound ----
+LI.push([x=>{x.beginPath();x.moveTo(-22,22);x.bezierCurveTo(-30,-10,0,-32,26,-28);x.bezierCurveTo(30,0,6,28,-22,22);x.closePath()},0]);LC.push('#fff');
+for(const el of[$('cs'),$('cs2')]){const i=FI,c=CL[i],d=document.createElement('div');d.className='cc';d.innerHTML='<b>'+logo(i,44)+'</b>'+c.n;d.onclick=()=>pick(i);el.appendChild(d)}
+const shotF=SF.shot;SF.shot=(q,c)=>c==FI?(tone(200,430,.14,'sine',q*.18),noise(.05,q*.25,1800)):shotF(q,c);   // the shot sound is a lookup per hero
+
+// ---- 3. Looks: seed sprite, leaf crown, held seed, vines on rooted players ----
+function seedSpr(s,rot){g.save();g.rotate(rot);g.scale(s,s);g.lineJoin='round';g.fillStyle='#6bd35a';g.strokeStyle=OL;g.lineWidth=3;g.beginPath();g.arc(0,0,9,0,7);g.fill();g.stroke();
+  g.fillStyle='#2f7a3a';for(let i=0;i<4;i++){const a=i*1.5708+.78;g.beginPath();g.moveTo(Math.cos(a-.3)*8,Math.sin(a-.3)*8);g.lineTo(Math.cos(a)*15,Math.sin(a)*15);g.lineTo(Math.cos(a+.3)*8,Math.sin(a+.3)*8);g.closePath();g.fill();g.stroke()}
+  cir(-2,-3,3,'#d6ffb8');g.restore()}
+const drawBoltF=drawBolt;
+drawBolt=function(b,T){if(CL[b.c|0].bk!=10)return drawBoltF(b,T);g.save();g.translate(b.x,b.y);seedSpr(1,T*10);g.restore()};
+const weaponF=weapon;
+weapon=function(p){if(p.cl!=FI)return weaponF(p);const T=performance.now()/1000;
+  g.save();g.translate(p.x,p.y);g.rotate(p.a);g.translate(28+((p.fl&16)?6:0),7+Math.sin(T*3)*1.5);seedSpr(.9,T*2);g.restore()};
+function vines(p){const T=performance.now()/1000;g.save();g.translate(p.x,p.y);g.lineCap='round';
+  for(const[c,w]of[[OL,7],['#3fb04a',4]]){g.strokeStyle=c;g.lineWidth=w;for(let i=0;i<5;i++){const a=i*1.2566+T;g.beginPath();g.moveTo(Math.cos(a)*30,Math.sin(a)*30);g.quadraticCurveTo(Math.cos(a+.7)*14,Math.sin(a+.7)*14,Math.cos(a+1.4)*30,Math.sin(a+1.4)*30);g.stroke()}}g.restore()}
+const personF=person;
+person=function(p,isMe){
+  const f=p.fl,rt=p.rod&&p.hp>0;if(rt)p.fl=(f|0)&~64;                    // rooted = vines, not the ice ball
+  personF(p,isMe);if(rt)p.fl=f;
+  if(rt)vines(p);
+  if(p.cl==FI){g.save();g.translate(p.x,p.y);g.rotate(p.a);g.fillStyle='#4fc75a';g.strokeStyle=OL;g.lineWidth=2.5;g.lineJoin='round';
+    for(const a of[2.5,3.14,3.78]){g.save();g.translate(-3+Math.cos(a)*10,Math.sin(a)*10);g.rotate(a);g.beginPath();g.ellipse(5,0,8,4,0,0,7);g.fill();g.stroke();g.restore()}g.restore()}};
+
+// ---- 4. Lobbed seeds + thorn patches: drawing (arc, shadow, landing marker) ----
+const lobU=l=>(l.ts?Math.min(l.T,l.t+(performance.now()-l.ts)/1000):l.t)/l.T;
+function drawLobs(){
+  const m=cam(),T=performance.now()/1000;g.save();g.lineCap='round';
+  for(const z of Lz){if(Math.hypot(z.x-m.x,z.y-m.y)>V+120)continue;
+    g.fillStyle='rgba(110,210,80,'+(.2+.06*Math.sin(T*6))+')';g.strokeStyle='rgba(60,150,50,.9)';g.lineWidth=3;g.setLineDash([10,8]);g.beginPath();g.arc(z.x,z.y,z.r,0,7);g.fill();g.stroke();g.setLineDash([]);
+    g.strokeStyle='#2f7a3a';g.lineWidth=3;for(let i=0;i<9;i++){const a=i*.698+z.x,r=z.r*(.3+.5*((i*37)%10)/10),x=z.x+Math.cos(a)*r,y=z.y+Math.sin(a)*r;g.beginPath();g.moveTo(x-4,y+4);g.lineTo(x,y-7);g.lineTo(x+4,y+4);g.stroke()}}   // little thorns
+  for(const l of Lb){
+    if(Math.hypot(l.tx-m.x,l.ty-m.y)>V+150&&Math.hypot(l.sx-m.x,l.sy-m.y)>V+150)continue;
+    const u=lobU(l),s=Math.sin(Math.PI*u),gx=l.sx+(l.tx-l.sx)*u,gy=l.sy+(l.ty-l.sy)*u,h=s*(60+Math.hypot(l.tx-l.sx,l.ty-l.sy)*.28);
+    g.globalAlpha=.55+.3*Math.sin(T*14);g.fillStyle='rgba(141,255,106,.18)';g.strokeStyle='#8dff6a';g.lineWidth=3;g.setLineDash([10,8]);g.beginPath();g.arc(l.tx,l.ty,FLR,0,7);g.fill();g.stroke();g.setLineDash([]);g.globalAlpha=1;   // where it will land
+    g.fillStyle='rgba(0,0,0,'+(.32-.14*s)+')';g.beginPath();g.ellipse(gx,gy+4,12*(1-.35*s),8*(1-.35*s),0,0,7);g.fill();       // shadow on the ground
+    g.save();g.translate(gx,gy-h);seedSpr(1+.55*s,T*9);g.restore()}                                                          // the seed itself, high in the air
+  g.restore()}
+const drawFxF=drawFx;
+drawFx=function(){drawLobs();drawFxF()};
+
+// aim preview for the main attack: the landing circle at your cursor distance
+const aimLaneF=aimLane;
+aimLane=function(){
+  const q=P[me];if(!q||q.hp<=0||q.cl!=FI)return aimLaneF();
+  const I=input(),d=Math.max(70,Math.min(400,I.pd||230)),x=q.x+Math.cos(I.a)*d,y=q.y+Math.sin(I.a)*d,f=mouse.d||(tch.a&&Math.hypot(tch.ax,tch.ay)>.15);
+  g.save();g.setLineDash([10,8]);g.lineWidth=3;g.strokeStyle='#8dff6acc';g.fillStyle=f?'#8dff6a44':'#8dff6a22';
+  g.beginPath();g.moveTo(q.x,q.y);g.lineTo(x,y);g.stroke();g.beginPath();g.arc(x,y,FLR,0,7);g.fill();g.stroke();g.restore()};
+
+// ---- 5. Rules (host): firing, landing, thorn patches, passive, bushes, sync ----
+const buSend=()=>bc2({t:'gb',v:Bu.filter(b=>b.tmp).map(b=>[b.x|0,b.y|0,b.r|0])});     // temporary bushes -> clients
+const sameTm=(a,b)=>typeof TMon!='undefined'&&TMon&&a.tm>=0&&a.tm===b.tm;               // teammates (works with or without the Teams patch)
+function fnLand(l){const o=P[l.o];
+  for(const q of P)if(q.hp>0&&q!==o&&Math.hypot(q.x-l.tx,q.y-l.ty)<FLR)hit(q,l.d,l.o);   // hits only now, on landing
+  crHurt(l.tx,l.ty,FLR,l.d);Lz.push({x:l.tx,y:l.ty,r:70,t:2,o:l.o});ev(1,l.tx,l.ty,FLR,FI)}
+const stepFN=step;let lbT=0,lbS=0;
+step=function(dt){
+  const on=host&&st=='play';
+  if(on)P.forEach((p,i)=>{                                                          // Fern fires lobs instead of bolts (we act just before the normal shot code would)
+    if(p.cl!=FI||p.hp<=0||!p.f||p.bl>0||p.cd>dt)return;
+    const d=Math.max(70,Math.min(400,p.pd||230));let tx=p.x+Math.cos(p.a)*d,ty=p.y+Math.sin(p.a)*d;const e=Math.hypot(tx-C,ty-C);
+    if(e>A-40){tx=C+(tx-C)*(A-40)/e;ty=C+(ty-C)*(A-40)/e}
+    Lb.push({sx:p.x,sy:p.y,tx,ty,t:0,T:.45+d/1000,o:i,d:CL[FI].d*(p.bd>0?1.4:1)});p.cd=CL[FI].cd+dt;p.rv=.8;p.sc++});
+  stepFN(dt);
+  if(!on||st!='play')return;
+  for(const l of Lb){l.t+=dt;if(l.t>=l.T)fnLand(l)}
+  Lb=Lb.filter(l=>l.t<l.T);
+  for(const z of Lz){z.t-=dt;for(const q of P)if(q.hp>0&&q!==P[z.o]&&Math.hypot(q.x-z.x,q.y-z.y)<z.r)hit(q,8*dt,z.o);crHurt(z.x,z.y,z.r,8*dt)}
+  Lz=Lz.filter(z=>z.t>0);
+  for(const p of P){p.ro=Math.max(0,(p.ro||0)-dt);
+    if(p.cl==FI&&p.hp>0&&inBush(p)){p.bv=Math.max(p.bv,.25);p.hp=Math.min(CL[FI].hp,p.hp+6*dt)}}   // Wild Growth
+  let bd=0;for(const b of Bu)if(b.tmp&&(b.t-=dt)<=0)bd=1;
+  if(bd){Bu=Bu.filter(b=>!b.tmp||b.t>0);buSend()}
+  if((lbT+=dt)>.08){lbT=0;const ro=[];P.forEach((p,i)=>{if(p.ro>0)ro.push(i)});
+    if(Lb.length||Lz.length||ro.length||lbS){bc2({t:'lb',l:Lb.map(l=>[l.sx|0,l.sy|0,l.tx|0,l.ty|0,+l.t.toFixed(2),+l.T.toFixed(2)]),z:Lz.map(z=>[z.x|0,z.y|0,z.r,+z.t.toFixed(1)]),ro});lbS=Lb.length+Lz.length+ro.length}}};
+
+const castFN=cast;
+cast=function(p,i,u){
+  if(u.k=='thicket'){let[x,y]=plc({x:p.x,y:p.y,a:p.a,pd:p.bot?110:p.pd},300,60);if(gb(x,y)){x=p.x;y=p.y}
+    for(const[ox,oy]of[[0,0],[52,12],[-52,12]])Bu.push({x:x+ox,y:y+oy,r:58,tmp:1,t:9});
+    const tm=Bu.filter(b=>b.tmp);if(tm.length>9)tm.slice(0,tm.length-9).forEach(b=>b.t=0);   // at most 3 thickets at once
+    ev(1,x,y,100,p.cl);buSend();return}
+  if(u.k=='grasp'){let n=0;
+    for(const q of P)if(q!==p&&q.hp>0&&!sameTm(p,q)&&Math.hypot(q.x-p.x,q.y-p.y)<450&&Bu.some(b=>Math.hypot(b.x-q.x,b.y-q.y)<b.r+25)){
+      hit(q,20,i);q.fz=Math.max(q.fz,1.8);q.ro=1.8;n++;ev(1,q.x,q.y,70,p.cl)}
+    p.hp=Math.min(CL[FI].hp,p.hp+15*n);ev(1,p.x,p.y,450,p.cl);return}
+  castFN(p,i,u)};
+
+// ---- 6. Bots use Thicket at medium range ----
+const aiFN=ai;
+ai=function(p,i,dt){aiFN(p,i,dt);
+  if(p.cl!=FI||p.ac>0||p.td)return;const t=P[p.tg];if(!t||t.hp<=0)return;
+  const d=Math.hypot(t.x-p.x,t.y-p.y);if(d>120&&d<380&&Math.random()<dt*(.3+p.iq*1.5))p.aq=1};
+
+// ---- 7. Online: clients get seeds, patches, roots and the temporary bushes ----
+const onDataFN=onData;
+onData=function(m){
+  if(m.t=='lb'){const n=performance.now();Lb=m.l.map(a=>({sx:a[0],sy:a[1],tx:a[2],ty:a[3],t:a[4],T:a[5],ts:n}));Lz=m.z.map(a=>({x:a[0],y:a[1],r:a[2],t:a[3]}));P.forEach((p,i)=>p.rod=m.ro.includes(i));return}
+  if(m.t=='gb'){Bu=Bu.filter(b=>!b.tmp).concat(m.v.map(a=>({x:a[0],y:a[1],r:a[2],tmp:1})));return}
+  if(m.t=='s'){Lb=[];Lz=[]}
+  onDataFN(m)};
+const sgFN=startGame;startGame=function(){Lb=[];Lz=[];sgFN()};
+const tmFN=toMenu;toMenu=function(t){Lb=[];Lz=[];tmFN(t)};
+
+// ---- Changelog ----
+LOG.unshift(['v1.37.0',['New hero: Fern, the Druid. Seed Bomb is a LOBBED seed that flies in an arc over walls, rocks and water and only hurts where it lands (blast + thorn patch, like Barley / Dynamike); Thicket places 3 real bushes for 9s; Nature\'s Grasp roots every enemy in or beside any bush; Wild Growth gives +30% speed and healing inside bushes']]);
+renderLog();pick(cls);
+
+
+
+ 
  
 
  
