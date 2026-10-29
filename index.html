@@ -223,11 +223,86 @@ function toMenu(text){
   $('s5').parentElement.style.display='';$('lk').textContent='';$('mg').textContent=text||'';show('menu');
 }
 $('bl1').onclick=$('bl2').onclick=$('lv').onclick=leave;
-const modVis=()=>{for(const id of['s6','s8'])$(id).parentElement.style.display=$('s2').value=='0'?'':'none'}; // the Modifiers switch only exists for Showdown
-$('s2').onchange=modVis;
 
 /* Changelog + fullscreen. Add new releases at the TOP of LOG; the version label follows it. */
 const LOG=[
+ ['v1.39.0',['Fern Wild Growth heals 3 HP/s in bushes (was 6)','Fern Nature\'s Grasp is thrown to where you aim (up to 300 away, not centered on you) and is smaller: 330 radius (was 450); aim preview shows the landing circle']],
+ ['v1.38.0',['Code cleanup: removed overridden patch layers (old Terra shard code, test arena, speed streaks, duplicate menu handlers) and a text-drawing hook that ran on every frame','Smoother online play: 30 Hz snapshots, 60 Hz input, players and bolts extrapolated between snapshots, your own aim follows the mouse at once','Faster rendering: line-of-sight results are cached per frame']],
+ ['v1.37.0',['New hero: Fern, the Druid. Seed Bomb is a LOBBED seed that flies in an arc over walls, rocks and water and only hurts where it lands (blast + thorn patch, like Barley / Dynamike); Thicket places 3 real bushes for 9s; Nature\'s Grasp roots every enemy in or beside any bush; Wild Growth gives +30% speed and healing inside bushes']],
+ ['v1.37.0',['Bridge: the deck fades like a house roof while you are under it, showing beams and posts and anyone else under the bridge',
+  'Bridge rails: players on the deck cannot walk off its sides any more; players under the bridge shoot normally and swim out through the sides']],
+ ['v1.36.0',['Bridge heights: enter a bridge from its land ends to stand ON the deck, wade in from the river sides to go UNDER it (you still wade slowly there)',
+  'Bolts remember their shooter\'s height: inside a bridge area they only hit players at the same height, so deck fire cannot hit people under it and fire from below passes under people on the deck',
+  'The deck turns see-through for you while you are under it; players under a bridge are covered by the deck for everyone else; the top bar shows if you are on or under a bridge']],
+ ['v1.35.0',['Teams (lobby setting): Blue vs Red in every mode. Showdown = last team standing, Brawl Rush = first team to 10 combined kills, Hot Zone = team points to 100',
+  'No friendly fire, bolts fly through teammates, bots never target teammates, area abilities skip them; coloured team rings, allies always on your minimap, team score in the top bar']],
+ ['v1.33.0',['Removed the deep river centre option and feature (deep lakes stay, only Tide can enter them)',
+  'Speed streaks are much more visible: dark outline, bright core, afterimages and a pulsing ring, readable on water, snow and sand',
+  'You can leave an online game when you are the only human in the room',
+  'Training: 28 dummies (3 groups of 4, 8 alone, some in bushes) plus 8 immovable bullseye targets (a range row + lone ones) that cannot die and show the damage you deal, with a running total that resets after 3s']],
+ ['v1.32.0',['Speed streaks appear behind anyone who is sped up (Tide in shallow water, Rampage, Gust, Flame Pool, traps)',
+  'Bots use Terra\'s Stone Wall: placed between them and the enemy when hurt, fleeing or pressed, and they stop firing into it for a moment',
+  'Training is the full map (buildings, bushes, lakes, river with deep channel) with 19 dummies: standing, bobbing, patrolling, running in circles, hiding in bushes, each a different hero',
+  'Hero info: ultimate line just says how long it takes to charge by itself']],
+ ['v1.31.0',['Tide in deep water (deep lakes and the river\'s deep centre) moves at 45% of normal speed, half of its old lake speed; the shallow river is unchanged']],
+ ['v1.30.0',['Grit: Rampage shoves only a short way, stuns 1.5s, heals 25 and lasts 7s with +50% damage and +30% speed; punch range is a bit shorter and the cone follows',
+  'Tide: new ability Bubble Trap: a bubble bursts after 0.9s and traps enemies inside (cannot move or shoot) for 1.3s; replaces the Tornado-like Whirlpool',
+  'Mobile: drag the ability / ultimate button to aim like a joystick, release to cast, ✕ to cancel',
+  'Hero info shows damage, fire rate, range, cooldown, ultimate charge time (without damage or wells) and effect numbers for the part being shown',
+  'Lobby (online and offline) is laid out like the main menu; modifiers, power boxes and storm speed only show for Showdown',
+  'Option "Deep water" is now "River crossing" (wade anywhere / bridges only)',
+  'Boxes and the Terra wall break into flying chunks with dust; Terra wall has 450 HP (+50%)',
+  'Menu preview dummies stay pushed away until that part of the preview ends']],
+ ['v1.29.0',['Grit Leap Slam is a real jump: he rises and grows toward the camera, his shadow shrinks, he is invincible and cannot shoot while airborne, then slams down; aim preview shows the real landing spot and slam circle',
+  'Ember Meteor no longer hurts or burns Ember',
+  'Showdown lobby: Storm speed (Slow / Normal / Fast); the info bar now shows the match timer and the storm countdown for everyone',
+  'Main menu: opening Hero info hides the spinning hero and shrinks the preview so the page does not scroll',
+  'Hex nerfed: 12.5 damage (was 14), 118 HP (was 125), Shadow Step cooldown 7s (was 6s)',
+  'Cog Snare Trap breaks when an enemy projectile hits it',
+  'Cog and Grit attack indicators are smaller and match the real hit area']],
+ ['v1.27.0',['Optional deep water: lobby setting "Deep water" adds a dark channel along the river that nobody can cross except on the bridges (Tide can swim through it); shown on the minimap']],
+ ['v1.26.0',['Ember Meteor can now be placed anywhere within 650 range, with an aim preview showing the landing circle (white = ready, red = charging)']],
+ ['v1.28.0',['Debug: "Dummies shoot" turns every training dummy into a different hero that fires back at you',
+  'Tide Riptide nerfed: +50% speed in the river (was +70%), 2 HP/s heal (was 8), and the river current no longer moves Tide',
+  'Tide walks through deep ponds at 90% speed (10% slower than normal)']],
+ ['v1.27.0',['Debug: God mode button, and a ▾ header that hides / shows the debug buttons',
+  'Your name and last chosen hero are remembered',
+  'River animation is fixed to the map (no more shifting when you move); ripples all flow downstream and the current gently carries swimmers; swimmers next to a bridge are drawn under it',
+  'Terra Boulder: 7 small short-range shards on walls and rocks; on a player 4 shards are absorbed and 4 fly farther around them',
+  'Tide can wade through deep ponds, slowly; other heroes are still blocked']],
+ ['v1.26.0',['Changelog and Settings have a ✕ pinned to the top-left, always reachable even when scrolled',
+  'Main menu: Play offline / Host / Join sit under your name, Training is above Hero info, Settings and Changelog are small buttons in the top-left corner',
+  'Hero stat bars have divider lines (5 segments) so heroes are easier to compare; the bars are unchanged',
+  'Terra Boulder shards really work now: it bursts into 3 shards on a player, wall or rock (each shard 40% damage)',
+  'Cog wrench is held beside the head and no longer covers the eyes',
+  'Bots remember where they last saw an enemy they were attacking and search around that spot for a few seconds, even if the enemy hid (weak enemies are hunted longer)']],
+ ['v1.25.0',['Hero picker: new Range and Healing stats; the explanation sits under the preview and always matches what is playing','Preview now has 4 parts (main, ability, ultimate, passive) with a timeline bar, pause button, and click a segment to jump','Preview dummies stand at the attack\'s real hit range, with a dashed range arc','Cog ability / ultimate previews show the real trap (hides, stuns) and turret (shoots)','Terra boulder shards now really spawn on impact with a player, wall or rock (3 x 40% extra damage)','Training map: test any hero on dummies, a wall, a rock, bushes and the river (menu > Training)','Cog wrench is held beside the head, no longer over the eyes']],
+ ['v1.24.0',['Cog: the wrench is held sideways in the hand when you are not swinging; the swing and the return to the hand are smooth',
+  'Cog aim preview is one cone showing where the wrench hits (5 hit lanes now, so the cone has no gaps)',
+  'Joining a room whose game already started (or is full) now shows a clear notice on the menu when you are sent back; other connection messages use it too',
+  'Terra ultimate preview: you hold the aim outline in place, the wall is placed, then the dummies walk toward you and are blocked by it']],
+ ['v1.23.0',['Terra Stone Wall: aiming now shows the outline of the wall instead of a circle (in game and in the menu preview)',
+  'The spinning hero on the main menu never plays attack animations, whatever the hero',
+  'Cog turret: explodes when shot down, folds away when its time runs out or it is replaced',
+  'Tide: attack is a burst of 8 small bolts fired one after another in a cone (aim preview shows the cone); Tsunami hits harder',
+  'Nerfs: Grit (damage, attack speed, reach), Cog wrench (damage, attack speed, reach), Cog turret (240 HP, 10s, weaker and slower shots, shorter reach)']],
+ ['v1.22.0',['Cog: attack is now a real overhead wrench swing with a trail (no more fist arcs); nerfed (155 HP, 21 damage, slower swing, slightly shorter range)','Grit: Rampage also stuns nearby enemies for 1s; punch range lowered','Tide: attack is a burst of 5 small bolts spiralling around the aim point; Tsunami is now a wide wave that rolls along your aim, hurting, slowing and carrying enemies']],
+ ['v1.21.0',['Code cleanup: dead code and patch layers removed; ultimate charge is now one set of numbers','Error messages (room not found, host left, room full) show on the menu again','Zephyr Gust no longer fires a stray lightning strike','Debug cheats only work in offline practice']],
+ ['v1.21.0',['New hero: Cog, the Mechanic. Wrench melee (heals 5 HP per hit); Snare Trap: placed traps (max 3) vanish from enemy view after 1.5s, stun 1.2s and hurt whoever steps in; Auto-Turret ultimate: 300 HP, 12s, rapid fire up to 560 range, enemy fire can destroy it']],
+ ['v1.20.0',['New hero: Tide, the Hydromancer. Swims 70% faster in water (everyone else is slowed) and heals 8 HP/s there; Tidal Shot hits wet enemies for +50%; Whirlpool drags enemies in; Tsunami throws everyone back']],
+ ['v1.19.0',['New hero: Grit, the Brawler. 190 HP, triple shock-arc punch with very short range, Leap Slam (jump + slam + small heal), Rampage ultimate (shove, heal, +damage, +speed), Fury passive']],
+ ['v1.18.0',['Menu preview now plays the real main attacks: Volt lightning chains through up to 3 dummies, Terra boulder bursts into 3 shards, Ember splash burns neighbours, Hex shows its heal','Preview fire rate matches the game (it was slower), and bolts leave the wizard like in game','Preview Terra ultimate shows the real stone wall; Storm Call (440) and Tornado (smaller) sizes updated']],
+ ['v1.17.0',['River across the map with 3 wooden bridges; shows on the minimap','Everyone wades through the shallow water at 40% speed (bridges are normal speed); ripples show who is in the water','Buildings, rocks, bushes and walls never stand in the river; nothing spawns in water','Bots walk to the bridges to cross; Shadow Step cannot land in water','Water speed is a per-hero setting (wm), ready for a water hero']],
+ ['v1.16.0',['Volt Arc Bolt now chains through up to 3 players (55% then 38% damage), with a staggered lightning animation and sparks; main damage nerfed','Golden Bot is tougher and drops 5 power cubes when killed (old gold-power reward removed)','Ultimates charge slightly more from your own attacks','Debug buttons are hidden: press Up Up Down Down in offline practice (or tap the version label 7 times)','Leaderboard (top 5) for Brawl Rush and Hot Zone']],
+ ['v1.15.0',['Every wizard now has a movement bonus and a heal in its kit (see each hero card)','Bushes: you are only hidden when about 75% of your body is inside; a foot sticking out reveals you','Crates are damaged by abilities and ultimates too (blasts, fire / frost / wind zones, rockfall, dashes)','Bots rebuild their paths when a Stone Wall appears or crumbles','Offline practice: debug buttons (full ultimate, cubes, full health, reset ability, drop a crate)','Menu preview dummies now react like players: burn, freeze, slow, knock-back, pull, zap, blind']],
+ ['v1.14.0',['Shadow Step and Thunder Dash now go toward your aim (mouse / aim stick), not your move direction; their previews match','Knock-backs and pushes slide smoothly instead of teleporting','Terra Boulder bursts into 3 shards when it hits a player, wall or rock','Volt Storm Call shows its range ring while active','Each wizard holds a different weapon: fire orb, ice crystal, holy book, skull, lightning wand, rock, wind fan']],
+ ['v1.13.0',['Terra ultimate is now Stone Wall: a temporary wall that blocks walking and bolts, crumbles over ~12s and breaks faster under fire','Ultimates charge a bit more from your own attacks','Houses: the roof fades away when you get close, so you can see the floor inside']],
+ ['v1.12.0',['Power boxes must be shot open to drop a power cube; they spawn once at the start across the whole map',
+  'Showdown lobby: Power boxes toggle (on by default, works without modifiers)','Minimap: no spell circles, bigger glowing heal / ultimate ponds, zone names on two lines',
+  'Alive / kills text no longer shows in menus','No countdown in offline practice']],
+ ['v1.11.0',['Every area gets a unique random name each match','Power boxes have a drawn sprite; bots grab boxes that are close; dying drops 30% (rounded up) of your cubes; each cube also gives +1.5% speed','Terra buffed (HP, speed, damage, fire rate, Quake cooldown, Stoneskin 15%)','Terra ultimate now shows a rockfall instead of a meteor','Zephyr Gust is a short visible dash with a wind trail','Minimap is 2.5x bigger; ultimate and heal circles are drawn over terrain with sharp colours','Zone names (Dune Village, Frost Keep...) shown on the minimap','Heal ponds are green with a heal cross','House roof chimney fixed (no more stray squares)','Match info text removed from menus']],
+ ['v1.10.0',['Power cubes: loot boxes give +1 cube, shown next to your health bar (+10% damage each)','Map size option (Small / Normal / Large)','Ultimates charge slower, much less from damage','Golden Bot is weaker and no longer counts as a player','Hit enemies are revealed for a moment, even in bushes, cloaks and houses','Balance: Volt, Zephyr and Lumi nerfed, Frost buffed, bots weaker']],
+
  ['v1.9.0',['Windows on some buildings: see and shoot through, but you cannot walk through','Bigger minimap, with a size setting','Bushes are clearer when you stand in them']],
  ['v1.8.0',['New main menu: your hero spins in the middle of the screen','Help text moved to Settings','Distinct map zones: Dune Village (lots of small buildings), Frost Keep (one big hall), Murk Swamp (giant bushes, no buildings), Old Ruins (walls only), Town Centre','Current zone shown in the top bar','Fullscreen button','Changelog']],
  ['v1.7.0 and earlier',['7 wizards, 3 modes, online rooms + offline bots, biomes, fog of war, power-up modifiers']]];
@@ -280,9 +355,12 @@ function onData(m){ // client side
   else if(m.t=='s'){
     world(m.seed);P=m.ps.map(p=>({...mkPlayer(p,0),first:1}));me=m.you;md=m.md;mod=m.mod|0;modT=8;Bx=[];spec=-1;hz=null;B=[];Zn=[];zr=C;st='play';show(null)}
   else if(m.t=='u'&&(st=='play'||st=='over')){
-    m.p.forEach((a,i)=>{const p=P[i];p.tx=a[0];p.ty=a[1];if(p.first){p.x=p.tx;p.y=p.ty;p.first=0}
-      p.a=a[2];p.hp=a[3];p.k=a[4];p.fl=a[5];p.ac=a[6];p.ch=a[7];p.pt=a[8];p.sc=a[9]});
-    B=m.b.map(a=>({x:a[0],y:a[1],c:a[2],a:a[3]/100}));zr=m.z;hz=m.h?{x:m.h[0],y:m.h[1]}:null;
+    const now=performance.now();m.p.forEach((a,i)=>{const p=P[i],dt=Math.max(.02,Math.min(.25,(now-(p.rts||now-34))/1000));
+      if(p.first){p.x=a[0];p.y=a[1];p.a=a[2];p.first=0;p.vx=p.vy=0}
+      else{const dx=a[0]-p.tx,dy=a[1]-p.ty;if(dx*dx+dy*dy>40000){p.vx=p.vy=0}else{p.vx=dx/dt;p.vy=dy/dt}}
+      p.tx=a[0];p.ty=a[1];p.rts=now;
+      p.ta=a[2];p.hp=a[3];p.k=a[4];p.fl=a[5];p.ac=a[6];p.ch=a[7];p.pt=a[8];p.sc=a[9]});
+    B=m.b.map(a=>{const an=a[3]/100,s=CL[a[2]]?CL[a[2]].bs:700;return{x:a[0],y:a[1],c:a[2],a:an,vx:Math.cos(an)*s,vy:Math.sin(an)*s,age:0}});zr=m.z;hz=m.h?{x:m.h[0],y:m.h[1]}:null;
     Zn=m.zn.map(a=>({x:a[0],y:a[1],r:a[2],f:a[3],k:ZK[a[4]]}));m.ev.forEach(e=>evFx(...e));(m.sz||[]).forEach((a,i)=>{if(Sz[i]){Sz[i].gx=a[0];Sz[i].gy=a[1]}});Bx=(m.bx||[]).map(a=>({x:a[0],y:a[1]}));
   }else if(m.t=='c')cdShow(m.n); 
   else if(m.t=='x')msg('Room is full or already started');
@@ -492,7 +570,7 @@ function los(ax,ay,bx,by,rk){ // line of sight; rk=1 also blocked by rocks (what
   return 1
 }
 // can the viewer m see player p? (range, bushes, buildings, walls)
-const seen=(p,m)=>{if(p===m)return 1;const d=Math.hypot(p.x-m.x,p.y-m.y);return d<V&&!(hid(p)&&d>130)&&!(!(p.fl&16)&&bi(p)>=0&&bi(p)!=bi(m))&&los(m.x,m.y,p.x,p.y)};
+let FR=0;const seen=(p,m)=>{if(p===m)return 1;if(p._sf===FR&&p._sm===m)return p._sr;const d=Math.hypot(p.x-m.x,p.y-m.y),r=d<V&&!(hid(p)&&d>130)&&!(!(p.fl&16)&&bi(p)>=0&&bi(p)!=bi(m))&&los(m.x,m.y,p.x,p.y);p._sf=FR;p._sm=m;return p._sr=r};
 const cam=()=>{const m=P[me]||{x:C,y:C,hp:1};if(m.hp>0||dieT>0||md)return m;const t=P[spec];return t&&t.hp>0?t:P.find(p=>p.hp>0)||m}; // dead: follow the spectated player
 
 // ---------- 7. Simulation (host) ----------
@@ -634,7 +712,7 @@ function step(dt){
   if(done){netT=1;bc({t:'e',w});finish(w)} // netT=1 forces one last snapshot so clients see the final death
   // snapshot to clients (20 Hz)
   netT+=dt;
-  if(netT>.05){netT=0;if(!P.some(p=>p.conn&&p.conn.open))EV.length=0;else bc2({t:'u',p:P.map(p=>[p.x|0,p.y|0,+p.a.toFixed(2),Math.ceil(Math.max(0,p.hp)),p.k,p.fl|0,Math.ceil(p.ac),p.ch|0,p.pt|0,p.sc|0]),
+  if(netT>.034){netT=0;if(!P.some(p=>p.conn&&p.conn.open))EV.length=0;else bc2({t:'u',p:P.map(p=>[p.x|0,p.y|0,+p.a.toFixed(2),Math.ceil(Math.max(0,p.hp)),p.k,p.fl|0,Math.ceil(p.ac),p.ch|0,p.pt|0,p.sc|0]),
     h:hz?[hz.x|0,hz.y|0]:0,b:B.map(b=>[b.x|0,b.y|0,b.c|0,Math.round(Math.atan2(b.vy,b.vx)*100)]),z:zr|0,
     zn:Zn.map(z=>[z.x|0,z.y|0,z.r,+(z.t/z.T).toFixed(2),ZK.indexOf(z.k)]),ev:EV.splice(0),sz:Sz.map(z=>[z.x|0,z.y|0]),bx:Bx.map(b=>[b.x|0,b.y|0])})}
 }
@@ -1047,7 +1125,7 @@ addEventListener('click',e=>{if(e.target.classList&&e.target.classList.contains(
 function dummy(x,y,h){g.save();g.translate(x,y);g.fillStyle='rgba(0,0,0,.3)';g.beginPath();g.ellipse(0,6,18,12,0,0,7);g.fill();g.strokeStyle=OL;g.lineWidth=4;g.fillStyle=h>0?'#fff':'#c9a26b';g.beginPath();g.arc(0,0,20,0,7);g.fill();g.stroke();g.strokeStyle='#d33';g.beginPath();g.arc(0,0,12,0,7);g.stroke();cir(0,0,4,'#d33');g.restore()}
 function pvSet(ph,c){ // dummies stand far away for the main attack, and inside the ability's real range for Q / E
   const u=ph==2?c.ul:c.ab,pv=PV[u.k]||['self',200],x0=WZ[0];let d=[[380,180],[480,110],[480,250]];
-  if(ph&&pv[0]=='self'){const r=Math.min(pv[1]*.7,330);d=[[x0+r,180],[x0+r*.7,180-r*.6],[x0+r*.7,180+r*.6]]}
+  if(ph&&pv[0]=='self'){const r=Math.min(pv[1],120)*.7;d=[[x0+r,180],[x0+r*.7,180-r*.6],[x0+r*.7,180+r*.6]]}
   else if(ph&&pv[0]=='at'){const x=x0+(pv[1]+pv[3])/2;d=[[x,180],[x+60,130],[x+60,230]]}
   else if(ph&&pv[0]=='meteor')d=[[x0+300,180],[x0+370,120],[x0+370,240]];
   else if(ph)d=[[x0+(u.k=='step'?330:200),180],[x0+250,120],[x0+250,240]];
@@ -1066,8 +1144,8 @@ function pvFrame(dt){
     pvD.forEach((d,j)=>dummy(d[0],d[1],pvH[j]));
     g.lineCap='round';
     if(ph){
-      if(pv[0]=='self'){g.globalAlpha=lt<1.6?1-Math.max(0,lt-.5)/1.1:0;g.fillStyle=col+'33';g.strokeStyle=col;g.lineWidth=6;g.beginPath();g.arc(WZ[0],WZ[1],pv[1]*Math.min(1,lt/.5),0,7);g.fill();g.stroke();g.globalAlpha=1}
-      else if(pv[0]=='at'){const m=pv[3]+((pv[1]+pv[3])/2-pv[3])*Math.min(1,lt/.8),on=lt>=.8;g.globalAlpha=on?Math.min(1,(2.6-lt)*2):1;g.fillStyle=col+(on?'44':'18');g.strokeStyle=col;g.lineWidth=5;g.setLineDash(on?[]:[14,10]);g.beginPath();g.arc(WZ[0]+m,180,pv[2],0,7);g.fill();g.stroke();g.setLineDash([]);g.globalAlpha=1}
+      if(pv[0]=='self'){g.globalAlpha=lt<1.6?1-Math.max(0,lt-.5)/1.1:0;g.fillStyle=col+'33';g.strokeStyle=col;g.lineWidth=6;g.beginPath();g.arc(WZ[0],WZ[1],Math.min(pv[1],120)*Math.min(1,lt/.5),0,7);g.fill();g.stroke();g.globalAlpha=1}
+      else if(pv[0]=='at'){const m=pv[3]+((pv[1]+pv[3])/2-pv[3])*Math.min(1,lt/.8),on=lt>=.8;g.globalAlpha=on?Math.min(1,(2.6-lt)*2):1;g.fillStyle=col+(on?'44':'18');g.strokeStyle=col;g.lineWidth=5;g.setLineDash(on?[]:[14,10]);g.beginPath();g.arc(WZ[0]+m,180,Math.min(pv[2],150),0,7);g.fill();g.stroke();g.setLineDash([]);g.globalAlpha=1}
       else if(pv[0]=='meteor'){const y=180-(1-Math.min(1,lt))*300;g.strokeStyle=col;g.lineWidth=5;g.setLineDash([12,8]);g.beginPath();g.arc(pvD[0][0],180,150,0,7);g.stroke();g.setLineDash([]);if(lt<1.6){const mx=pvD[0][0];g.strokeStyle='#ff9a3c';g.lineWidth=16;g.beginPath();g.moveTo(mx+70,y-100);g.lineTo(mx,y);g.stroke();cir(mx,y,20,'#ff4d2e');cir(mx,y,11,'#ffd23f')}}
       else if(pv[0]=='line'&&u.k=='zap'&&lt<1)zap(WZ[0],180,WZ[0]+ox,180,col,5)}
     if(!ph)for(const b of pvB)drawBolt(b,T);
@@ -1153,8 +1231,6 @@ const zoneName=(x,y)=>{const wx=x+BW.a*Math.sin(y*.004+BW.p)+BW.b*Math.sin(y*.01
 
 
 // Changelog
-LOG.unshift(['v1.10.0',['Power cubes: loot boxes give +1 cube, shown next to your health bar (+10% damage each)','Map size option (Small / Normal / Large)','Ultimates charge slower, much less from damage','Golden Bot is weaker and no longer counts as a player','Hit enemies are revealed for a moment, even in bushes, cloaks and houses','Balance: Volt, Zephyr and Lumi nerfed, Frost buffed, bots weaker']]);
-LOG.unshift(['v1.11.0',['Every area gets a unique random name each match','Power boxes have a drawn sprite; bots grab boxes that are close; dying drops 30% (rounded up) of your cubes; each cube also gives +1.5% speed','Terra buffed (HP, speed, damage, fire rate, Quake cooldown, Stoneskin 15%)','Terra ultimate now shows a rockfall instead of a meteor','Zephyr Gust is a short visible dash with a wind trail','Minimap is 2.5x bigger; ultimate and heal circles are drawn over terrain with sharp colours','Zone names (Dune Village, Frost Keep...) shown on the minimap','Heal ponds are green with a heal cross','House roof chimney fixed (no more stray squares)','Match info text removed from menus']]);
 
  // ---- Power boxes: crates must be shot open, spawn only at match start, toggle in the Showdown lobby ----
 let Cr=[];                                   // crates {x,y,hp}; a broken crate drops a normal power cube (Bx)
@@ -1209,9 +1285,6 @@ overlay=function(m,w,h){ov0(m,w,h);if(m.cl!=null)miniExtra(w,h)};
 // ---- Menu fixes: no match HUD text in menus, no countdown offline ----
 
  
-LOG.unshift(['v1.12.0',['Power boxes must be shot open to drop a power cube; they spawn once at the start across the whole map',
-  'Showdown lobby: Power boxes toggle (on by default, works without modifiers)','Minimap: no spell circles, bigger glowing heal / ultimate ponds, zone names on two lines',
-  'Alive / kills text no longer shows in menus','No countdown in offline practice']]);
 
 
 // ---- 1. Terra ultimate is now a real temporary STONE WALL (matches its description) ----
@@ -1264,7 +1337,6 @@ function roofs(m){const mb=bi(m);
   g.save();g.beginPath();Bd.forEach((q,k)=>{if(k!=mb)g.rect(q.x+22,q.y+22,q.w-44,q.h-44)});g.clip();g.textAlign='center';padsAndZones(.8,.45);g.restore()};
  
 // ---- Changelog ----
-LOG.unshift(['v1.13.0',['Terra ultimate is now Stone Wall: a temporary wall that blocks walking and bolts, crumbles over ~12s and breaks faster under fire','Ultimates charge a bit more from your own attacks','Houses: the roof fades away when you get close, so you can see the floor inside']]);
 
 
 // ---- 1. Teleport (Hex Shadow Step) and Thunder Dash go toward your AIM (mouse / aim stick), not your move direction ----
@@ -1280,11 +1352,6 @@ push=function(q,ux,uy,d){const x=q.x,y=q.y;push0(q,ux,uy,d);const dx=q.x-x,dy=q.
   if(dx||dy){const v=q.pv||(q.pv={x:0,y:0,t:0});v.x+=dx;v.y+=dy;v.t=.18}};
  
 // ---- 3. Terra's Boulder splits into 3 shards on impact (player, wall or rock): more total damage ----
-const shards=(b,x,y,back)=>{const a=Math.atan2(b.vy,b.vx)+(back?3.1416:0);
-  for(let n=-1;n<=1;n++){const s=a+n*.5;B.push({x,y,vx:Math.cos(s)*520,vy:Math.sin(s)*520,o:b.o,t:.3,d:b.d*.3,c:b.c,e:'none',sh:1})}};
-const bolt0=bolt;
-bolt=function(b,q){bolt0(b,q);if(b.e=='knock'&&!b.sh){const a=Math.atan2(b.vy,b.vx);shards(b,q.x-Math.cos(a)*14,q.y-Math.sin(a)*14,0)}}; // spawn just in front of the victim: shards hit them too
- 
 // ---- 4. Volt Storm Call shows its 440 range while active (host knows p.sk, clients get a small message) ----
 const drawFx3=drawFx;
 drawFx=function(){drawFx3();const T=performance.now()/1000,m=cam();
@@ -1301,8 +1368,6 @@ step=function(dt){
     for(const p of P){
       if(p.dh>0&&p.dk!=null){p.mx=Math.cos(p.dk);p.my=Math.sin(p.dk)}                    // Thunder Dash keeps its aimed direction
       if(p.pv){const f=Math.min(1,dt/Math.max(.001,p.pv.t));p.x+=p.pv.x*f;p.y+=p.pv.y*f;p.pv.x*=1-f;p.pv.y*=1-f;p.pv.t-=dt;if(p.pv.t<=0)p.pv=null}}
-    B=B.filter(b=>{if(b.e!='knock'||b.sh)return true;const x=b.x+b.vx*dt,y=b.y+b.vy*dt;
-      if(Wl.some(w=>!w.tw&&x>w.x&&x<w.x+w.w&&y>w.y&&y<w.y+w.h)||R.some(r=>!r.w&&Math.hypot(x-r.x,y-r.y)<r.r)){shards(b,b.x,b.y,1);return false}return true});
     if((skT-=dt)<=0){skT=.25;bc2({t:'sk',v:P.map(q=>q.sk>0?1:0)})}}
   step3(dt)};
  
@@ -1321,7 +1386,6 @@ const person3=person;
 person=function(p,isMe){person3(p,isMe);weapon(p)};
  
 // ---- Changelog ----
-LOG.unshift(['v1.14.0',['Shadow Step and Thunder Dash now go toward your aim (mouse / aim stick), not your move direction; their previews match','Knock-backs and pushes slide smoothly instead of teleporting','Terra Boulder bursts into 3 shards when it hits a player, wall or rock','Volt Storm Call shows its range ring while active','Each wizard holds a different weapon: fire orb, ice crystal, holy book, skull, lightning wand, rock, wind fan']]);
 
 
 
@@ -1399,7 +1463,6 @@ pvFrame=function(dt){
   pLt=lt};
 
 // ---- Changelog ----
-LOG.unshift(['v1.15.0',['Every wizard now has a movement bonus and a heal in its kit (see each hero card)','Bushes: you are only hidden when about 75% of your body is inside; a foot sticking out reveals you','Crates are damaged by abilities and ultimates too (blasts, fire / frost / wind zones, rockfall, dashes)','Bots rebuild their paths when a Stone Wall appears or crumbles','Offline practice: debug buttons (full ultimate, cubes, full health, reset ability, drop a crate)','Menu preview dummies now react like players: burn, freeze, slow, knock-back, pull, zap, blind']]);
 
 // ===== ARCANE RUMBLE v1.16 PATCH =====
 
@@ -1445,7 +1508,6 @@ overlay=function(m,w,h){ov5(m,w,h);if(!md||m.cl==null||st!='play')return;
   g.restore()};
 
 // ---- Changelog ----
-LOG.unshift(['v1.16.0',['Volt Arc Bolt now chains through up to 3 players (55% then 38% damage), with a staggered lightning animation and sparks; main damage nerfed','Golden Bot is tougher and drops 5 power cubes when killed (old gold-power reward removed)','Ultimates charge slightly more from your own attacks','Debug buttons are hidden: press Up Up Down Down in offline practice (or tap the version label 7 times)','Leaderboard (top 5) for Brawl Rush and Hot Zone']]);
 
 
 // Shallow river across the whole map, 3 bridges. Everyone wades slowly (40% speed). Bots path over bridges.
@@ -1530,7 +1592,6 @@ buildMini=function(){bm0();if(!RV)return;const m=MC.getContext('2d'),k=300/W;
 
  
 // ---- Changelog ----
-LOG.unshift(['v1.17.0',['River across the map with 3 wooden bridges; shows on the minimap','Everyone wades through the shallow water at 40% speed (bridges are normal speed); ripples show who is in the water','Buildings, rocks, bushes and walls never stand in the river; nothing spawns in water','Bots walk to the bridges to cross; Shadow Step cannot land in water','Water speed is a per-hero setting (wm), ready for a water hero']]);
 
 
 // (put it AFTER the v1.15 block, and after v1.16 / v1.17 if you use them; it only wraps pvFrame).
@@ -1576,7 +1637,6 @@ pvFrame=function(dt){
   g=sg};
  
 // ---- Changelog ----
-LOG.unshift(['v1.18.0',['Menu preview now plays the real main attacks: Volt lightning chains through up to 3 dummies, Terra boulder bursts into 3 shards, Ember splash burns neighbours, Hex shows its heal','Preview fire rate matches the game (it was slower), and bolts leave the wizard like in game','Preview Terra ultimate shows the real stone wall; Storm Call (440) and Tornado (smaller) sizes updated']]);
 
 
 // ---- 1. The hero: tanky, short-range triple punch (still the projectile system), leap + rampage ----
@@ -1639,7 +1699,6 @@ pvSet=function(ph,c){pvSet8(ph,c);const R=c.bs*c.bt;
   if(!ph&&R<260)pvD=[[WZ[0]+R*.8,180],[WZ[0]+R*.7,130],[WZ[0]+R*.7,230]]};
  
 // ---- Changelog ----
-LOG.unshift(['v1.19.0',['New hero: Grit, the Brawler. 190 HP, triple shock-arc punch with very short range, Leap Slam (jump + slam + small heal), Rampage ultimate (shove, heal, +damage, +speed), Fury passive']]);
 
 
 // Works with or without the Grit patch (v1.19): the hero's index is looked up (WI), not hard-coded.
@@ -1696,7 +1755,6 @@ ai=function(p,i,dt){ai9(p,i,dt);
   if(d>140&&d<380&&los(p.x,p.y,t.x,t.y,1)&&Math.random()<dt*(.4+p.iq*2))p.aq=1};
  
 // ---- Changelog ----
-LOG.unshift(['v1.20.0',['New hero: Tide, the Hydromancer. Swims 70% faster in water (everyone else is slowed) and heals 8 HP/s there; Tidal Shot hits wet enemies for +50%; Whirlpool drags enemies in; Tsunami throws everyone back']]);
 
 
  
@@ -1706,7 +1764,7 @@ const MI=CL.push({n:'Cog',t:'Mechanic',i:'🔧',oc:'#d9822b',hr:'#4a3320',sk:'#d
  ab:{n:'Snare Trap',x:'PLACE a trap (max 3). It turns invisible 1.5s after it lands; anyone who steps in it is stunned 1.2s and hurt. You run faster for 1.5s',k:'trap',cd:9},
  ul:{n:'Auto-Turret',x:'PLACE a turret: 300 HP, 12s, rapid-fire on the nearest enemy up to 560 away. Enemy fire can destroy it',k:'turret'},
  ps:{n:'Tinker',x:'wrench hits heal you 5 HP and your traps stay armed for 25s',k:'tinker'}})-1;
-PV.trap=['at',300,34,40];PV.turret=['at',200,50,50];KE.trap=['freeze',1.2];KE.turret=['zap',2];   // aim preview + menu preview
+PV.trap=['at',300,34,40];PV.turret=['at',200,50,50];   // aim preview + menu preview
  
 // ---- 2. Logo (a wrench) + class card in both pickers ----
 LI.push([x=>{x.beginPath();x.moveTo(-22,22);x.lineTo(6,-6);x.moveTo(14+Math.cos(-.785+.8)*12,-14+Math.sin(-.785+.8)*12);x.arc(14,-14,12,-.785+.8,-.785+6.283-.8)},1]);LC.push('#fff');
@@ -1804,12 +1862,7 @@ const pvSet11=pvSet;
 pvSet=function(ph,c){pvSet11(ph,c);const R=c.bs*c.bt;if(!ph&&R<260)pvD=[[WZ[0]+R*.8,180],[WZ[0]+R*.7,130],[WZ[0]+R*.7,230]]};
  
 // ---- Changelog ----
-pick(cls);
-LOG.unshift(['v1.21.0',['New hero: Cog, the Mechanic. Wrench melee (heals 5 HP per hit); Snare Trap: placed traps (max 3) vanish from enemy view after 1.5s, stun 1.2s and hurt whoever steps in; Auto-Turret ultimate: 300 HP, 12s, rapid fire up to 560 range, enemy fire can destroy it']]);
-$('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
  
- pick(cls);
-LOG.unshift(['v1.21.0',['Code cleanup: dead code and patch layers removed; ultimate charge is now one set of numbers','Error messages (room not found, host left, room full) show on the menu again','Zephyr Gust no longer fires a stray lightning strike','Debug cheats only work in offline practice']]);
 function renderLog(){$('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');}
 renderLog();
 
@@ -1905,9 +1958,6 @@ step=function(dt){
   if((wvT+=dt)>.08){wvT=0;if(Wv.length||wvSent){bc2({t:'wv',v:Wv.map(w=>[w.x|0,w.y|0,+w.a.toFixed(2)])});wvSent=Wv.length}}};
  
 // ---- Changelog ----
-pick(cls);
-LOG.unshift(['v1.22.0',['Cog: attack is now a real overhead wrench swing with a trail (no more fist arcs); nerfed (155 HP, 21 damage, slower swing, slightly shorter range)','Grit: Rampage also stuns nearby enemies for 1s; punch range lowered','Tide: attack is a burst of 5 small bolts spiralling around the aim point; Tsunami is now a wide wave that rolls along your aim, hurting, slowing and carrying enemies']]);
-$('ver').textContent=LOG[0][0];$('lg').innerHTML=LOG.map(v=>'<h3>'+v[0]+'</h3><ul>'+v[1].map(x=>'<li>'+x+'</li>').join('')+'</ul>').join('');
 
 /* ===== ARCANE RUMBLE v1.23 PATCH =====
    In this patch:
@@ -2055,12 +2105,6 @@ step=function(dt){
     b.tn=1;b.d=TU_DMG;b.t=Math.min(b.t,TU_BT);const z=Tu.find(t=>t.o==b.o);if(z)z.cd=Math.max(z.cd,TU_CD)}};
 
 // ---- Changelog ----
-LOG.unshift(['v1.23.0',['Terra Stone Wall: aiming now shows the outline of the wall instead of a circle (in game and in the menu preview)',
-  'The spinning hero on the main menu never plays attack animations, whatever the hero',
-  'Cog turret: explodes when shot down, folds away when its time runs out or it is replaced',
-  'Tide: attack is a burst of 8 small bolts fired one after another in a cone (aim preview shows the cone); Tsunami hits harder',
-  'Nerfs: Grit (damage, attack speed, reach), Cog wrench (damage, attack speed, reach), Cog turret (240 HP, 10s, weaker and slower shots, shorter reach)']]);
-renderLog();pick(cls);
 
 /* ===== ARCANE RUMBLE v1.24 PATCH =====
    
@@ -2155,11 +2199,6 @@ pvFrame=function(dt){
   g=sg};
 
 // ---- Changelog ----
-LOG.unshift(['v1.24.0',['Cog: the wrench is held sideways in the hand when you are not swinging; the swing and the return to the hand are smooth',
-  'Cog aim preview is one cone showing where the wrench hits (5 hit lanes now, so the cone has no gaps)',
-  'Joining a room whose game already started (or is full) now shows a clear notice on the menu when you are sent back; other connection messages use it too',
-  'Terra ultimate preview: you hold the aim outline in place, the wall is placed, then the dummies walk toward you and are blocked by it']]);
-renderLog();pick(cls);
 
 /* ===== ARCANE RUMBLE v1.25 PATCH =====
    
@@ -2195,7 +2234,6 @@ function rangeArcs(cs,c){const R=c.bs*c.bt,sg=g;
   g=sg}
 
 // ---- 4. Cog ability / ultimate previews: a real trap (hides, then stuns a dummy that walks over it) and a real turret (shoots) ----
-delete KE.trap;delete KE.turret;                                   // the old generic dummy effects were wrong for these two
 const cogPos=(ph,lt)=>ph==1?[[lt<.9?520:lt<2.02?520-(lt-.9)*170:330,180],[560,125],[560,235]]:[[470,180],[520,120],[520,240]];
 function cogUnder(){const{ph,lt}=cogS; // drawn under the dummies
   if(ph==1){if(lt>.3)trapSpr({x:300,y:180,age:lt-.3},lt-.3<1.5?1:.4)}
@@ -2237,9 +2275,11 @@ function pvPas(cvs,lt){
     if(m){g.strokeStyle='#ffffff88';g.lineWidth=3;for(let i=0;i<3;i++){g.beginPath();g.moveTo(x-30-i*14,Y-12+i*12);g.lineTo(x-60-i*14,Y-12+i*12);g.stroke()}}}
   else if(k=='fury'){const t=lt%.66;g.fillStyle='rgba(255,60,30,'+(.2+.1*Math.sin(T*8))+')';g.beginPath();g.arc(X0,Y,36,0,7);g.fill();me(X0,Y);hb(X0,Y-34,.4,44);g.fillStyle='#fff';g.fillRect(X0-1,Y-36,2,11);
     dummy(X0+95,Y,t<.1?.2:0);tx(''+Math.round(c.d*1.25),X0+95,Y-36-t*30,'#ff9a6a');tx('below 50% HP: +25% damage',330,320,'#ff9a6a',15)}
-  else if(k=='riptide'){g.fillStyle='#58b8ea';g.fillRect(180,110,474,150);g.fillStyle='#ffffff55';for(let i=0;i<8;i++)g.fillRect(190+i*60+(T*30)%60,130+(i%3)*40,30,3);
-    const x=200+lt*130;dummy(200+lt*40,Y+45,0);me(x,Y-25);hb(x,Y-60,1,44);tx('+8 HP/s',x,Y-72,'#8dffb0',14);tx('you: +70% speed  ·  others crawl',330,320,'#bff',15)}
+  else if(k=='riptide'){g.fillStyle='#58b8ea';g.fillRect(0,110,654,150);g.fillStyle='#ffffff55';for(let i=0;i<12;i++)g.fillRect(-30+i*60+(T*30)%60,130+(i%3)*40,30,3);
+    const x=200+lt*130;dummy(200+lt*40,Y+45,0);me(x,Y-25);hb(x,Y-60,1,44);tx('+2 HP/s',x,Y-72,'#8dffb0',14);tx('you: +50% speed  ·  others crawl',330,320,'#bff',15)}
   else if(k=='tinker'){const t=lt%.66;me(X0,Y);dummy(X0+100,Y,t>.1&&t<.22?.2:0);hb(X0,Y-34,.7,44);if(t>.1&&t<.5)tx('+5',X0,Y-46-t*25,'#8dffb0');trapSpr({x:430,y:Y,age:2},1);tx('traps stay armed 25s',430,Y-44,'#ffb347',14)}
+  else if(k=='wild'){const bx=X0+150,t=lt%1;cir(bx,Y,66,OL);cir(bx,Y,61,'#3da048');cir(bx-18,Y-20,28,'#56c25f');me(lt<.6?X0+lt*250:bx,Y);
+    if(lt>=.6){hb(bx,Y-36,.5+Math.min(.5,(lt-.6)*.2),44);tx('+3 HP/s',bx,Y-48-t*14,'#8dffb0',15)}tx('inside any bush: +30% speed, heals',330,320,'#bff',15)}
   else{me(X0,Y);tx(c.ps.n,330,Y,'#fff',22)}
   g.setTransform(1,0,0,1,0,0);g.font='bold 14px system-ui';g.textAlign='left';g.lineWidth=4;g.strokeStyle=OL;g.lineJoin='round';
   const t='PASSIVE: '+c.ps.n;g.strokeText(t,8,20);g.fillStyle='#9dff8a';g.fillText(t,8,20);
@@ -2270,20 +2310,6 @@ pvFrame=function(dt){
 
 // ---- 7. Training: dummies + a few test obstacles, offline only ----
 const btr=document.createElement('button');btr.className='s';btr.textContent='🎯 Training';$('bh').after(btr);
-btr.onclick=()=>{
-  TR=1;host=true;code='OFFLINE';lobby=[{n:myName(),c:0,k:cls}];st='lobby';
-  $('s5').value='1';$('s1').value='8';$('s2').value='1';$('s5').parentElement.style.display='none';
-  const sv=$('s7').value,o=new Option('Training','1000');$('s7').add(o);$('s7').value='1000';
-  startGame();$('s7').remove(o.index);$('s7').value=sv;
-  if(st!='play'){TR=0;return}
-  dbgOn=1;const m=P[me];m.x=C-300;m.y=C;m.a=0;let k=0;                // debug buttons (full ultimate, reset ability...) are on in training
-  P.forEach((p,i)=>{if(i==me)return;const d=[130,220,320,430,560,330,330][k%7],oy=[0,-40,40,-60,0,-150,150][k%7];
-    Object.assign(p,{td:k>4?2:1,n:'Dummy '+(k+1),cl:GI>=0?GI:6,hx:C-300+d,hy:C+oy,x:C-300+d,y:C+oy});p.hp=CL[p.cl].hp;k++})};
-const worldTR=world;
-world=function(seed){worldTR(seed);if(!TR)return;
-  Bd=[];Wn=[];Wl=[{x:C+60,y:C-110,w:30,h:220,c:'#6f6a7a'}];R=[{x:C-180,y:C-170,r:34}];Bu=[];
-  for(const[x,y]of[[C+200,C+190],[C-60,C+200]])for(let j=0;j<3;j++)Bu.push({x:x+(j-1)*50,y:y+(j&1)*30,r:55});
-  Wc=Wl.concat(Wn);grid();buildMini();winSetup()};
 const aiTR=ai;
 ai=function(p,i,dt){if(!p.td)return aiTR(p,i,dt);p.mx=0;p.my=p.td==2?Math.sin(zt*.9+i)*.4:0;p.f=0;p.aq=p.au=0;const m=P[me];if(m)p.a=Math.atan2(m.y-p.y,m.x-p.x)};
 const rsTR=respawn;respawn=function(p){rsTR(p);if(p.td){p.x=p.hx;p.y=p.hy}};
@@ -2292,8 +2318,6 @@ const hudTR=hud;hud=function(){hudTR();if(TR&&st=='play'){const p=P[me];$('hud')
 const tmTR=toMenu;toMenu=function(t){TR=0;tmTR(t)};
 
 // ---- Changelog ----
-LOG.unshift(['v1.25.0',['Hero picker: new Range and Healing stats; the explanation sits under the preview and always matches what is playing','Preview now has 4 parts (main, ability, ultimate, passive) with a timeline bar, pause button, and click a segment to jump','Preview dummies stand at the attack\'s real hit range, with a dashed range arc','Cog ability / ultimate previews show the real trap (hides, stuns) and turret (shoots)','Terra boulder shards now really spawn on impact with a player, wall or rock (3 x 40% extra damage)','Training map: test any hero on dummies, a wall, a rock, bushes and the river (menu > Training)','Cog wrench is held beside the head, no longer over the eyes']]);
-renderLog();pick(cls);
 
  /* ===== ARCANE RUMBLE v1.26 PATCH =====
    In this patch:
@@ -2324,18 +2348,6 @@ topX('log',()=>$('lb').click());topX('cfg',()=>$('cb').click());   // Settings g
 {const s=document.createElement('style');
  s.textContent='.st u{position:relative;overflow:hidden}.st u::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(90deg,transparent 0,transparent calc(20% - 2px),#10131c calc(20% - 2px),#10131c 20%)}';
  document.head.appendChild(s)}
-
-// ---- 4. Terra shards (they used to be pushed into the bolt list while it was being filtered, so they vanished) ----
-const boltTS=bolt;
-bolt=function(b,q){const arr=B,n=arr.length;boltTS(b,q);               // player hit: move the freshly made shards into the safe queue
-  const add=arr.slice(n);if(add.length&&add.every(s=>s.sh)){arr.length=n;for(const s of add){s.d=b.d*.4;SHQ.push(s)}}};
-const shardsT=(b,x,y)=>{const a=Math.atan2(b.vy,b.vx)+3.1416;           // wall / rock hit: burst back toward the shooter's side
-  for(let n=-1;n<=1;n++){const s=a+n*.5;SHQ.push({x,y,vx:Math.cos(s)*520,vy:Math.sin(s)*520,o:b.o,t:.3,d:b.d*.4,c:b.c,e:'none',sh:1})}};
-const stepTS=step;
-step=function(dt){
-  if(host&&st=='play')B=B.filter(b=>{if(b.e!='knock'||b.sh)return true;const x=b.x+b.vx*dt,y=b.y+b.vy*dt;
-    if(Wl.some(w=>!w.tw&&x>w.x&&x<w.x+w.w&&y>w.y&&y<w.y+w.h)||R.some(r=>!r.w&&Math.hypot(x-r.x,y-r.y)<r.r)){shardsT(b,b.x,b.y);return false}return true});
-  stepTS(dt)};
 
 // ---- 5. Cog wrench held beside the head ----
 if(CI>=0){const weaponF=weapon;
@@ -2368,13 +2380,6 @@ ai=function(p,i,dt){aiHu(p,i,dt);
 const rsH=respawn;respawn=function(p){rsH(p);p.hm=null};
 
 // ---- Changelog ----
-LOG.unshift(['v1.26.0',['Changelog and Settings have a ✕ pinned to the top-left, always reachable even when scrolled',
-  'Main menu: Play offline / Host / Join sit under your name, Training is above Hero info, Settings and Changelog are small buttons in the top-left corner',
-  'Hero stat bars have divider lines (5 segments) so heroes are easier to compare; the bars are unchanged',
-  'Terra Boulder shards really work now: it bursts into 3 shards on a player, wall or rock (each shard 40% damage)',
-  'Cog wrench is held beside the head and no longer covers the eyes',
-  'Bots remember where they last saw an enemy they were attacking and search around that spot for a few seconds, even if the enemy hid (weak enemies are hunted longer)']]);
-renderLog();pick(cls);
 
  /* ===== ARCANE RUMBLE v1.27 PATCH =====
    In this patch:
@@ -2423,7 +2428,7 @@ person=function(p,isMe){personR(p,isMe);
 const shardsN=(b,x,y)=>{const a=Math.atan2(b.vy,b.vx)+3.1416;           // wall / rock hit: 7 small short shards spray back
   for(let k=0;k<7;k++){const s=a+(k/6-.5)*1.6;SHQ.push({x,y,vx:Math.cos(s)*430,vy:Math.sin(s)*430,o:b.o,t:.22,d:b.d*.3,c:b.c,e:'none',sh:1})}};
 const boltN=bolt;
-bolt=function(b,q){const n=SHQ.length;boltN(b,q);SHQ.length=n;            // throw away the older 3-shard version
+bolt=function(b,q){boltN(b,q);
   if(b.e=='knock'&&!b.sh){const a=Math.atan2(b.vy,b.vx),d=b.d*.25,px=-Math.sin(a),py=Math.cos(a);
     for(let k=0;k<4;k++)hit(q,d,b.o);                                         // half the shards are absorbed by the victim
     for(const s of[-1,1])for(const f of[.5,1]){const an=a+s*f*.55,o=s*(f>.7?32:22);   // the other half fly on, farther, around them
@@ -2447,12 +2452,6 @@ step=function(dt){
   if(RV)for(const p of P)if(p.hp>0&&!(p.dh>0)&&inWater(p.x,p.y)){const sl=rvS(p.x),L=Math.sqrt(1+sl*sl);p.x+=40*dt/L;p.y+=40*dt*sl/L}};   // the current carries swimmers downstream
  
 // ---- Changelog ----
-LOG.unshift(['v1.27.0',['Debug: God mode button, and a ▾ header that hides / shows the debug buttons',
-  'Your name and last chosen hero are remembered',
-  'River animation is fixed to the map (no more shifting when you move); ripples all flow downstream and the current gently carries swimmers; swimmers next to a bridge are drawn under it',
-  'Terra Boulder: 7 small short-range shards on walls and rocks; on a player 4 shards are absorbed and 4 fly farther around them',
-  'Tide can wade through deep ponds, slowly; other heroes are still blocked']]);
-renderLog();pick(cls);
 
 /* ===== ARCANE RUMBLE v1.28 PATCH ====
    No edits to older blocks needed.
@@ -2479,8 +2478,6 @@ const tmD=toMenu;toMenu=function(t){dHurt=0;dhB.textContent='🛠 Dummies shoot:
 CL[WI].wm=1.5;                                                       // river speed: +50% (was +70%)
 CL[WI].ps.x='in water you swim 50% FASTER (everyone else crawls), heal 2 HP/s and the current cannot move you · deep ponds: 90% speed';
 HLP.Tide=40;
-{const P2=CanvasRenderingContext2D.prototype;                       // menu passive preview text (you can instead edit these 2 strings in pvPas and delete this block)
- for(const f of['fillText','strokeText']){const o=P2[f];P2[f]=function(t,...a){return o.call(this,t=='+8 HP/s'?'+2 HP/s':t=='you: +70% speed  ·  others crawl'?'you: +50% speed  ·  others crawl':t,...a)}}}
 
 // ---- 3. Host step: ponds handled here (Tide 90% speed), current + extra heal undone for Tide ----
 const stepW=step;
@@ -2499,10 +2496,6 @@ step=function(dt){
       if(inWater(p.x,p.y)&&p.hp<CL[WI].hp)p.hp=Math.max(.01,p.hp-6*dt)}})};   // Riptide heal: 8 HP/s - 6 = 2 HP/s
 
 // ---- Changelog ----
-LOG.unshift(['v1.28.0',['Debug: "Dummies shoot" turns every training dummy into a different hero that fires back at you',
-  'Tide Riptide nerfed: +50% speed in the river (was +70%), 2 HP/s heal (was 8), and the river current no longer moves Tide',
-  'Tide walks through deep ponds at 90% speed (10% slower than normal)']]);
-renderLog();pick(cls);
 
 /* ===== ARCANE RUMBLE v1.26 PATCH =====
   
@@ -2534,8 +2527,6 @@ aimPreview=function(){
   aimPreviewM()};
 
 // ---- Changelog ----
-LOG.unshift(['v1.26.0',['Ember Meteor can now be placed anywhere within 650 range, with an aim preview showing the landing circle (white = ready, red = charging)']]);
-renderLog();pick(cls);
 
  /* ===== ARCANE RUMBLE v1.27 PATCH =====
    The last open item from your list: OPTIONAL deep, dark, uncrossable water in the middle of the river.
@@ -2578,8 +2569,6 @@ buildMini=function(){bmD();if(!RV||!DEEP)return;const m=MC.getContext('2d'),k=30
 if(TI>=0)CL[TI].ps.x+=' · only Tide can cross the dark deep channel (lobby setting)';
 
 // ---- Changelog ----
-LOG.unshift(['v1.27.0',['Optional deep water: lobby setting "Deep water" adds a dark channel along the river that nobody can cross except on the bridges (Tide can swim through it); shown on the minimap']]);
-renderLog();pick(cls);
 
  /* ===== ARCANE RUMBLE v1.29 PATCH =====
    In this patch:
@@ -2670,9 +2659,7 @@ aimPreview=function(){
 // ---- 3. Storm speed option (Showdown lobby) + match timer in the info bar ----
 {const l=document.createElement('label');
  l.innerHTML='Storm speed<select id="s10"><option value="0.6">Slow</option><option value="1" selected>Normal</option><option value="1.7">Fast</option></select>';
- $('set').appendChild(l);
- const vis=()=>{l.style.display=$('s2').value=='0'?'':'none'},o=$('s2').onchange;
- $('s2').onchange=()=>{if(o)o();vis()};vis()}
+ $('set').appendChild(l);}
 const sgS=startGame;
 startGame=function(){SS=+$('s10').value||1;stormT=0;gT0=0;sgS()};
 const hudS=hud;
@@ -2705,14 +2692,6 @@ aimLane=function(){
   const c=CL[q.cl];coneLane(q,c,c.sa/2+.05,c.bs*c.bt+CONE_PAD,mouse.d||(tch.a&&Math.hypot(tch.ax,tch.ay)>.15))};
 
 // ---- Changelog ----
-LOG.unshift(['v1.29.0',['Grit Leap Slam is a real jump: he rises and grows toward the camera, his shadow shrinks, he is invincible and cannot shoot while airborne, then slams down; aim preview shows the real landing spot and slam circle',
-  'Ember Meteor no longer hurts or burns Ember',
-  'Showdown lobby: Storm speed (Slow / Normal / Fast); the info bar now shows the match timer and the storm countdown for everyone',
-  'Main menu: opening Hero info hides the spinning hero and shrinks the preview so the page does not scroll',
-  'Hex nerfed: 12.5 damage (was 14), 118 HP (was 125), Shadow Step cooldown 7s (was 6s)',
-  'Cog Snare Trap breaks when an enemy projectile hits it',
-  'Cog and Grit attack indicators are smaller and match the real hit area']]);
-renderLog();pick(cls);
 /* ===== ARCANE RUMBLE v1.30 PATCH =====
    In this patch:
     1. Grit rework: Rampage shoves only a little, stuns 1.5s, heals 25, lasts 7s with +50% damage / +30% speed; range a bit shorter (the cone follows)
@@ -2849,15 +2828,6 @@ dummy=function(x,y,h){
   try{return dumH(x+o.x,y+o.y,h)}finally{s.px=px;s.py=py}};
 
 // ---- Changelog ----
-LOG.unshift(['v1.30.0',['Grit: Rampage shoves only a short way, stuns 1.5s, heals 25 and lasts 7s with +50% damage and +30% speed; punch range is a bit shorter and the cone follows',
-  'Tide: new ability Bubble Trap: a bubble bursts after 0.9s and traps enemies inside (cannot move or shoot) for 1.3s; replaces the Tornado-like Whirlpool',
-  'Mobile: drag the ability / ultimate button to aim like a joystick, release to cast, ✕ to cancel',
-  'Hero info shows damage, fire rate, range, cooldown, ultimate charge time (without damage or wells) and effect numbers for the part being shown',
-  'Lobby (online and offline) is laid out like the main menu; modifiers, power boxes and storm speed only show for Showdown',
-  'Option "Deep water" is now "River crossing" (wade anywhere / bridges only)',
-  'Boxes and the Terra wall break into flying chunks with dust; Terra wall has 450 HP (+50%)',
-  'Menu preview dummies stay pushed away until that part of the preview ends']]);
-renderLog();pick(cls);
  
 /* ===== ARCANE RUMBLE v1.31 PATCH =====
 
@@ -2885,8 +2855,6 @@ step=function(dt){
 
 CL[WI].ps.x='in the river you swim 50% FASTER (everyone else crawls), heal 2 HP/s and the current cannot move you · deep water (dark lakes and the deep centre of the river): only Tide can enter, at 45% speed';
 
-LOG.unshift(['v1.31.0',['Tide in deep water (deep lakes and the river\'s deep centre) moves at 45% of normal speed, half of its old lake speed; the shallow river is unchanged']]);
-renderLog();pick(cls);
 
  /* ===== ARCANE RUMBLE v1.32 PATCH =====
    In this patch:
@@ -2904,20 +2872,6 @@ const pvUIv=pvUI;
 pvUI=function(){pvUIv();
   document.querySelectorAll('.pxs').forEach(d=>{const t=d.textContent.replace(' (without damage or wells)','');if(t!=d.textContent)d.textContent=t})};
 
-// ---- 1. Speed-up indicator ----
-const personV=person;
-person=function(p,isMe){
-  if(p.hp===undefined||!(p.hp>0)||p.air>0||(st!='play'&&st!='over'))return personV(p,isMe);
-  const dx=p.x-(p._lx==null?p.x:p._lx),dy=p.y-(p._ly==null?p.y:p._ly);p._lx=p.x;p._ly=p.y;
-  p._vx=(p._vx||0)+(dx-(p._vx||0))*.3;p._vy=(p._vy||0)+(dy-(p._vy||0))*.3;                      // smoothed movement direction
-  const wt=p.cl==WI&&!!RV&&inWater(p.x,p.y)&&!inDeep(p.x,p.y),fast=((p.fl|0)&4096)||wt;          // boost status, or Tide swimming in shallow water
-  if(fast&&Math.hypot(p._vx,p._vy)>.7){
-    const T=performance.now()/1000;
-    g.save();g.translate(p.x,p.y);g.rotate(Math.atan2(p._vy,p._vx)+Math.PI);g.lineCap='round';g.strokeStyle=wt?'#9fe4ff':'#ffffff';
-    for(let i=-1;i<=1;i++){const l=22+14*(Math.sin(T*18+i*2)+1)/2+(i?0:10);g.globalAlpha=.55;g.lineWidth=i?3:4;g.beginPath();g.moveTo(16,i*11);g.lineTo(16+l,i*11);g.stroke()}
-    g.restore()}
-  personV(p,isMe)};
-
 // ---- 2 + 3. Bot logic: Terra's wall, and the moving training dummies ----
 const aiN=ai;
 ai=function(p,i,dt){aiN(p,i,dt);
@@ -2933,27 +2887,8 @@ ai=function(p,i,dt){aiN(p,i,dt);
   else p.au=0};                                                                                 // never wastes it ON the enemy (the old random cast did)
 
 // ---- 3. Training: the real map + dummies of different forms ----
-const worldQ=world;
-world=function(seed){const t=TR;TR=0;try{worldQ(seed)}finally{TR=t}};                         // skip the old tiny test arena, use the normal generator
-btr.onclick=()=>{
-  TR=1;host=true;code='OFFLINE';lobby=[{n:myName(),c:0,k:cls}];st='lobby';
-  $('s5').value='1';$('s2').value='1';$('s5').parentElement.style.display='none';
-  const sv=[$('s1').value,$('s7').value,$('s9').value],o=new Option('20','20');
-  $('s1').add(o);$('s1').value='20';$('s7').value='2000';$('s9').value='1';                    // 20 players = 19 dummies, normal map size, deep river channel on
-  startGame();
-  $('s1').remove(o.index);$('s1').value=sv[0];$('s7').value=sv[1];$('s9').value=sv[2];
-  if(st!='play'){TR=0;return}
-  dbgOn=1;const m=P[me],q0=freePt(C,C,150);m.x=q0.x;m.y=q0.y;m.a=0;let k=0;
-  P.forEach((p,i)=>{if(i==me)return;
-    const bush=k%5==4&&Bu.length?Bu[(k*7)%Bu.length]:null,near=k<4,q=bush||freePt(near?m.x:C,near?m.y:C,near?320:A-300);   // first 4 close to you, the rest spread over the map, every 5th hides in a bush
-    Object.assign(p,{td:[1,2,3,4,1][k%5],n:'Dummy '+(k+1),cl:k%CL.length,hx:q.x,hy:q.y,x:q.x,y:q.y});p.hp=CL[p.cl].hp;k++})};
 
 // ---- Changelog ----
-LOG.unshift(['v1.32.0',['Speed streaks appear behind anyone who is sped up (Tide in shallow water, Rampage, Gust, Flame Pool, traps)',
-  'Bots use Terra\'s Stone Wall: placed between them and the enemy when hurt, fleeing or pressed, and they stop firing into it for a moment',
-  'Training is the full map (buildings, bushes, lakes, river with deep channel) with 19 dummies: standing, bobbing, patrolling, running in circles, hiding in bushes, each a different hero',
-  'Hero info: ultimate line just says how long it takes to charge by itself']]);
-renderLog();pick(cls);
 
  /* ===== ARCANE RUMBLE v1.33 PATCH =====
    1. Deep river centre removed (option hidden, always off). Deep lakes stay.
@@ -2985,7 +2920,6 @@ person=function(p,isMe){
     g.strokeStyle=OL;g.lineWidth=7;g.beginPath();g.arc(0,0,31,0,7);g.stroke();
     g.strokeStyle=col;g.lineWidth=3.5;g.globalAlpha=.6+.4*Math.sin(T*14);g.beginPath();g.arc(0,0,31,0,7);g.stroke();
     g.restore()}
-  p._lx=p.x;p._ly=p.y;p._vx=p._vy=0;                                  // silence the old streaks
   personS(p,isMe)};
 
 // ---- 3. Leave an online game when you are alone (host with no other human connected) ----
@@ -3046,11 +2980,6 @@ btr.onclick=()=>{
     Object.assign(p,{td:s.td,inv:s.inv|0,nb:s.inv?'Target '+ ++tn:'Dummy '+ ++dn,hx:s.x,hy:s.y,x:s.x,y:s.y,cl:s.inv?0:(k+dn)%CL.length});p.n=p.nb;p.hp=CL[p.cl].hp})};
 
 // ---- Changelog ----
-LOG.unshift(['v1.33.0',['Removed the deep river centre option and feature (deep lakes stay, only Tide can enter them)',
-  'Speed streaks are much more visible: dark outline, bright core, afterimages and a pulsing ring, readable on water, snow and sand',
-  'You can leave an online game when you are the only human in the room',
-  'Training: 28 dummies (3 groups of 4, 8 alone, some in bushes) plus 8 immovable bullseye targets (a range row + lone ones) that cannot die and show the damage you deal, with a running total that resets after 3s']]);
-renderLog();pick(cls);
  
 /* ===== ARCANE RUMBLE v1.35 PATCH: TEAMS =====
    Lobby gets a "Teams" setting (Off / Blue vs Red). Works in all 3 modes, online and offline:
@@ -3131,9 +3060,6 @@ hud=function(){hudTm();const q=P[me];if(!TMon||!q||st!='play'||q.tm<0)return;
   $('hud').textContent+=' · '+TMN[q.tm]+' team: '+s[q.tm]+(md==0?' alive':'')+' vs '+s[1-q.tm]+(md==0?' alive':' (goal '+(md==1?10:100)+')')};
 
 // ---- Changelog ----
-LOG.unshift(['v1.35.0',['Teams (lobby setting): Blue vs Red in every mode. Showdown = last team standing, Brawl Rush = first team to 10 combined kills, Hot Zone = team points to 100',
-  'No friendly fire, bolts fly through teammates, bots never target teammates, area abilities skip them; coloured team rings, allies always on your minimap, team score in the top bar']]);
-renderLog();pick(cls);
 
  /* ===== ARCANE RUMBLE v1.36 PATCH: BRIDGE HEIGHTS =====
    Every player has a height (p.hz): 0 = ground / river level, 1 = on a bridge deck. It only matters inside a bridge's area.
@@ -3188,10 +3114,6 @@ hud=function(){hudBH();const q=P[me];
   if(st=='play'&&RV&&q&&q.hp>0&&brLoc(q.x,q.y))$('hud').textContent+=(q.hz|0)?' · 🌉 on the bridge':' · 🌉 under the bridge'};
 
 // ---- Changelog ----
-LOG.unshift(['v1.36.0',['Bridge heights: enter a bridge from its land ends to stand ON the deck, wade in from the river sides to go UNDER it (you still wade slowly there)',
-  'Bolts remember their shooter\'s height: inside a bridge area they only hit players at the same height, so deck fire cannot hit people under it and fire from below passes under people on the deck',
-  'The deck turns see-through for you while you are under it; players under a bridge are covered by the deck for everyone else; the top bar shows if you are on or under a bridge']]);
-renderLog();pick(cls);
 
  /* ===== ARCANE RUMBLE v1.37 PATCH =====
    1. The bridge deck fades like a house roof when you are UNDER it (smooth, about 20% opacity) and shows its underside:
@@ -3233,9 +3155,6 @@ step=function(dt){
         if(Math.abs(u)>52){const q=u>0?52:-52;p.x=b+(q-v*s)/L;p.y=rvY(b)+(q*s+v)/L}
         break}}}};
 
-LOG.unshift(['v1.37.0',['Bridge: the deck fades like a house roof while you are under it, showing beams and posts and anyone else under the bridge',
-  'Bridge rails: players on the deck cannot walk off its sides any more; players under the bridge shoot normally and swim out through the sides']]);
-renderLog();pick(cls);
 
 /* ===== ARCANE RUMBLE v1.37 PATCH: NEW HERO "FERN" (Druid) =====
    Fern is green and nature themed:
@@ -3253,11 +3172,11 @@ renderLog();pick(cls);
 const FI=CL.push({n:'Fern',t:'Druid',oc:'#3f9b3a',hr:'#2f7a3a',sk:'#e6c19a',hs:0,sc:'#8dff6a',gl:20,hp:140,sp:228,d:18,cd:.95,bs:700,bt:.57,r:300,fl:.3,ef:'lob',bk:10,
  mn:['Seed Bomb','LOBBED seed: flies over everything and only hurts where it LANDS (at your cursor, up to 400): blast + thorn patch'],
  ab:{n:'Thicket',x:'PLACE a thicket of 3 real bushes for 9s: hide inside them (anyone can) · Fern runs faster and heals there',k:'thicket',cd:9},
- ul:{n:'Nature\'s Grasp',x:'vines root every enemy within 450 standing in or next to ANY bush for 1.8s: 20 damage each, heals you 15 HP per enemy caught',k:'grasp'},
- ps:{n:'Wild Growth',x:'inside any bush: +30% speed and heal 6 HP/s',k:'wild'}})-1;
-const FLR=75;                                                          // blast radius
+ ul:{n:'Nature\'s Grasp',x:'THROW vines up to 300 away (hold, aim, release): every enemy within 330 of that spot standing in or next to ANY bush is rooted for 1.8s: 20 damage each, heals you 15 HP per enemy caught',k:'grasp'},
+ ps:{n:'Wild Growth',x:'inside any bush: +30% speed and heal 3 HP/s',k:'wild'}})-1;
+const FLR=75,GRR=330,GRM=300;                                                          // blast radius
 let Lb=[],Lz=[];                                                       // lobbed seeds in the air, thorn patches on the ground
-PV.thicket=['at',300,85,60];PV.grasp=['self',450];KE.grasp=['freeze',1.8];HLP.Fern=50;
+PV.thicket=['at',300,85,60];PV.grasp=['at',GRM,GRR,60];KE.grasp=['freeze',1.8];HLP.Fern=40;
 AD.thicket='3 bushes for 9s · Fern +30% speed and heals inside';AD.grasp='20 dmg · roots 1.8s · heals 15 per enemy caught';
 
 // ---- 2. Logo (a leaf) + class card in both pickers + shot sound ----
@@ -3330,7 +3249,7 @@ step=function(dt){
   for(const z of Lz){z.t-=dt;for(const q of P)if(q.hp>0&&q!==P[z.o]&&Math.hypot(q.x-z.x,q.y-z.y)<z.r)hit(q,8*dt,z.o);crHurt(z.x,z.y,z.r,8*dt)}
   Lz=Lz.filter(z=>z.t>0);
   for(const p of P){p.ro=Math.max(0,(p.ro||0)-dt);
-    if(p.cl==FI&&p.hp>0&&inBush(p)){p.bv=Math.max(p.bv,.25);p.hp=Math.min(CL[FI].hp,p.hp+6*dt)}}   // Wild Growth
+    if(p.cl==FI&&p.hp>0&&inBush(p)){p.bv=Math.max(p.bv,.25);p.hp=Math.min(CL[FI].hp,p.hp+3*dt)}}   // Wild Growth
   let bd=0;for(const b of Bu)if(b.tmp&&(b.t-=dt)<=0)bd=1;
   if(bd){Bu=Bu.filter(b=>!b.tmp||b.t>0);buSend()}
   if((lbT+=dt)>.08){lbT=0;const ro=[];P.forEach((p,i)=>{if(p.ro>0)ro.push(i)});
@@ -3342,10 +3261,10 @@ cast=function(p,i,u){
     for(const[ox,oy]of[[0,0],[52,12],[-52,12]])Bu.push({x:x+ox,y:y+oy,r:58,tmp:1,t:9});
     const tm=Bu.filter(b=>b.tmp);if(tm.length>9)tm.slice(0,tm.length-9).forEach(b=>b.t=0);   // at most 3 thickets at once
     ev(1,x,y,100,p.cl);buSend();return}
-  if(u.k=='grasp'){let n=0;
-    for(const q of P)if(q!==p&&q.hp>0&&!sameTm(p,q)&&Math.hypot(q.x-p.x,q.y-p.y)<450&&Bu.some(b=>Math.hypot(b.x-q.x,b.y-q.y)<b.r+25)){
+  if(u.k=='grasp'){let n=0,[x,y]=plc({x:p.x,y:p.y,a:p.a,pd:p.pd},GRM,60);const e=Math.hypot(x-C,y-C);if(e>A-40){x=C+(x-C)*(A-40)/e;y=C+(y-C)*(A-40)/e}
+    for(const q of P)if(q!==p&&q.hp>0&&!sameTm(p,q)&&Math.hypot(q.x-x,q.y-y)<GRR&&Bu.some(b=>Math.hypot(b.x-q.x,b.y-q.y)<b.r+25)){
       hit(q,20,i);q.fz=Math.max(q.fz,1.8);q.ro=1.8;n++;ev(1,q.x,q.y,70,p.cl)}
-    p.hp=Math.min(CL[FI].hp,p.hp+15*n);ev(1,p.x,p.y,450,p.cl);return}
+    p.hp=Math.min(CL[FI].hp,p.hp+15*n);ev(1,x,y,GRR,p.cl);return}
   castFN(p,i,u)};
 
 // ---- 6. Bots use Thicket at medium range ----
@@ -3365,29 +3284,33 @@ const sgFN=startGame;startGame=function(){Lb=[];Lz=[];sgFN()};
 const tmFN=toMenu;toMenu=function(t){Lb=[];Lz=[];tmFN(t)};
 
 // ---- Changelog ----
-LOG.unshift(['v1.37.0',['New hero: Fern, the Druid. Seed Bomb is a LOBBED seed that flies in an arc over walls, rocks and water and only hurts where it lands (blast + thorn patch, like Barley / Dynamike); Thicket places 3 real bushes for 9s; Nature\'s Grasp roots every enemy in or beside any bush; Wild Growth gives +30% speed and healing inside bushes']]);
+
+
+
+ 
+ 
+
+ 
+
+ 
+ 
 renderLog();pick(cls);
 
-
-
- 
- 
-
- 
-
- 
- 
 // ---------- 14. Main loop ----------
 
 function loop(t){
-  DT=Math.min(.05,(t-last)/1000||0);last=t;
+  DT=Math.min(.05,(t-last)/1000||0);last=t;FR++;
   if(st=='play'){
     const I=input();
     if(host){const p=P[me];if(p&&p.hp>0){p.mx=I.mx;p.my=I.my;p.a=I.a;p.f=I.f;p.pd=I.pd;p.aq|=pq;p.au|=pu}pq=pu=0;step(DT)}
     else{ // client: smooth toward the latest snapshot, send input at ~30 Hz
-      const k=Math.min(1,DT*14);for(const p of P){p.x+=(p.tx-p.x)*k;p.y+=(p.ty-p.y)*k}
+      const now=performance.now(),k=1-Math.exp(-DT*18);
+      for(const p of P){const e=Math.min(.1,(now-(p.rts||now))/1000);p.x+=(p.tx+(p.vx||0)*e-p.x)*k;p.y+=(p.ty+(p.vy||0)*e-p.y)*k;
+        if(p.ta!=null&&p!==P[me]){const d=Math.atan2(Math.sin(p.ta-p.a),Math.cos(p.ta-p.a));p.a+=d*k}}
+      const q=P[me];if(q&&q.hp>0)q.a=I.a;   // own aim follows the mouse / stick at once
+      for(const b of B)if((b.age+=DT)<.12){b.x+=b.vx*DT;b.y+=b.vy*DT}
       for(const z of Sz)if(z.gx!=null){z.x+=(z.gx-z.x)*k;z.y+=(z.gy-z.y)*k}
-      inT+=DT;if(inT>.033&&hc&&hc.open){inT=0;hc.send({t:'i',...I,q:pq,u:pu});pq=pu=0}
+      inT+=DT;if(inT>.017&&hc&&hc.open){inT=0;hc.send({t:'i',...I,q:pq,u:pu});pq=pu=0}
     }
     draw();hud();
   }else if(st=='over')draw();
