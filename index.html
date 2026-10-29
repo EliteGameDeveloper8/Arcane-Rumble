@@ -2955,9 +2955,106 @@ LOG.unshift(['v1.32.0',['Speed streaks appear behind anyone who is sped up (Tide
   'Hero info: ultimate line just says how long it takes to charge by itself']]);
 renderLog();pick(cls);
 
- 
+ /* ===== ARCANE RUMBLE v1.33 PATCH =====
+   1. Deep river centre removed (option hidden, always off). Deep lakes stay.
+   2. Speed streaks are much more visible (dark outline + bright core + afterimages + pulsing ring)
+   3. You can leave an online game when no other human is in the room
+   4. Training: 28 dummies (3 groups of 4, 8 alone) + 8 immovable bullseye targets that cannot die and show damage dealt
+*/
+
+// ---- 1. Remove "deep river centre": option hidden and forced off ----
+$('s9').parentElement.style.display='none';$('s9').value='0';
+const sgX=startGame;startGame=function(){$('s9').value='0';sgX()};
+CL[WI].ps.x='in the river you swim 50% FASTER (everyone else crawls), heal 2 HP/s and the current cannot move you · deep lakes: only Tide can enter, at 45% speed';
+
+// ---- 2. Speed indicator: readable on any ground (the old v1.32 streaks are silenced by resetting their tracking fields) ----
+const personS=person;
+person=function(p,isMe){
+  if(!(p.hp>0)||p.air>0||(st!='play'&&st!='over'))return personS(p,isMe);
+  const dt=Math.max(.001,DT),dx=(p.x-(p._sx==null?p.x:p._sx))/dt,dy=(p.y-(p._sy==null?p.y:p._sy))/dt;p._sx=p.x;p._sy=p.y;
+  p._wx=(p._wx||0)+(dx-(p._wx||0))*.25;p._wy=(p._wy||0)+(dy-(p._wy||0))*.25;
+  const wt=p.cl==WI&&!!RV&&inWater(p.x,p.y);
+  if((((p.fl|0)&4096)||wt)&&Math.hypot(p._wx,p._wy)>60){
+    const T=performance.now()/1000,col=wt?'#ffffff':'#ffe14a';
+    g.save();g.translate(p.x,p.y);g.rotate(Math.atan2(p._wy,p._wx)+Math.PI);g.lineCap='round';
+    g.fillStyle=col;g.strokeStyle=OL;g.lineWidth=3;
+    for(let k=2;k>=1;k--){g.globalAlpha=.16+.14/k;g.beginPath();g.arc(k*22,0,17,0,7);g.fill();g.stroke()}   // afterimages
+    g.globalAlpha=1;
+    for(let i=-1;i<=1;i++){const l=34+14*Math.sin(T*18+i*2)+(i?0:12);
+      for(const[c,w]of[[OL,i?9:11],[col,i?4:5]]){g.strokeStyle=c;g.lineWidth=w;g.beginPath();g.moveTo(18,i*11);g.lineTo(18+l,i*11);g.stroke()}}
+    g.strokeStyle=OL;g.lineWidth=7;g.beginPath();g.arc(0,0,31,0,7);g.stroke();
+    g.strokeStyle=col;g.lineWidth=3.5;g.globalAlpha=.6+.4*Math.sin(T*14);g.beginPath();g.arc(0,0,31,0,7);g.stroke();
+    g.restore()}
+  p._lx=p.x;p._ly=p.y;p._vx=p._vy=0;                                  // silence the old streaks
+  personS(p,isMe)};
+
+// ---- 3. Leave an online game when you are alone (host with no other human connected) ----
+const hudA=hud;
+hud=function(){hudA();const p=P[me];
+  if(host&&code!='OFFLINE'&&p&&!P.some(q=>q!==p&&!q.bot&&q.conn&&q.conn.open))$('lv').style.display='block'};
+
+// ---- 4. Training: more dummies + immovable bullseye targets ----
+const TN=29;                                                          // players in training: you + 28 dummies / targets
+const popDmg=p=>{p.pop=.3;num(p.x,p.y-52,''+Math.round(p.acc*10)/10,'#ffe066',p.acc>=25?26:19);p.acc=0};
+const hitI=hit;
+hit=function(p,d,by){                                                 // targets run the full damage code (cubes, passives...) then undo it, so the number is the real damage
+  if(!p.inv)return hitI(p,d,by);
+  if(!(d>0))return;
+  p.hp=1e6;hitI(p,d,by);const dd=1e6-p.hp;p.hp=CL[p.cl].hp;
+  if(dd<.01)return;
+  p.tot=(p.tot||0)+dd;p.acc=(p.acc||0)+dd;p.tl=performance.now();p.hf=.12;sfx('hit',p.x,p.y);
+  if((p.pop||0)<=0)popDmg(p)};
+const stepT2=step;
+step=function(dt){
+  stepT2(dt);
+  if(!TR||!host||st!='play')return;
+  const now=performance.now();
+  for(const p of P)if(p.inv){
+    p.x=p.hx;p.y=p.hy;p.cl=0;p.hp=CL[0].hp;                           // never moves, never dies
+    if(p.tot>0&&now-p.tl>3000)p.tot=0;                                // total resets after 3s without damage
+    if((p.pop=(p.pop||0)-dt)<=0&&p.acc>0)popDmg(p);
+    p.n=p.nb+(p.tot>0?' · '+Math.round(p.tot)+' dmg':'')}};
+const aiT2=ai;
+ai=function(p,i,dt){if(p.inv){p.mx=p.my=0;p.f=0;p.aq=p.au=0;return}aiT2(p,i,dt)};
+const personT2=person;
+person=function(p,isMe){
+  if(!p.inv)return personT2(p,isMe);
+  const k=1+Math.min(.18,p.hf||0);
+  g.save();g.translate(p.x,p.y);g.scale(k,k);
+  g.fillStyle='rgba(0,0,0,.28)';g.beginPath();g.ellipse(0,8,26,16,0,0,7);g.fill();
+  [[27,OL],[24,'#fff'],[19,'#e23b3b'],[14,'#fff'],[9,'#e23b3b'],[4,'#fff']].forEach(([r,c])=>cir(0,0,r,c));
+  g.restore()};
+
+btr.onclick=()=>{
+  TR=1;host=true;code='OFFLINE';lobby=[{n:myName(),c:0,k:cls}];st='lobby';
+  $('s5').value='1';$('s2').value='1';$('s5').parentElement.style.display='none';
+  const sv=[$('s1').value,$('s7').value],o=new Option(''+TN,''+TN);
+  $('s1').add(o);$('s1').value=''+TN;$('s7').value='2000';
+  startGame();
+  $('s1').remove(o.index);$('s1').value=sv[0];$('s7').value=sv[1];
+  if(st!='play'){TR=0;return}
+  dbgOn=1;
+  let q0=null;for(let t=0;t<80&&!q0;t++){const q=freePt(C,C,A-700);if(!gb(q.x,q.y)&&clear(q.x,q.y,q.x+700,q.y))q0=q}   // a spot with a long clear line east
+  q0=q0||freePt(C,C,150);const m=P[me];m.x=q0.x;m.y=q0.y;m.a=0;
+  const L=[];
+  [[180,0],[320,80],[320,-80],[480,0],[640,50]].forEach(([d,oy])=>{let x=q0.x+d,y=q0.y+oy;if(gb(x,y)){const f=freePt(x,y,70);x=f.x;y=f.y}L.push({x,y,inv:1,td:1})});   // range row of targets
+  for(let j=0;j<3;j++){const f=freePt(C,C,A-300);L.push({x:f.x,y:f.y,inv:1,td:1})}                                                                              // lone targets
+  for(let gi=0;gi<3;gi++){const c=gi?freePt(C,C,A-400):freePt(q0.x,q0.y,450);for(let j=0;j<4;j++){const f=freePt(c.x,c.y,90);L.push({x:f.x,y:f.y,td:j+1})}}      // 3 groups of 4 (stand / bob / patrol / circle)
+  for(let j=0;j<8;j++){const b=j%4==3&&Bu.length?Bu[(j*13)%Bu.length]:freePt(C,C,A-300);L.push({x:b.x,y:b.y,td:j%4+1})}                                         // 8 alone, some hiding in bushes
+  let k=0,tn=0,dn=0;
+  P.forEach((p,i)=>{if(i==me)return;const s=L[k++]||{...freePt(C,C,A-300),td:1};
+    Object.assign(p,{td:s.td,inv:s.inv|0,nb:s.inv?'Target '+ ++tn:'Dummy '+ ++dn,hx:s.x,hy:s.y,x:s.x,y:s.y,cl:s.inv?0:(k+dn)%CL.length});p.n=p.nb;p.hp=CL[p.cl].hp})};
+
+// ---- Changelog ----
+LOG.unshift(['v1.33.0',['Removed the deep river centre option and feature (deep lakes stay, only Tide can enter them)',
+  'Speed streaks are much more visible: dark outline, bright core, afterimages and a pulsing ring, readable on water, snow and sand',
+  'You can leave an online game when you are the only human in the room',
+  'Training: 28 dummies (3 groups of 4, 8 alone, some in bushes) plus 8 immovable bullseye targets (a range row + lone ones) that cannot die and show the damage you deal, with a running total that resets after 3s']]);
+renderLog();pick(cls);
  
 
+
+ 
 
  
  
