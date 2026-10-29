@@ -3530,7 +3530,34 @@ LOG.unshift(['v1.41.0',['Under a bridge the end walls now really hold: you can n
   'Fern hero-info preview now shows the real attacks: lobbed seed with blast + thorn patch, thicket bushes, vine pod rooting enemies near bushes',
   'Healing springs, wells and spell zones are drawn over buildings too']]);
 
- 
+ /* ===== v1.42: Fern Nature's Grasp fixes ===== */
+
+// every enemy in range that is in / next to ANY bush is rooted (can't move, can't shoot), hurt, and Fern heals per enemy
+graspLand=function(l){
+  const p=P[l.o];if(!p)return;let n=0;
+  for(const q of P){
+    if(q===p||q.hp<=0||sameTm(p,q))continue;
+    if(Math.hypot(q.x-l.tx,q.y-l.ty)>GRR)continue;
+    if(!Bu.some(b=>Math.hypot(b.x-q.x,b.y-q.y)<b.r+40))continue;
+    hit(q,20,l.o);
+    q.ro=1.8;q.fz=Math.max(q.fz,1.8);q.bl=Math.max(q.bl,1.8);n++;
+    ev(1,q.x,q.y,70,FI);
+    Q.push({k:'r',x:q.x,y:q.y,R:90,t:.5,l:.5,c:'#ff9ad5'});
+    spark(q.x,q.y,'#3fb04a',14,260,.6,6)}
+  if(p.hp>0)p.hp=Math.min(CL[FI].hp,p.hp+15*n);
+  ev(1,l.tx,l.ty,GRR,FI);
+  Q.push({k:'r',x:l.tx,y:l.ty,R:GRR,t:.6,l:.6,c:'#ff9ad5'});
+  spark(l.tx,l.ty,'#ff9ad5',24,380,.7,7)};
+
+// host side: show vines (not the ice ball) on rooted players; clients already do it through p.rod
+const personV42=person;
+person=function(p,isMe){
+  const f=p.fl,rt=(p.ro>0)&&!p.rod&&p.hp>0;
+  if(rt)p.fl=(f|0)&~64;
+  personV42(p,isMe);
+  if(rt){p.fl=f;vines(p)}};
+
+LOG.unshift(['v1.42.0',['Fern Nature\'s Grasp: every enemy caught in or next to a bush is rooted (cannot move or shoot) and shown wrapped in vines for the host too; landing burst on every caught enemy']]);
 
  
  
