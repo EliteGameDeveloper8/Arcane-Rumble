@@ -3559,6 +3559,48 @@ person=function(p,isMe){
 
 LOG.unshift(['v1.42.0',['Fern Nature\'s Grasp: every enemy caught in or next to a bush is rooted (cannot move or shoot) and shown wrapped in vines for the host too; landing burst on every caught enemy']]);
 
+ /* ===== v1.43: Fern ultimate rewire + bridge height layering ===== */
+
+// ---- Fern: new key so older Fern code can't intercept the ultimate ----
+CL[FI].ul.k='grasp2';
+PV.grasp2=PV.grasp;KE.grasp2=KE.grasp;AD.grasp2=AD.grasp;
+const castV43=cast;
+cast=function(p,i,u){
+  if(u.k!='grasp2')return castV43(p,i,u);
+  let[x,y]=plc({x:p.x,y:p.y,a:p.a,pd:p.pd},GRM,60);const e=Math.hypot(x-C,y-C);
+  if(e>A-40){x=C+(x-C)*(A-40)/e;y=C+(y-C)*(A-40)/e}
+  Gl.push({sx:p.x,sy:p.y,tx:x,ty:y,t:-.1,T:.5+Math.hypot(x-p.x,y-p.y)/900,o:i});
+  num(p.x,p.y-62,'VINES!','#ff9ad5',18)};
+graspLand=function(l){
+  const p=P[l.o];if(!p)return;let n=0;
+  for(const q of P){
+    if(q===p||q.hp<=0||sameTm(p,q)||Math.hypot(q.x-l.tx,q.y-l.ty)>GRR)continue;
+    if(!Bu.some(b=>Math.hypot(b.x-q.x,b.y-q.y)<b.r+40))continue;
+    hit(q,20,l.o);q.ro=1.8;q.fz=Math.max(q.fz,1.8);q.bl=Math.max(q.bl,1.8);n++;
+    ev(1,q.x,q.y,70,FI);spark(q.x,q.y,'#3fb04a',14,260,.6,6)}
+  if(p.hp>0)p.hp=Math.min(CL[FI].hp,p.hp+15*n);
+  ev(1,l.tx,l.ty,GRR,FI);
+  num(l.tx,l.ty-40,n?'ROOTED '+n:'no enemy near a bush',n?'#ff9ad5':'#ffffff',18)};
+
+// ---- bridges: damage from any source respects height ----
+const hitV43=hit;
+hit=function(p,d,by){
+  if(RV&&by!=null){const a=P[by];
+    if(a&&a!==p&&((a.zb||p.zb)&&(a.hz|0)!=(p.hz|0)))return}   // different heights near a bridge: no damage (bolts, zones, abilities, traps, waves)
+  hitV43(p,d,by)};
+
+// ---- bridges: bolts fired from under the deck are hidden under it for anyone not under ----
+const drawBoltV43=drawBolt;
+drawBolt=function(b,T){
+  if(RV&&b.hz!=null&&brLoc(b.x,b.y)){
+    const m=cam(),under=!(m.hz|0)&&!!brLoc(m.x,m.y);
+    if(!(b.hz|0)&&!under)return;                                  // below the deck, viewer above / outside: covered
+    if((b.hz|0)&&under){g.save();g.globalAlpha*=.35;drawBoltV43(b,T);g.restore();return}}  // deck bolt seen from below: faint
+  drawBoltV43(b,T)};
+
+LOG.unshift(['v1.43.0',['Fern Nature\'s Grasp now really throws the vine pod and shows how many enemies were rooted',
+  'Bridge heights apply to every damage source (abilities, zones, traps, waves), not only bolts; bolts under the deck are hidden from viewers above it']]);
+
  
  
 
